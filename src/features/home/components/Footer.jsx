@@ -1,6 +1,4 @@
-"use client";
 
-import React from "react";
 import { Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
