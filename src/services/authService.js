@@ -1,24 +1,8 @@
-// import apiClient from "./apiClient";
-
-// export const loginUser = async (data) => {
-//   const res = await apiClient.post("/auth/login", data);
-//   return res.data;
-// };
-
-// export const getMe = async () => {
-//   const res = await apiClient.get("/auth/me");
-//   return res.data;
-// };
-
-// export const logoutUser = async () => {
-//   await apiClient.post("/auth/logout");
-// };
-
 import apiClient from "./apiClient";
 
-const MOCK_MODE = true; // 🔥 temporary
+const MOCK_MODE = true;
 
-export const loginUser = async (credentials) => {
+export const loginAdmin = async (credentials) => {
   if (MOCK_MODE) {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -29,13 +13,13 @@ export const loginUser = async (credentials) => {
             email: credentials.email,
             role: "SUPER_ADMIN",
           },
+          accessToken: "mock-token-123",
         });
       }, 800);
     });
   }
 
-  // Real backend (later)
-  await apiClient.post("/auth/login", credentials);
-  const { data } = await apiClient.get("/auth/me");
-  return data;
+  // Future backend
+  const response = await apiClient.post("/auth/login", credentials);
+  return response.data;
 };

@@ -14,16 +14,17 @@
 // };
 
 import { useMutation } from "@tanstack/react-query";
-import { loginUser } from "../../../services/authService";
+import { loginAdmin } from "../../../services/authService";
 import { useAuthStore } from "../../../store/useAuthStore";
 
 export const useLogin = () => {
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
-    mutationFn: loginUser,
+    mutationFn: loginAdmin,
     onSuccess: (data) => {
-      setUser(data.user);
+      const { user, accessToken } = data;
+      setAuth({ user, accessToken });
     },
   });
 };

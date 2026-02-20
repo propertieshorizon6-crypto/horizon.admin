@@ -1,6 +1,19 @@
-import apiClient from "../../../services/apiClient";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/authStore";
+import { loginAdmin } from "../../../services/authService";
 
-export const loginAdmin = async (data) => {
-  const response = await apiClient.post("/admin/login", data);
-  return response.data;
+export const useLogin = () => {
+  const setAuth = useAuthStore((state) => state.setAuth);
+
+  return useMutation({
+    mutationFn: loginAdmin,
+    onSuccess: (data) => {
+      const { user, accessToken } = data;
+
+      setAuth({
+        user,
+        accessToken,
+      });
+    },
+  });
 };

@@ -5,7 +5,8 @@ import AuthPage from "../features/auth/pages/AuthPage";
 
 // import AdminLayout from "../components/layout/AdminLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
-import DashboardPage from "../features/dashboard/page/DashboardPage";
+import DashboardPage from "../features/dashboard/pages/DashboardPage";
+import DashboardLayout from "../components/layouts/DashboardLayout";
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -23,7 +24,7 @@ export const router = createBrowserRouter([
     path: "/admin",
     element: (
       <ProtectedRoute>
-        {/* <AdminLayout /> */}
+        <DashboardLayout />
       </ProtectedRoute>
     ),
     children: [
