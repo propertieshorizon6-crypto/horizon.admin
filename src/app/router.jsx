@@ -1,10 +1,36 @@
 import { createBrowserRouter } from "react-router-dom";
+
 import Homepage from "../features/home/pages/Homepage";
-// import LoginPage from "@/features/auth/pages/LoginPage";
-// import ListingsPage from "@/features/listings/pages/ListingsPage";
+import AuthPage from "../features/auth/pages/AuthPage";
+
+// import AdminLayout from "../components/layout/AdminLayout";
+import ProtectedRoute from "../components/ProtectedRoute";
+import DashboardPage from "../features/dashboard/page/DashboardPage";
 
 export const router = createBrowserRouter([
-    {path: "/", element: <Homepage/>}
-//   { path: "/login", element: <LoginPage /> },
-//   { path: "/listings", element: <ListingsPage /> },
+  // Public Routes
+  {
+    path: "/",
+    element: <Homepage />,
+  },
+  {
+    path: "/auth",
+    element: <AuthPage />,
+  },
+
+  // Admin Protected Routes
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute>
+        {/* <AdminLayout /> */}
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: "dashboard",
+        element: <DashboardPage />,
+      },
+    ],
+  },
 ]);

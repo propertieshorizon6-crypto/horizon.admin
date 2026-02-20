@@ -76,7 +76,7 @@ const Hero = () => {
               whileTap={{ scale: 0.95 }}
             >
              <Link
-                  to="/login"
+                  to="/auth"
                   className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium bg-[#1a2b4b] text-white h-11 rounded-md px-8 group w-full sm:w-auto transition-all duration-200 hover:shadow-[0_10px_15px_-3px_rgba(26,43,75,0.2)]"
                 >
                   Sign In
