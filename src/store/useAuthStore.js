@@ -3,12 +3,14 @@ import { create } from "zustand";
 export const useAuthStore = create((set) => ({
   user: null,
   accessToken: null,
+  refreshToken: null,
   isAuthenticated: false,
 
-  setAuth: ({ user, accessToken }) =>
+  setAuth: ({ user, accessToken, refreshToken = null }) =>
     set({
       user,
       accessToken,
+      refreshToken,
       isAuthenticated: true,
     }),
 
@@ -16,6 +18,7 @@ export const useAuthStore = create((set) => ({
     set({
       user: null,
       accessToken: null,
+      refreshToken: null,
       isAuthenticated: false,
     }),
 }));

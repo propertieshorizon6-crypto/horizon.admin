@@ -12,10 +12,13 @@ export default function useLogin() {
     mutationFn: loginAdmin,
 
     onSuccess: (data) => {
+      const authData = data?.data || {};
+
       // Store user + token in Zustand
       setAuth({
-        user:        data.user,
-        accessToken: data.accessToken,
+        user: authData.user,
+        accessToken: authData.accessToken,
+        refreshToken: authData.refreshToken,
       });
 
       // Admin dashboard pe redirect

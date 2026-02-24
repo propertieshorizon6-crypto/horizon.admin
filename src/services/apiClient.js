@@ -1,10 +1,8 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 
-
 const apiClient = axios.create({
-  baseURL: "http://localhost:5000/api",
-  withCredentials: true, // important for refresh cookie
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1",
 });
 
 // Attach access token
@@ -28,20 +26,27 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
+        const { refreshToken, user } = useAuthStore.getState();
+        if (!refreshToken) {
+          throw new Error("Missing refresh token");
+        }
+
         const res = await axios.post(
-          "http://localhost:5000/api/auth/refresh",
-          {},
-          { withCredentials: true }
+          `${apiClient.defaults.baseURL}/auth/refresh`,
+          { refreshToken }
         );
 
-        const newToken = res.data.accessToken;
+        const authData = res.data?.data || {};
+        const newAccessToken = authData.accessToken;
+        const newRefreshToken = authData.refreshToken;
 
         useAuthStore.getState().setAuth({
-          user: useAuthStore.getState().user,
-          accessToken: newToken,
+          user,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken || refreshToken,
         });
 
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return apiClient(originalRequest);
       } catch (err) {
