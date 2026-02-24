@@ -1,5 +1,6 @@
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { Outlet } from "react-router-dom";
 
 export default function DashboardLayout({ children }) {
   return (
@@ -16,7 +17,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {children}
+          {children ?? <Outlet />}
         </main>
 
       </div>

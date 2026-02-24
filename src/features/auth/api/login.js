@@ -1,19 +1,32 @@
-import { useMutation } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/authStore";
-import { loginAdmin } from "../../../services/authService";
+// 📁 src/features/auth/api/login.js
 
-export const useLogin = () => {
-  const setAuth = useAuthStore((state) => state.setAuth);
+import apiClient from "../../../services/apiClient";
 
-  return useMutation({
-    mutationFn: loginAdmin,
-    onSuccess: (data) => {
-      const { user, accessToken } = data;
+const MOCK_MODE = true;
 
-      setAuth({
-        user,
-        accessToken,
-      });
-    },
-  });
+export const loginAdmin = async (credentials) => {
+  if (MOCK_MODE) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // Simulate wrong password
+        if (credentials.password.length < 4) {
+          reject(new Error("Invalid credentials"));
+          return;
+        }
+        resolve({
+          user: {
+            id:    "1",
+            name:  "Akash Admin",
+            email: credentials.email,
+            role:  "SUPER_ADMIN",
+          },
+          accessToken: "mock-token-123",
+        });
+      }, 800);
+    });
+  }
+
+  // Real API — uncomment when backend ready
+  const { data } = await apiClient.post("/auth/login", credentials);
+  return data;
 };

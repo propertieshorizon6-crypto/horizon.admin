@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useLogin } from "../hooks/useLogin";
-import { useNavigate } from "react-router-dom";
+import  useLogin  from "../hooks/useLogin";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -9,19 +8,11 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = useLogin();
-  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    loginMutation.mutate(
-      { email, password },
-      {
-        onSuccess: () => {
-          navigate("/admin/dashboard");
-        },
-      }
-    );
+    loginMutation.mutate({ email, password });
   };
 
   return (

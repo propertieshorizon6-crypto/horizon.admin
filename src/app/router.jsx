@@ -1,25 +1,18 @@
-import { createBrowserRouter } from "react-router-dom";
+// 📁 src/app/router.jsx
 
-import Homepage from "../features/home/pages/Homepage";
-import AuthPage from "../features/auth/pages/AuthPage";
-
-// import AdminLayout from "../components/layout/AdminLayout";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import Homepage       from "../features/home/pages/Homepage";
+import AuthPage       from "../features/auth/pages/AuthPage";
 import ProtectedRoute from "../components/ProtectedRoute";
-import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import DashboardLayout from "../components/layouts/DashboardLayout";
+import DashboardPage  from "../features/dashboard/pages/DashboardPage";
 
 export const router = createBrowserRouter([
   // Public Routes
-  {
-    path: "/",
-    element: <Homepage />,
-  },
-  {
-    path: "/auth",
-    element: <AuthPage />,
-  },
+  { path: "/",     element: <Homepage /> },
+  { path: "/auth", element: <AuthPage /> },
 
-  // Admin Protected Routes
+  // Protected Admin Routes
   {
     path: "/admin",
     element: (
@@ -28,10 +21,15 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      {
-        path: "dashboard",
-        element: <DashboardPage />,
-      },
+      // /admin → /admin/dashboard automatically
+      { index: true,       element: <Navigate to="dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
+      // Add more routes here:
+      // { path: "leads",      element: <LeadsPage /> },
+      // { path: "listings",   element: <ListingsPage /> },
     ],
   },
+
+  // Fallback
+  { path: "*", element: <Navigate to="/auth" replace /> },
 ]);
