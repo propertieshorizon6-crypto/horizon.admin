@@ -1,27 +1,30 @@
 // 📁 src/features/settings/pages/SettingsPage.jsx
 
-import { useState } from "react";
-import { useAuthStore } from "../../../store/useAuthStore";
-import { getInitials }  from "../../../utils/formatters";
-import PreferencesTab   from "../components/PreferencesTab";
-import ActivityTab      from "../components/ActivityTab";
-import SecurityTab      from "../components/SecurityTab";
+import { useState }        from "react";
+import { useAuthStore }    from "../../../store/useAuthStore";
+import { getInitials }     from "../../../utils/formatters";
+import PreferencesTab      from "../components/PreferencesTab";
+import ActivityTab         from "../components/ActivityTab";
+import SecurityTab         from "../components/SecurityTab";
+import EditProfileDrawer   from "../components/EditProfileDrawer"; // ← new
 
 const TABS = ["Preferences", "Activity", "Security"];
 
 const ACTIVITY_STATS = [
-  { icon: "👥", value: 12, label: "Leads Assigned"   },
-  { icon: "📅", value: 8,  label: "Tours Scheduled"  },
-  { icon: "💬", value: 24, label: "Conversations"    },
-  { icon: "📄", value: 3,  label: "Exports (30d)"    },
+  { icon: "👥", value: 12, label: "Leads Assigned"  },
+  { icon: "📅", value: 8,  label: "Tours Scheduled" },
+  { icon: "💬", value: 24, label: "Conversations"   },
+  { icon: "📄", value: 3,  label: "Exports (30d)"   },
 ];
 
 export default function SettingsPage() {
-  const { user }        = useAuthStore();
-  const [activeTab, setActiveTab] = useState("Preferences");
+  const { user }     = useAuthStore();
+  const [activeTab,  setActiveTab]  = useState("Preferences");
+  const [drawerOpen, setDrawerOpen] = useState(false); // ← drawer state
 
   return (
     <div className="p-8 min-h-full bg-slate-50">
+
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
@@ -35,15 +38,12 @@ export default function SettingsPage() {
 
           {/* Profile Card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center text-center">
-            {/* Avatar */}
             <div className="w-24 h-24 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-md">
               {getInitials(user?.name ?? "Akash")}
             </div>
 
             <h2 className="text-lg font-bold text-slate-900">{user?.name ?? "Akash"}</h2>
             <p className="text-sm text-slate-500 mt-0.5">{user?.email ?? "akash@gmail.com"}</p>
-
-            {/* Role badge */}
             <span className="mt-2 inline-block bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">
               {user?.role ?? "Agent"}
             </span>
@@ -68,8 +68,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Edit Profile Button */}
-            <button className="mt-5 w-full flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+            {/* ✅ Edit Profile Button — opens drawer */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="mt-5 w-full flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            >
               <span>⚙</span> Edit Profile
             </button>
           </div>
@@ -87,7 +90,6 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-
         </div>
 
         {/* ── Right Column ── */}
@@ -99,13 +101,10 @@ export default function SettingsPage() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
-                  activeTab === tab
-                    ? "text-slate-900"
-                    : "text-slate-400 hover:text-slate-600"
+                  activeTab === tab ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
                 }`}
               >
                 {tab}
-                {/* Active underline */}
                 {activeTab === tab && (
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-0.5 bg-slate-900 rounded-full" />
                 )}
@@ -120,8 +119,13 @@ export default function SettingsPage() {
             {activeTab === "Security"    && <SecurityTab />}
           </div>
         </div>
-
       </div>
+
+      {/* ✅ Edit Profile Drawer */}
+      <EditProfileDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 }
