@@ -1,12 +1,13 @@
 // 📁 src/components/layouts/Sidebar.jsx
 // Logo file: src/assets/logo.png  ← copy the logo.png file here
 
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Target, Mail, CalendarDays,
   MessageSquare, Building2, Users, Bell, ClipboardList, LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
+import useLogout from "../../features/auth/hooks/useLogout";
 import { getInitials }  from "../../utils/formatters";
 import logo             from "../../assets/logo.png"; // ← real logo
 
@@ -23,12 +24,12 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuthStore();
-  const navigate         = useNavigate();
+  const { user } = useAuthStore();
+  const logoutMutation = useLogout();
 
   const handleLogout = () => {
-    logout();
-    navigate("/auth", { replace: true });
+    if (logoutMutation.isPending) return;
+    logoutMutation.mutate();
   };
 
   return (
@@ -58,27 +59,31 @@ export default function Sidebar() {
 
       {/* ── Navigation ── */}
       <nav style={{ flex: 1, padding: "10px 12px", overflowY: "auto" }}>
-        {NAV_ITEMS.map(({ label, icon: Icon, path, end }) => (
-          <NavLink
-            key={label}
-            to={path}
-            end={end}
-            style={({ isActive }) => ({
-              display: "flex", alignItems: "center", gap: 13,
-              padding: "11px 14px", borderRadius: 10, marginBottom: 2,
-              textDecoration: "none",
-              background:  isActive ? "rgba(255,255,255,0.08)" : "transparent",
-              color:       isActive ? "#f1f5f9"               : "#64748b",
-              fontWeight:  isActive ? 600                     : 400,
-              fontSize: 14, transition: "all 0.15s",
-              borderLeft: isActive ? "3px solid #CA5428" : "3px solid transparent",
-              boxSizing: "border-box",
-            })}
-          >
-            <Icon size={18} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-            {label}
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const IconComponent = item.icon;
+
+          return (
+            <NavLink
+              key={item.label}
+              to={item.path}
+              end={item.end}
+              style={({ isActive }) => ({
+                display: "flex", alignItems: "center", gap: 13,
+                padding: "11px 14px", borderRadius: 10, marginBottom: 2,
+                textDecoration: "none",
+                background:  isActive ? "rgba(255,255,255,0.08)" : "transparent",
+                color:       isActive ? "#f1f5f9"               : "#64748b",
+                fontWeight:  isActive ? 600                     : 400,
+                fontSize: 14, transition: "all 0.15s",
+                borderLeft: isActive ? "3px solid #CA5428" : "3px solid transparent",
+                boxSizing: "border-box",
+              })}
+            >
+              <IconComponent size={18} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* ── User + Sign Out ── */}
@@ -111,18 +116,22 @@ export default function Sidebar() {
         {/* Sign Out */}
         <button
           onClick={handleLogout}
+          disabled={logoutMutation.isPending}
+          aria-busy={logoutMutation.isPending}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             width: "100%", padding: "9px 14px", borderRadius: 10,
             border: "none", background: "transparent",
             color: "#64748b", fontSize: 14, fontWeight: 400,
-            cursor: "pointer", transition: "all 0.15s", boxSizing: "border-box",
+            cursor: logoutMutation.isPending ? "not-allowed" : "pointer",
+            opacity: logoutMutation.isPending ? 0.7 : 1,
+            transition: "all 0.15s", boxSizing: "border-box",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.color = "#f87171"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }}
         >
           <LogOut size={17} strokeWidth={1.8} />
-          Sign Out
+          {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
         </button>
       </div>
     </aside>
