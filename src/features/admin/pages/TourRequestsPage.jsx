@@ -1,4 +1,13 @@
 // 📁 src/features/admin/pages/TourRequestsPage.jsx
+//
+// 🧠 CONCEPT:
+// Yeh page tour requests ki list dikhata hai TanStack Table mein
+// Jab koi row click hoti hai → right side se TourDetailDrawer slide-in hota hai
+//
+// 📦 DATA FLOW:
+// useTourRequests() → tours array → table rows render
+// Row click → selectedTour state set → Drawer open
+// Drawer action → handleTourUpdate() → tours state update → UI refresh
 
 import { useState, useMemo } from "react";
 import {
@@ -8,7 +17,9 @@ import {
 } from "@tanstack/react-table";
 import { Search, ChevronDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, User } from "lucide-react";
 import useTourRequests from "../hooks/useTourRequests";
+import TourDetailDrawer from "../components/TourDetailDrawer";
 
+// ── Source Icon ───────────────────────────────────────────────────────────────
 function SourceIcon({ source }) {
   if (source === "app") return (
     <div style={{ width: 28, height: 28, borderRadius: 6, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -27,24 +38,18 @@ function SourceIcon({ source }) {
       </svg>
     </div>
   );
-  if (source === "call") return (
+  return (
     <div style={{ width: 28, height: 28, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.4 19.79 19.79 0 0 1 1.61 4.83 2 2 0 0 1 3.59 2.63h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.17a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5z"/>
       </svg>
     </div>
   );
-  return null;
 }
 
 function VisitBadge({ type }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      fontSize: 11, fontWeight: 500, padding: "2px 7px", borderRadius: 5,
-      background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0",
-      whiteSpace: "nowrap",
-    }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500, padding: "2px 7px", borderRadius: 5, background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
       {type === "virtual"
         ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -64,11 +69,7 @@ function StatusBadge({ status }) {
   };
   const s = styles[status] ?? styles["Proposed"];
   return (
-    <span style={{
-      display: "inline-block", fontSize: 11, fontWeight: 600,
-      padding: "2px 9px", borderRadius: 99, whiteSpace: "nowrap",
-      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
-    }}>
+    <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, whiteSpace: "nowrap", background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
       {status}
     </span>
   );
@@ -77,22 +78,34 @@ function StatusBadge({ status }) {
 const columnHelper = createColumnHelper();
 
 export default function TourRequestsPage() {
-  const { data: tours = [], isLoading } = useTourRequests();
+  const { data: initialTours = [], isLoading } = useTourRequests();
+
+  // 🔑 LOCAL STATE for tours
+  // useMemo/useQuery se aaya data → local state mein copy karte hain
+  // Kyunki drawer se update hone par UI ko re-render karna hai
+  const [tours,        setTours]        = useState(null); // null = use API data
+  const [selectedTour, setSelectedTour] = useState(null); // currently open drawer tour
+
+  // Actual tours: local update hai to use karo, warna API data
+  const tourData = tours ?? initialTours;
+
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter,   setTypeFilter]   = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
+  // Stats — tourData se calculate hote hain (real-time update)
   const stats = useMemo(() => ({
-    total:     tours.length,
-    requested: tours.filter((t) => t.status === "Requested").length,
-    overdue:   tours.filter((t) => t.sla === "Overdue").length,
-    confirmed: tours.filter((t) => t.status === "Confirmed").length,
-    completed: tours.filter((t) => t.status === "Completed").length,
-  }), [tours]);
+    total:     tourData.length,
+    requested: tourData.filter((t) => t.status === "Requested").length,
+    overdue:   tourData.filter((t) => t.sla === "Overdue").length,
+    confirmed: tourData.filter((t) => t.status === "Confirmed").length,
+    completed: tourData.filter((t) => t.status === "Completed").length,
+  }), [tourData]);
 
+  // Filtered data
   const filteredData = useMemo(() => {
-    let data = tours;
+    let data = tourData;
     if (statusFilter) data = data.filter((t) => t.status === statusFilter);
     if (typeFilter)   data = data.filter((t) => t.visitType === typeFilter);
     if (sourceFilter) data = data.filter((t) => t.source === sourceFilter);
@@ -106,8 +119,24 @@ export default function TourRequestsPage() {
       );
     }
     return data;
-  }, [tours, globalFilter, statusFilter, typeFilter, sourceFilter]);
+  }, [tourData, globalFilter, statusFilter, typeFilter, sourceFilter]);
 
+  // ── HANDLE TOUR UPDATE ─────────────────────────────────────────────────────
+  // 🧠 Concept:
+  //   Drawer se action hone par (status change, agent reassign, etc.)
+  //   Is function ko call kiya jaata hai with updated tour object
+  //   Hum tours array mein us ID ka item replace kar dete hain
+  //   React re-render karta hai → table aur drawer dono update ho jaate hain
+  const handleTourUpdate = (updatedTour) => {
+    // Pehle initialTours se copy banao agar pehli baar update ho raha hai
+    const base = tours ?? initialTours;
+    // Updated tour ko find karke replace karo
+    setTours(base.map((t) => t.id === updatedTour.id ? updatedTour : t));
+    // Drawer mein bhi updated data dikhao
+    setSelectedTour(updatedTour);
+  };
+
+  // Columns
   const columns = useMemo(() => [
     columnHelper.accessor("id", {
       header: "Tour ID",
@@ -187,13 +216,7 @@ export default function TourRequestsPage() {
         const sla = i.getValue();
         if (!sla) return null;
         return (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 3,
-            fontSize: 10, fontWeight: 600,
-            background: "#fff1f2", color: "#e11d48",
-            border: "1px solid #fecdd3",
-            padding: "2px 7px", borderRadius: 99, whiteSpace: "nowrap",
-          }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, background: "#fff1f2", color: "#e11d48", border: "1px solid #fecdd3", padding: "2px 7px", borderRadius: 99, whiteSpace: "nowrap" }}>
             <AlertTriangle size={10} /> {sla}
           </span>
         );
@@ -221,6 +244,7 @@ export default function TourRequestsPage() {
   const { pageIndex, pageSize } = table.getState().pagination;
 
   return (
+    // 🔑 position: relative nahi chahiye — drawer fixed position mein hai
     <div style={{ padding: "28px 24px", minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
 
       {/* Header */}
@@ -283,7 +307,7 @@ export default function TourRequestsPage() {
         ))}
       </div>
 
-      {/* Table — table-layout fixed + no overflow-x */}
+      {/* Table */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
@@ -303,11 +327,7 @@ export default function TourRequestsPage() {
             <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#fafafa" }}>
               {table.getHeaderGroups().map((hg) =>
                 hg.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", userSelect: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  >
+                  <th key={header.id} onClick={header.column.getToggleSortingHandler()} style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", userSelect: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
                     {{ asc: "↑", desc: "↓" }[header.column.getIsSorted()] ?? ""}
                   </th>
@@ -319,20 +339,33 @@ export default function TourRequestsPage() {
             {table.getRowModel().rows.length === 0 ? (
               <tr><td colSpan={11} style={{ padding: "50px 0", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No tour requests found</td></tr>
             ) : (
-              table.getRowModel().rows.map((row, idx) => (
-                <tr
-                  key={row.id}
-                  style={{ borderBottom: idx < table.getRowModel().rows.length - 1 ? "1px solid #f8fafc" : "none", background: "#fff", cursor: "pointer", transition: "background 0.1s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} style={{ padding: "12px 12px", verticalAlign: "middle", overflow: "hidden" }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              table.getRowModel().rows.map((row, idx) => {
+                // 🔑 Selected row highlighting — kaunsi row drawer mein open hai
+                const isSelected = selectedTour?.id === row.original.id;
+                return (
+                  <tr
+                    key={row.id}
+                    // 🔑 Row click → selectedTour set → drawer open
+                    onClick={() => setSelectedTour(row.original)}
+                    style={{
+                      borderBottom: idx < table.getRowModel().rows.length - 1 ? "1px solid #f8fafc" : "none",
+                      // Selected row ko blue border + light bg se highlight karo
+                      background:   isSelected ? "#eff6ff" : "#fff",
+                      borderLeft:   isSelected ? "3px solid #3b82f6" : "3px solid transparent",
+                      cursor:       "pointer",
+                      transition:   "background 0.1s",
+                    }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#f8fafc"; }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "#fff"; }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} style={{ padding: "12px 12px", verticalAlign: "middle", overflow: "hidden" }}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -357,6 +390,17 @@ export default function TourRequestsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── TOUR DETAIL DRAWER ─────────────────────────────────────────────────
+          🧠 Drawer ko page ke bahar render karo (fixed position)
+          tour prop pass karo → drawer automatically open/close hoga
+          onUpdate → handleTourUpdate → tours state update
+      ─── */}
+      <TourDetailDrawer
+        tour={selectedTour}
+        onClose={() => setSelectedTour(null)}
+        onUpdate={handleTourUpdate}
+      />
     </div>
   );
 }
