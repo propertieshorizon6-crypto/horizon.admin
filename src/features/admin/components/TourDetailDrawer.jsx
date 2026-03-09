@@ -15,7 +15,13 @@
 // - onUpdate   : tour data update karne ka function (status change, agent change)
 
 import { useState, useEffect } from "react";
-import { X, User, Calendar, MapPin, Phone, Mail, CheckCircle, XCircle, Clock } from "lucide-react";
+import { X, User, Calendar, MapPin, Phone, Mail, CheckCircle, XCircle } from "lucide-react";
+import {
+  cancelTourRequest,
+  completeTourRequest,
+  confirmTourRequest,
+  rescheduleTourRequest,
+} from "../api/tourRequestsApi";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK AGENTS LIST — Reassign Agent modal mein use hoga
@@ -243,6 +249,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
   const [showSchedule,  setShowSchedule]  = useState(false);
   const [showCancel,    setShowCancel]    = useState(false);
   const [actionSuccess, setActionSuccess] = useState(""); // success message
+  const [actionError,   setActionError]   = useState("");
+  const [isSubmitting,  setIsSubmitting]  = useState(false);
 
   // 🔑 Escape key se drawer band ho
   useEffect(() => {
@@ -259,44 +267,107 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
   //   4. Success message dikhata hai (2 sec ke liye)
 
   const showSuccess = (msg) => {
+    setActionError("");
     setActionSuccess(msg);
     setTimeout(() => setActionSuccess(""), 2500);
   };
 
-  // Reassign Agent
+  const showError = (msg) => {
+    setActionSuccess("");
+    setActionError(msg);
+    setTimeout(() => setActionError(""), 3500);
+  };
+
+  const runAction = async (fn) => {
+    if (!tour || isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await fn();
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to update tour. Please try again.";
+      showError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Reassign Agent (local only - backend endpoint not available yet)
   const handleReassign = (newAgent) => {
+    if (!tour || isSubmitting) return;
+
     onUpdate({ ...tour, agent: newAgent });
     setShowReassign(false);
     showSuccess(`Agent reassigned to ${newAgent}`);
   };
 
-  // Propose Schedule — slots save karo
+  // Propose Schedule - uses first proposed slot to reschedule on backend
   const handleProposeSchedule = (slots) => {
-    onUpdate({ ...tour, proposedSlots: slots, status: "Proposed" });
-    setShowSchedule(false);
-    showSuccess("Schedule proposed successfully");
+    const primarySlot = slots?.[0];
+
+    if (!primarySlot) {
+      showError("Please choose at least one schedule slot");
+      return;
+    }
+
+    const [preferredDate, preferredTimeRaw] = primarySlot.split("T");
+    const preferredTime = preferredTimeRaw?.slice(0, 5);
+
+    if (!preferredDate || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(preferredTime || "")) {
+      showError("Invalid slot selected");
+      return;
+    }
+
+    runAction(async () => {
+      const updatedTour = await rescheduleTourRequest(tour.id, {
+        preferredDate,
+        preferredTime,
+        reason: "Schedule proposed from admin panel",
+      });
+
+      // Preserve drawer's multi-slot UI data while backend stores one schedule.
+      onUpdate({ ...updatedTour, proposedSlots: slots, status: "Proposed" });
+      setShowSchedule(false);
+      showSuccess("Schedule proposed successfully");
+    });
   };
 
   // Mark Confirmed
   const handleConfirm = () => {
-    onUpdate({ ...tour, status: "Confirmed" });
-    showSuccess("Tour marked as Confirmed ✓");
+    runAction(async () => {
+      const updatedTour = await confirmTourRequest(tour.id, {});
+      onUpdate(updatedTour);
+      showSuccess("Tour marked as Confirmed");
+    });
   };
 
   // Mark Completed
   const handleComplete = () => {
-    onUpdate({ ...tour, status: "Completed" });
-    showSuccess("Tour marked as Completed ✓");
+    runAction(async () => {
+      const updatedTour = await completeTourRequest(tour.id);
+      onUpdate(updatedTour);
+      showSuccess("Tour marked as Completed");
+    });
   };
 
   // Cancel Tour
   const handleCancel = () => {
-    onUpdate({ ...tour, status: "Cancelled" });
-    setShowCancel(false);
-    showSuccess("Tour has been cancelled");
+    runAction(async () => {
+      const updatedTour = await cancelTourRequest(
+        tour.id,
+        "Cancelled by admin panel",
+      );
+      onUpdate(updatedTour);
+      setShowCancel(false);
+      showSuccess("Tour has been cancelled");
+    });
   };
 
-  // ── open = tour exists, closed = null ────────────────────────────────────
+  // -- open = tour exists, closed = null -------------------------------------
   const isOpen = !!tour;
 
   return (
@@ -372,6 +443,12 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, marginBottom: 16 }}>
                   <CheckCircle size={14} color="#16a34a" />
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#15803d" }}>{actionSuccess}</span>
+                </div>
+              )}
+              {actionError && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, marginBottom: 16 }}>
+                  <XCircle size={14} color="#dc2626" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c" }}>{actionError}</span>
                 </div>
               )}
 
@@ -506,7 +583,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
               {/* 1. Reassign Agent — outline button */}
               <button
                 onClick={() => setShowReassign(true)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "1.5px solid #e2e8f0", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#334155", background: "#fff", cursor: "pointer", transition: "all 0.15s" }}
+                disabled={isSubmitting}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "1.5px solid #e2e8f0", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#334155", background: "#fff", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.6 : 1, transition: "all 0.15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#1e293b"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
               >
@@ -516,7 +594,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
               {/* 2. Propose Schedule — outline button */}
               <button
                 onClick={() => setShowSchedule(true)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "1.5px solid #e2e8f0", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#334155", background: "#fff", cursor: "pointer", transition: "all 0.15s" }}
+                disabled={isSubmitting}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "1.5px solid #e2e8f0", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#334155", background: "#fff", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.6 : 1, transition: "all 0.15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#1e293b"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
               >
@@ -527,8 +606,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                   Disabled agar already Confirmed ya Completed ya Cancelled hai */}
               <button
                 onClick={handleConfirm}
-                disabled={["Confirmed","Completed","Cancelled"].includes(tour.status)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#fff", background: ["Confirmed","Completed","Cancelled"].includes(tour.status) ? "#94a3b8" : "#1e3a5f", cursor: ["Confirmed","Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer", transition: "all 0.15s" }}
+                disabled={isSubmitting || ["Confirmed","Completed","Cancelled"].includes(tour.status)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#fff", background: isSubmitting || ["Confirmed","Completed","Cancelled"].includes(tour.status) ? "#94a3b8" : "#1e3a5f", cursor: isSubmitting || ["Confirmed","Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer", transition: "all 0.15s" }}
                 onMouseEnter={(e) => { if (!["Confirmed","Completed","Cancelled"].includes(tour.status)) e.currentTarget.style.background = "#0f2a4a"; }}
                 onMouseLeave={(e) => { if (!["Confirmed","Completed","Cancelled"].includes(tour.status)) e.currentTarget.style.background = "#1e3a5f"; }}
               >
@@ -538,8 +617,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
               {/* 4. Mark Completed — ghost/text button */}
               <button
                 onClick={handleComplete}
-                disabled={["Completed","Cancelled"].includes(tour.status)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "9px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 600, color: ["Completed","Cancelled"].includes(tour.status) ? "#cbd5e1" : "#475569", background: "transparent", cursor: ["Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer" }}
+                disabled={isSubmitting || ["Completed","Cancelled"].includes(tour.status)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "9px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 600, color: isSubmitting || ["Completed","Cancelled"].includes(tour.status) ? "#cbd5e1" : "#475569", background: "transparent", cursor: isSubmitting || ["Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer" }}
                 onMouseEnter={(e) => { if (!["Completed","Cancelled"].includes(tour.status)) e.currentTarget.style.background = "#f8fafc"; }}
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
@@ -550,8 +629,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                   🧠 Destructive actions ke liye red color — user ko warning milti hai */}
               <button
                 onClick={() => setShowCancel(true)}
-                disabled={["Completed","Cancelled"].includes(tour.status)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#fff", background: ["Completed","Cancelled"].includes(tour.status) ? "#fca5a5" : "#ef4444", cursor: ["Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer", transition: "all 0.15s" }}
+                disabled={isSubmitting || ["Completed","Cancelled"].includes(tour.status)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#fff", background: isSubmitting || ["Completed","Cancelled"].includes(tour.status) ? "#fca5a5" : "#ef4444", cursor: isSubmitting || ["Completed","Cancelled"].includes(tour.status) ? "not-allowed" : "pointer", transition: "all 0.15s" }}
                 onMouseEnter={(e) => { if (!["Completed","Cancelled"].includes(tour.status)) e.currentTarget.style.background = "#dc2626"; }}
                 onMouseLeave={(e) => { if (!["Completed","Cancelled"].includes(tour.status)) e.currentTarget.style.background = "#ef4444"; }}
               >
@@ -589,3 +668,4 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
     </>
   );
 }
+

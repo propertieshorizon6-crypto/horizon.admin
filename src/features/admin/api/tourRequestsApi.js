@@ -1,130 +1,102 @@
-// 📁 src/features/admin/api/tourRequestsApi.js
-
 import apiClient from "../../../services/apiClient";
 
-export const MOCK_MODE = true;
+export const MOCK_MODE = false;
+export const MOCK_TOURS = [];
 
-export const MOCK_TOURS = [
-  {
-    id:            "tr_7999",
-    createdAt:     "Jan 29, 2026 3:50 PM",
-    source:        "app",
-    property:      { name: "Modern 2BR Apartment",  location: "Woodlands, Lusaka" },
-    customer:      { name: "Ravi K.",    phone: "+260971111111" },
-    visitType:     "virtual",
-    preferredSlot: "Jan 30, 2026 5:30 PM",
-    finalSlot:     null,
-    agent:         null,
-    status:        "Requested",
-    sla:           "Overdue",
-  },
-  {
-    id:            "tr_7001",
-    createdAt:     "Jan 28, 2026 2:00 PM",
-    source:        "app",
-    property:      { name: "3BR Family Home",        location: "Kabulonga, Lusaka" },
-    customer:      { name: "Martha Z.", phone: "+260972222222" },
-    visitType:     "physical",
-    preferredSlot: "Jan 30, 2026 3:30 PM",
-    finalSlot:     "Jan 30, 2026 3:30 PM",
-    agent:         "Agent Alice",
-    status:        "Proposed",
-    sla:           "Overdue",
-  },
-  {
-    id:            "tr_7003",
-    createdAt:     "Jan 27, 2026 7:30 PM",
-    source:        "app",
-    property:      { name: "Office Space – CBD",     location: "Lusaka CBD" },
-    customer:      { name: "Kunda M.",  phone: "+260973333333" },
-    visitType:     "physical",
-    preferredSlot: "Jan 29, 2026 2:30 PM",
-    finalSlot:     "Jan 29, 2026 4:30 PM",
-    agent:         "Agent Chipo",
-    status:        "Confirmed",
-    sla:           null,
-  },
-  {
-    id:            "tr_7010",
-    createdAt:     "Jan 28, 2026 11:30 AM",
-    source:        "website",
-    property:      { name: "Modern 2BR Apartment",   location: "Woodlands, Lusaka" },
-    customer:      { name: "Brian L.",  phone: "+260974444444" },
-    visitType:     "virtual",
-    preferredSlot: "Jan 30, 2026 2:30 PM",
-    finalSlot:     null,
-    agent:         null,
-    status:        "Requested",
-    sla:           "Overdue",
-  },
-  {
-    id:            "tr_7004",
-    createdAt:     "Jan 26, 2026 4:30 PM",
-    source:        "call",
-    property:      { name: "Luxury Penthouse",       location: "Roma, Lusaka" },
-    customer:      { name: "Susan N.",  phone: "+260975555555" },
-    visitType:     "physical",
-    preferredSlot: "Jan 31, 2026 7:30 PM",
-    finalSlot:     "Jan 31, 2026 7:30 PM",
-    agent:         "Agent Bob",
-    status:        "Confirmed",
-    sla:           null,
-  },
-  {
-    id:            "tr_7005",
-    createdAt:     "Jan 25, 2026 10:00 AM",
-    source:        "website",
-    property:      { name: "4BR Garden Villa",       location: "Kabulonga, Lusaka" },
-    customer:      { name: "James M.",  phone: "+260976666666" },
-    visitType:     "physical",
-    preferredSlot: "Jan 28, 2026 11:00 AM",
-    finalSlot:     "Jan 28, 2026 11:00 AM",
-    agent:         "Agent Alice",
-    status:        "Completed",
-    sla:           null,
-  },
-  {
-    id:            "tr_7006",
-    createdAt:     "Jan 24, 2026 9:00 AM",
-    source:        "app",
-    property:      { name: "Studio Apartment CBD",   location: "Lusaka CBD" },
-    customer:      { name: "Mercy K.",  phone: "+260977777777" },
-    visitType:     "virtual",
-    preferredSlot: "Jan 26, 2026 3:00 PM",
-    finalSlot:     null,
-    agent:         null,
-    status:        "Requested",
-    sla:           "Overdue",
-  },
-  {
-    id:            "tr_7007",
-    createdAt:     "Jan 23, 2026 2:00 PM",
-    source:        "call",
-    property:      { name: "3BR Townhouse",          location: "Woodlands, Lusaka" },
-    customer:      { name: "Peter N.",  phone: "+260978888888" },
-    visitType:     "physical",
-    preferredSlot: "Jan 25, 2026 10:00 AM",
-    finalSlot:     "Jan 25, 2026 10:00 AM",
-    agent:         "Agent Chipo",
-    status:        "Proposed",
-    sla:           "Overdue",
-  },
-  {
-    id:            "tr_7008",
-    createdAt:     "Jan 22, 2026 11:00 AM",
-    source:        "website",
-    property:      { name: "Commercial Space",       location: "Lusaka CBD" },
-    customer:      { name: "Anna W.",   phone: "+260979999999" },
-    visitType:     "virtual",
-    preferredSlot: "Jan 24, 2026 2:00 PM",
-    finalSlot:     "Jan 24, 2026 2:00 PM",
-    agent:         "Agent Bob",
-    status:        "Completed",
-    sla:           null,
-  },
-];
+const TOUR_STATUS_LABEL = {
+  pending: "Requested",
+  confirmed: "Confirmed",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const formatName = (user = {}) =>
+  `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
+
+const formatDateTime = (dateValue, timeValue) => {
+  if (!dateValue) return null;
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+
+  if (timeValue && /^\d{2}:\d{2}$/.test(timeValue)) {
+    const [hours, minutes] = timeValue.split(":").map(Number);
+    date.setHours(hours, minutes, 0, 0);
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const resolveLocation = (property = {}) => {
+  if (typeof property.location === "string") return property.location;
+
+  const parts = [
+    property.location?.city,
+    property.location?.state,
+    property.location?.address,
+  ].filter(Boolean);
+
+  return parts.join(", ") || "Location unavailable";
+};
+
+const mapTour = (tour = {}) => {
+  const preferredSlot = formatDateTime(tour.preferredDate, tour.preferredTime);
+  const finalSlot = formatDateTime(tour.confirmedDate, tour.confirmedTime);
+  const preferredDateMs = new Date(tour.preferredDate || 0).getTime();
+  const normalizedStatus = String(tour.status || "").toLowerCase();
+  const isPending = normalizedStatus === "pending";
+
+  return {
+    id: tour._id,
+    createdAt: formatDateTime(tour.createdAt),
+    source: "website",
+    property: {
+      name: tour.property?.title || "Property",
+      location: resolveLocation(tour.property),
+    },
+    customer: {
+      name: tour.name || tour.lead?.name || "Unknown",
+      phone: tour.phone || tour.lead?.phone || "N/A",
+      email: tour.email || tour.lead?.email || null,
+    },
+    visitType: "physical",
+    preferredSlot,
+    finalSlot,
+    agent: formatName(tour.agent),
+    status: TOUR_STATUS_LABEL[normalizedStatus] || "Requested",
+    sla: isPending && preferredDateMs && preferredDateMs < Date.now() ? "Overdue" : null,
+  };
+};
 
 export const fetchTourRequests = async (params = {}) => {
-  const { data } = await apiClient.get("/tour-requests", { params });
-  return data;
+  const { data } = await apiClient.get("/tours", { params });
+  const tours = data?.data?.tours ?? [];
+  return tours.map(mapTour);
 };
+
+export const confirmTourRequest = async (tourId, payload = {}) => {
+  const { data } = await apiClient.patch(`/tours/${tourId}/confirm`, payload);
+  return mapTour(data?.data?.tour ?? {});
+};
+
+export const completeTourRequest = async (tourId) => {
+  const { data } = await apiClient.patch(`/tours/${tourId}/complete`);
+  return mapTour(data?.data?.tour ?? {});
+};
+
+export const cancelTourRequest = async (tourId, reason = "Cancelled by admin") => {
+  const { data } = await apiClient.patch(`/tours/${tourId}/cancel`, { reason });
+  return mapTour(data?.data?.tour ?? {});
+};
+
+export const rescheduleTourRequest = async (tourId, payload) => {
+  const { data } = await apiClient.patch(`/tours/${tourId}/reschedule`, payload);
+  return mapTour(data?.data?.tour ?? {});
+};
+
