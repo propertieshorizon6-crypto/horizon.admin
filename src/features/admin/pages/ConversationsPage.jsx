@@ -2,7 +2,14 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { MessageSquare, Search, ChevronDown, Bell, Send } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import useConversations from "../hooks/useConversations";
+import {
+  fetchConversationById,
+  sendConversationMessage,
+  toRelativeTime,
+} from "../api/conversationsApi";
+import { useAuthStore } from "../../../store/useAuthStore";
 
 // ── Tag badge ────────────────────────────────────────────────────────────────
 function Tag({ label }) {
@@ -94,8 +101,18 @@ function ChatBubble({ msg }) {
   );
 }
 
+const getSenderId = (sender) => {
+  if (!sender) return null;
+  if (typeof sender === "string") return sender;
+  return sender._id || sender.id || null;
+};
+
 export default function ConversationsPage() {
   const { data: conversations = [], isLoading } = useConversations();
+  const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const currentUserId = user?._id || user?.id || null;
+
   const [selected,     setSelected]     = useState(null);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -134,9 +151,52 @@ export default function ConversationsPage() {
 
   const selectedConv = conversations.find((c) => c.id === selected);
 
+  const { data: selectedConversationDetail, isLoading: isDetailLoading } = useQuery({
+    queryKey: ["conversation", selected],
+    queryFn: () => fetchConversationById(selected, { messageLimit: 100 }),
+    enabled: Boolean(selected),
+    staleTime: 1000 * 30,
+  });
+
+  const chatMessages = useMemo(() => {
+    const apiMessages = selectedConversationDetail?.messages;
+    if (Array.isArray(apiMessages) && apiMessages.length > 0) {
+      return apiMessages.map((message, index) => {
+        const senderId = getSenderId(message.sender);
+        return {
+          id: message._id || `msg-${selected}-${index}`,
+          sender: senderId && currentUserId && senderId === currentUserId ? "agent" : "customer",
+          text: message.content || "",
+          time: toRelativeTime(message.createdAt || message.sentAt),
+        };
+      });
+    }
+    return selectedConv?.messages ?? [];
+  }, [selectedConversationDetail, selectedConv, selected, currentUserId]);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: sendConversationMessage,
+    onSuccess: async (_, variables) => {
+      setReplyText("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversation", variables.conversationId] }),
+        queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+      ]);
+    },
+  });
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages.length]);
+
   const handleSend = () => {
-    if (!replyText.trim()) return;
-    setReplyText("");
+    const content = replyText.trim();
+    if (!content || !selected || sendMessageMutation.isPending) return;
+
+    sendMessageMutation.mutate({
+      conversationId: selected,
+      content,
+    });
   };
 
   return (
@@ -268,14 +328,23 @@ export default function ConversationsPage() {
 
               {/* Messages */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-                {selectedConv.messages.map((msg) => (
-                  <ChatBubble key={msg.id} msg={msg} />
-                ))}
+                {isDetailLoading ? (
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Loading messages...</p>
+                ) : (
+                  chatMessages.map((msg) => (
+                    <ChatBubble key={msg.id} msg={msg} />
+                  ))
+                )}
                 <div ref={bottomRef} />
               </div>
 
               {/* Reply box */}
               <div style={{ padding: "12px 16px", borderTop: "1px solid #f1f5f9", background: "#fff", flexShrink: 0 }}>
+                {sendMessageMutation.isError ? (
+                  <p style={{ margin: "0 0 8px", color: "#dc2626", fontSize: 12 }}>
+                    {sendMessageMutation.error?.response?.data?.message || "Unable to send message."}
+                  </p>
+                ) : null}
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
                   <textarea
                     value={replyText}
@@ -287,7 +356,19 @@ export default function ConversationsPage() {
                   />
                   <button
                     onClick={handleSend}
-                    style={{ width: 40, height: 40, borderRadius: 10, background: "#1e3a5f", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                    disabled={!replyText.trim() || sendMessageMutation.isPending}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: sendMessageMutation.isPending ? "#94a3b8" : "#1e3a5f",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: !replyText.trim() || sendMessageMutation.isPending ? "not-allowed" : "pointer",
+                      flexShrink: 0,
+                    }}
                   >
                     <Send size={16} color="#fff" />
                   </button>

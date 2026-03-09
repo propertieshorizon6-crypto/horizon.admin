@@ -1,83 +1,72 @@
-// 📁 src/features/admin/api/propertiesApi.js
-
 import apiClient from "../../../services/apiClient";
 
-export const MOCK_MODE = true;
+export const MOCK_MODE = false;
+export const MOCK_PROPERTIES = [];
 
-export const MOCK_PROPERTIES = [
-  {
-    id:         "p1",
-    title:      "Marina View Tower - 3BR Apartment",
-    location:   "Dubai Marina, Dubai",
-    price:      "AED 2,500,000",
-    beds:       3,
-    baths:      3,
-    area:       180,
-    status:     "Active",
-    media:      { photos: 5, docs: 1 },
-    compliance: "Compliant",
-    assignedTo: "Sarah Mitchell",
-    type:       "Apartment",
-  },
-  {
-    id:         "p2",
-    title:      "Palm Jumeirah Villa",
-    location:   "Palm Jumeirah, Dubai",
-    price:      "AED 15,000,000",
-    beds:       5,
-    baths:      6,
-    area:       650,
-    status:     "Active",
-    media:      { photos: 11, docs: 2 },
-    compliance: "1 issue(s)",
-    assignedTo: "Ahmed Khan",
-    type:       "Villa",
-  },
-  {
-    id:         "p3",
-    title:      "Downtown Dubai Penthouse",
-    location:   "Downtown Dubai",
-    price:      "AED 25,000,000",
-    beds:       4,
-    baths:      5,
-    area:       450,
-    status:     "Draft",
-    media:      { photos: 2, docs: 0 },
-    compliance: "Compliant",
-    assignedTo: null,
-    type:       "Penthouse",
-  },
-  {
-    id:         "p4",
-    title:      "Business Bay Office Space",
-    location:   "Business Bay, Dubai",
-    price:      "AED 5,000,000",
-    beds:       null,
-    baths:      null,
-    area:       300,
-    status:     "Active",
-    media:      { photos: 3, docs: 1 },
-    compliance: "1 issue(s)",
-    assignedTo: "John Davis",
-    type:       "Commercial",
-  },
-  {
-    id:         "p5",
-    title:      "JBR Beach Apartment",
-    location:   "JBR, Dubai",
-    price:      "AED 3,200,000",
-    beds:       2,
-    baths:      2,
-    area:       140,
-    status:     "Archived",
-    media:      { photos: 4, docs: 0 },
-    compliance: "Compliant",
-    assignedTo: null,
-    type:       "Apartment",
-  },
-];
+const toTitle = (value = "") =>
+  value ? `${value[0].toUpperCase()}${value.slice(1).toLowerCase()}` : "";
+
+const formatName = (user = {}) =>
+  `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
+
+const normalizeStatus = (status, isDeleted) => {
+  if (isDeleted || ["inactive", "sold", "rented"].includes(status)) {
+    return "Archived";
+  }
+
+  if (["active", "approved"].includes(status)) {
+    return "Active";
+  }
+
+  return "Draft";
+};
+
+const formatPrice = (amount, currency = "USD") => {
+  if (typeof amount !== "number") return "-";
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
+  }
+};
+
+const mapProperty = (property = {}) => {
+  const hasFeatured = !!property.images?.featured?.original?.url;
+  const galleryCount = Array.isArray(property.images?.gallery)
+    ? property.images.gallery.length
+    : 0;
+
+  const photoCount = (hasFeatured ? 1 : 0) + galleryCount;
+  const isCompliant = hasFeatured && galleryCount > 0;
+
+  const location = [
+    property.location?.city,
+    property.location?.state,
+  ].filter(Boolean).join(", ");
+
+  return {
+    id: property._id,
+    title: property.title || "Untitled",
+    location: location || "Location unavailable",
+    price: formatPrice(property.price, property.currency),
+    beds: property.details?.bedrooms ?? null,
+    baths: property.details?.bathrooms ?? null,
+    area: property.details?.squareFeet ?? 0,
+    status: normalizeStatus(property.status, property.isDeleted),
+    media: { photos: photoCount, docs: 0 },
+    compliance: isCompliant ? "Compliant" : "1 issue(s)",
+    assignedTo: formatName(property.agent) || formatName(property.owner),
+    type: toTitle(property.type),
+  };
+};
 
 export const fetchProperties = async (params = {}) => {
-  const { data } = await apiClient.get("/properties", { params });
-  return data;
+  const { data } = await apiClient.get("/admin/properties", { params });
+  const properties = data?.data?.properties ?? [];
+  return properties.map(mapProperty);
 };

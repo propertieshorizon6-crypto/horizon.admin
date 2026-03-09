@@ -1,85 +1,56 @@
-// 📁 src/features/admin/api/usersApi.js
-
 import apiClient from "../../../services/apiClient";
 
-export const MOCK_MODE = true;
+export const MOCK_MODE = false;
+export const MOCK_USERS = [];
 
-export const MOCK_USERS = [
-  {
-    id:           "u1",
-    name:         "Sarah Mitchell",
-    email:        "sarah@horizon.ae",
-    initials:     "SM",
-    role:         "Agent",
-    manager:      "David Lee",
-    territories:  ["Dubai Marina", "JBR"],
-    activeLeads:  28,
-    status:       "Active",
-    lastLogin:    "1h ago",
-  },
-  {
-    id:           "u2",
-    name:         "Ahmed Khan",
-    email:        "ahmed@horizon.ae",
-    initials:     "AK",
-    role:         "Agent",
-    manager:      "David Lee",
-    territories:  ["Palm Jumeirah", "Downtown"],
-    activeLeads:  22,
-    status:       "Active",
-    lastLogin:    "1h ago",
-  },
-  {
-    id:           "u3",
-    name:         "David Lee",
-    email:        "david@horizon.ae",
-    initials:     "DL",
-    role:         "Manager",
-    manager:      null,
-    territories:  ["Dubai"],
-    activeLeads:  null,
-    status:       "Active",
-    lastLogin:    "1h ago",
-  },
-  {
-    id:           "u4",
-    name:         "John Davis",
-    email:        "john@horizon.ae",
-    initials:     "JD",
-    role:         "Agent",
-    manager:      "David Lee",
-    territories:  ["Business Bay", "DIFC"],
-    activeLeads:  16,
-    status:       "Active",
-    lastLogin:    "2h ago",
-  },
-  {
-    id:           "u5",
-    name:         "Lisa Roberts",
-    email:        "lisa@horizon.ae",
-    initials:     "LR",
-    role:         "Agent",
-    manager:      null,
-    territories:  ["Springs", "Meadows"],
-    activeLeads:  0,
-    status:       "Inactive",
-    lastLogin:    "Never",
-  },
-  {
-    id:           "u6",
-    name:         "Admin User",
-    email:        "admin@horizon.ae",
-    initials:     "AU",
-    role:         "Admin",
-    manager:      null,
-    territories:  [],
-    activeLeads:  null,
-    status:       "Active",
-    lastLogin:    "52m ago",
-  },
-];
+const toTitle = (value = "") =>
+  value ? `${value[0].toUpperCase()}${value.slice(1).toLowerCase()}` : "";
 
-export const fetchUsers = async () => {
-  const { data } = await apiClient.get("/users");
-  return data;
+const toInitials = (firstName = "", lastName = "") => {
+  const initials = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
+  return initials || "NA";
+};
+
+const formatLastLogin = (value) => {
+  if (!value) return "Never";
+
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "Never";
+
+  const diffMs = Date.now() - timestamp;
+  const minutes = Math.floor(diffMs / (1000 * 60));
+
+  if (minutes < 60) return `${Math.max(1, minutes)}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  return new Date(value).toLocaleDateString();
+};
+
+const mapUser = (user = {}) => {
+  const firstName = user.firstName || "";
+  const lastName = user.lastName || "";
+
+  return {
+    id: user._id,
+    name: `${firstName} ${lastName}`.trim() || user.email || "Unknown",
+    email: user.email || "",
+    initials: toInitials(firstName, lastName),
+    role: toTitle(user.role),
+    manager: null,
+    territories: [],
+    activeLeads: null,
+    status: toTitle(user.status),
+    lastLogin: formatLastLogin(user.lastLoginAt),
+  };
+};
+
+export const fetchUsers = async (params = {}) => {
+  const { data } = await apiClient.get("/admin/users", { params });
+  const users = data?.data?.users ?? [];
+  return users.map(mapUser);
 };
