@@ -8,7 +8,7 @@ export default function useTourRequests() {
     queryKey: ["tour-requests"],
     queryFn:  MOCK_MODE
       ? () => new Promise((res) => setTimeout(() => res(MOCK_TOURS), 400))
-      : fetchTourRequests,
+      : () => fetchTourRequests(),
     staleTime: 1000 * 60 * 2,
   });
 }

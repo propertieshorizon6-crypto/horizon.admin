@@ -34,6 +34,10 @@ const formatDateTime = (dateValue, timeValue) => {
 };
 
 const resolveLocation = (property = {}) => {
+  if (!property || typeof property !== "object") {
+    return "Location unavailable";
+  }
+
   if (typeof property.location === "string") return property.location;
 
   const parts = [
@@ -74,10 +78,68 @@ const mapTour = (tour = {}) => {
   };
 };
 
+const toToursPayload = (responseData = {}) => {
+  const payload = responseData?.data ?? {};
+  const tours = Array.isArray(payload.tours) ? payload.tours : [];
+  const pagination = payload.pagination ?? {};
+
+  return { tours, pagination };
+};
+
+const normalizeTourQueryParams = (params = {}) => {
+  const allowedKeys = ["status", "date", "agentId", "page", "limit"];
+  const cleanParams = {};
+
+  allowedKeys.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(params, key)) return;
+
+    const value = params[key];
+    if (value === undefined || value === null || value === "") return;
+
+    cleanParams[key] = value;
+  });
+
+  return cleanParams;
+};
+
 export const fetchTourRequests = async (params = {}) => {
-  const { data } = await apiClient.get("/tours", { params });
-  const tours = data?.data?.tours ?? [];
-  return tours.map(mapTour);
+  const safeParams = normalizeTourQueryParams(params);
+  const hasExplicitPagination =
+    Object.prototype.hasOwnProperty.call(safeParams, "page") ||
+    Object.prototype.hasOwnProperty.call(safeParams, "limit");
+
+  if (hasExplicitPagination) {
+    const { data } = await apiClient.get("/tours", { params: safeParams });
+    const { tours } = toToursPayload(data);
+    return tours.map(mapTour);
+  }
+
+  const baseParams = { ...safeParams, page: 1, limit: 100 };
+  const { data: firstPageData } = await apiClient.get("/tours", {
+    params: baseParams,
+  });
+
+  const firstPage = toToursPayload(firstPageData);
+  const allTours = [...firstPage.tours];
+  const totalPages = Number(firstPage.pagination?.pages) || 1;
+
+  if (totalPages > 1) {
+    const remainingRequests = [];
+
+    for (let page = 2; page <= totalPages; page += 1) {
+      remainingRequests.push(
+        apiClient.get("/tours", { params: { ...baseParams, page } }),
+      );
+    }
+
+    const remainingResponses = await Promise.all(remainingRequests);
+    remainingResponses.forEach(({ data }) => {
+      const { tours } = toToursPayload(data);
+      allTours.push(...tours);
+    });
+  }
+
+  return allTours.map(mapTour);
 };
 
 export const confirmTourRequest = async (tourId, payload = {}) => {
