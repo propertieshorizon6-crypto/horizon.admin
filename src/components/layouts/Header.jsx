@@ -5,11 +5,19 @@ import { useNavigate } from "react-router-dom";
 import { Bell, Settings } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getInitials } from "../../utils/formatters";
+import useUnreadNotificationCount from "../../features/admin/hooks/useUnreadNotificationCount";
 
 export default function Header() {
   const { user }  = useAuthStore();
   const navigate  = useNavigate();
   const [search, setSearch] = useState("");
+  const { data: unreadCountData } = useUnreadNotificationCount({
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: true,
+  });
+
+  const unreadCount = Number(unreadCountData ?? 0);
+  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
     <div className="bg-white shadow-sm border-b border-slate-100 px-6 h-[60px] flex justify-between items-center sticky top-0 z-50">
@@ -32,11 +40,18 @@ export default function Header() {
       <div className="flex items-center gap-3">
 
         {/* Bell */}
-        <button className="relative p-2 rounded-xl hover:bg-slate-50 transition-colors">
+        <button
+          onClick={() => navigate("/admin/notifications")}
+          className="relative p-2 rounded-xl hover:bg-slate-50 transition-colors"
+          title="Notifications"
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        >
           <Bell size={19} className="text-slate-500" />
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            3
-          </span>
+          {unreadCount > 0 ? (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+              {unreadLabel}
+            </span>
+          ) : null}
         </button>
 
         {/* Settings → navigates to /admin/settings */}
