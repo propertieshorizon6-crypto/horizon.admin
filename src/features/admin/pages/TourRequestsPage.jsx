@@ -78,7 +78,13 @@ function StatusBadge({ status }) {
 const columnHelper = createColumnHelper();
 
 export default function TourRequestsPage() {
-  const { data: initialTours = [], isLoading } = useTourRequests();
+  const {
+    data: initialTours = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useTourRequests();
 
   // 🔑 LOCAL STATE for tours
   // useMemo/useQuery se aaya data → local state mein copy karte hain
@@ -238,6 +244,23 @@ export default function TourRequestsPage() {
       {[...Array(5)].map((_, i) => (
         <div key={i} style={{ height: 52, background: "#f1f5f9", borderRadius: 10, marginBottom: 10 }} />
       ))}
+    </div>
+  );
+
+  if (isError) return (
+    <div style={{ padding: 32 }}>
+      <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", borderRadius: 12, padding: 16, maxWidth: 640 }}>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Unable to load tour requests</p>
+        <p style={{ margin: "6px 0 12px", fontSize: 12 }}>
+          {error?.response?.data?.message || error?.message || "Something went wrong while fetching data."}
+        </p>
+        <button
+          onClick={() => refetch()}
+          style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #fecaca", background: "#fff", color: "#b91c1c", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+        >
+          Retry
+        </button>
+      </div>
     </div>
   );
 
