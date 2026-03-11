@@ -1,310 +1,586 @@
-// 📁 src/features/admin/pages/NotificationsPage.jsx
+import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronDown, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import {
+  createTestNotification,
+  deleteNotificationRule,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  resendDeliveryLogEmail,
+  updateNotificationRule,
+} from "../api/notificationsApi";
+import useDeliveryLogs from "../hooks/useDeliveryLogs";
+import useNotificationRules from "../hooks/useNotificationRules";
+import useNotifications from "../hooks/useNotifications";
 
-import { useState, useMemo } from "react";
-import { Check, Search, ChevronDown, Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+const BellSVG = ({ color = "#64748b", size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
 
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, title: "New Lead Contact",           desc: "Ravi K. initiated contact for Modern 2BR Apartment",   date: "Jan 29, 15:51", channel: "bell",  type: "Lead",    read: false },
-  { id: 2, title: "Export Ready",               desc: "Your leads data export is ready for download",          date: "Jan 27, 16:35", channel: "bell",  type: "System",  read: true  },
-  { id: 3, title: "SLA Alert: Inquiry Overdue", desc: "Inquiry inq_3003 is past SLA deadline",                date: "Jan 29, 13:30", channel: "email", type: "SLA",     read: false },
-  { id: 4, title: "Daily Summary",              desc: "5 new leads, 3 tours scheduled, 2 inquiries resolved",  date: "Jan 29, 11:30", channel: "email", type: "Summary", read: false },
-  { id: 5, title: "Customer Call Initiated",    desc: "Brian L. initiated a call for Modern 2BR Apartment",    date: "Jan 28, 11:31", channel: "bell",  type: "Lead",    read: false },
+const EmailSVG = ({ color = "#64748b", size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </svg>
+);
+
+const PushSVG = ({ color = "#64748b", size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8">
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+  </svg>
+);
+
+const TABS = [
+  { id: "center", label: "Notification Center" },
+  { id: "rules", label: "Rules" },
+  { id: "logs", label: "Delivery Logs" },
 ];
 
-const RULES = [
-  { id: "r1", name: "Notify Admin on Lead Contact", trigger: "lead contact initiated", recipients: ["Admin"],            channels: ["bell","email"], enabled: true },
-  { id: "r2", name: "Tour Reminder 1 Hour Before",  trigger: "tour reminder",          recipients: ["Agent"],            channels: ["push","bell"],  enabled: true },
-  { id: "r3", name: "SLA Overdue Alert",            trigger: "inquiry overdue",        recipients: ["Admin","Manager"],  channels: ["email"],        enabled: true },
-];
-
-const DELIVERY_LOGS = [
-  { id: "l1", timestamp: "Jan 29, 13:30", notifId: "n_006", channel: "email", recipient: "admin@horizon.com",   status: "sent",   error: null },
-  { id: "l2", timestamp: "Jan 29, 15:30", notifId: "n_007", channel: "push",  recipient: "device_agent2_ios",   status: "sent",   error: null },
-  { id: "l3", timestamp: "Jan 29, 11:30", notifId: "n_008", channel: "email", recipient: "admin@horizon.com",   status: "failed", error: "SMTP connection timeout" },
-  { id: "l4", timestamp: "Jan 26, 14:30", notifId: "n_009", channel: "email", recipient: "manager@horizon.com", status: "sent",   error: null },
-];
-
-const BellSVG  = ({ color = "#94a3b8", size = 14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>;
-const EmailSVG = ({ color = "#94a3b8", size = 14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>;
-const PushSVG  = ({ color = "#94a3b8", size = 14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>;
+const getErrorMessage = (error, fallback) =>
+  error?.response?.data?.message || error?.message || fallback;
 
 function ChannelIcon({ channel }) {
   if (channel === "email") return <EmailSVG />;
-  if (channel === "push")  return <PushSVG />;
+  if (channel === "push") return <PushSVG />;
   return <BellSVG />;
 }
 
-function Toggle({ enabled, onChange }) {
+function Toggle({ enabled, disabled, onClick }) {
   return (
-    <div onClick={onChange} style={{ width: 36, height: 20, borderRadius: 99, background: enabled ? "#22c55e" : "#e2e8f0", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
-      <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: enabled ? 19 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-    </div>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: 36,
+        height: 20,
+        border: "none",
+        borderRadius: 99,
+        background: enabled ? "#22c55e" : "#e2e8f0",
+        position: "relative",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.65 : 1,
+      }}
+    >
+      <span
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: "#fff",
+          position: "absolute",
+          top: 3,
+          left: enabled ? 19 : 3,
+          transition: "left .15s",
+        }}
+      />
+    </button>
   );
 }
 
-const TABS = [
-  { id: "center", label: "Notification Center", icon: <BellSVG /> },
-  { id: "rules",  label: "Rules",               icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg> },
-  { id: "logs",   label: "Delivery Logs",        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> },
-];
-
 export default function NotificationsPage() {
-  const [activeTab,     setActiveTab]     = useState("center");
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [rules,         setRules]         = useState(RULES);
-  const [search,        setSearch]        = useState("");
-  const [typeFilter,    setTypeFilter]    = useState("");
-  const [chanFilter,    setChanFilter]    = useState("");
-  const [readFilter,    setReadFilter]    = useState("");
-  const [logStatus,     setLogStatus]     = useState("");
-  const [logChan,       setLogChan]       = useState("");
+  const queryClient = useQueryClient();
+  const invalidateNotificationQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] }),
+    ]);
+  };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const markRead    = (id) => setNotifications((p) => p.map((n) => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = ()   => setNotifications((p) => p.map((n) => ({ ...n, read: true })));
-  const toggleRule  = (id) => setRules((p) => p.map((r) => r.id === id ? { ...r, enabled: !r.enabled } : r));
+  const [activeTab, setActiveTab] = useState("center");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [chanFilter, setChanFilter] = useState("");
+  const [readFilter, setReadFilter] = useState("");
+  const [logStatus, setLogStatus] = useState("");
+  const [logChan, setLogChan] = useState("");
 
-  const filteredNotifs = useMemo(() => {
+  const notificationParams = useMemo(() => ({ page: 1, limit: 100 }), []);
+  const rulesParams = useMemo(() => ({ page: 1, limit: 100 }), []);
+  const deliveryLogParams = useMemo(() => {
+    const params = { page: 1, limit: 100 };
+    if (logStatus) params.status = logStatus;
+    if (logChan) params.channel = logChan === "bell" ? "in_app" : logChan;
+    return params;
+  }, [logStatus, logChan]);
+
+  const {
+    data: notificationsResult,
+    isLoading: isNotificationsLoading,
+    error: notificationsError,
+  } = useNotifications(notificationParams);
+
+  const {
+    data: rulesResult,
+    isLoading: isRulesLoading,
+    error: rulesError,
+  } = useNotificationRules(rulesParams);
+
+  const {
+    data: logsResult,
+    isLoading: isLogsLoading,
+    error: logsError,
+  } = useDeliveryLogs(deliveryLogParams);
+
+  const notifications = useMemo(
+    () => notificationsResult?.notifications ?? [],
+    [notificationsResult],
+  );
+  const rules = useMemo(() => rulesResult?.rules ?? [], [rulesResult]);
+  const logs = useMemo(() => logsResult?.logs ?? [], [logsResult]);
+
+  const unreadCount =
+    notificationsResult?.unreadCount ??
+    notifications.filter((notification) => !notification.read).length;
+
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationAsRead,
+    onSuccess: invalidateNotificationQueries,
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: invalidateNotificationQueries,
+  });
+
+  const updateRuleMutation = useMutation({
+    mutationFn: ({ id, enabled }) => updateNotificationRule(id, { isActive: !enabled }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["notification-rules"] });
+    },
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: deleteNotificationRule,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["notification-rules"] });
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: resendDeliveryLogEmail,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["delivery-logs"] });
+    },
+  });
+
+  const createTestNotificationMutation = useMutation({
+    mutationFn: createTestNotification,
+    onSuccess: invalidateNotificationQueries,
+  });
+
+  const typeOptions = useMemo(
+    () => [...new Set(notifications.map((item) => item.type).filter(Boolean))].sort(),
+    [notifications],
+  );
+
+  const filteredNotifications = useMemo(() => {
     let data = notifications;
-    if (typeFilter) data = data.filter((n) => n.type === typeFilter);
-    if (chanFilter) data = data.filter((n) => n.channel === chanFilter);
-    if (readFilter === "Unread") data = data.filter((n) => !n.read);
-    if (readFilter === "Read")   data = data.filter((n) => n.read);
-    if (search) { const q = search.toLowerCase(); data = data.filter((n) => n.title.toLowerCase().includes(q) || n.desc.toLowerCase().includes(q)); }
+
+    if (typeFilter) data = data.filter((item) => item.type === typeFilter);
+    if (chanFilter) data = data.filter((item) => item.channel === chanFilter);
+    if (readFilter === "Unread") data = data.filter((item) => !item.read);
+    if (readFilter === "Read") data = data.filter((item) => item.read);
+
+    if (search) {
+      const q = search.toLowerCase();
+      data = data.filter(
+        (item) =>
+          item.title.toLowerCase().includes(q) ||
+          item.desc.toLowerCase().includes(q),
+      );
+    }
+
     return data;
   }, [notifications, typeFilter, chanFilter, readFilter, search]);
 
   const filteredLogs = useMemo(() => {
-    let data = DELIVERY_LOGS;
-    if (logStatus) data = data.filter((l) => l.status === logStatus);
-    if (logChan)   data = data.filter((l) => l.channel === logChan);
+    let data = logs;
+    if (logStatus) data = data.filter((item) => item.status === logStatus);
+    if (logChan) data = data.filter((item) => item.channel === logChan);
     return data;
-  }, [logStatus, logChan]);
+  }, [logs, logStatus, logChan]);
 
-  const thStyle = { padding: "11px 20px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" };
+  const handleMarkRead = (id, isRead) => {
+    if (isRead || markReadMutation.isPending) return;
+    markReadMutation.mutate(id);
+  };
+
+  const handleMarkAllRead = () => {
+    if (unreadCount === 0 || markAllReadMutation.isPending) return;
+    markAllReadMutation.mutate();
+  };
+
+  const handleToggleRule = (id, enabled) => {
+    if (updateRuleMutation.isPending) return;
+    updateRuleMutation.mutate({ id, enabled });
+  };
+
+  const handleDeleteRule = (id) => {
+    if (deleteRuleMutation.isPending) return;
+    if (!window.confirm("Delete this notification rule?")) return;
+    deleteRuleMutation.mutate(id);
+  };
+
+  const handleResend = (id) => {
+    if (resendMutation.isPending) return;
+    resendMutation.mutate(id);
+  };
+
+  const handleSimulateNotification = () => {
+    if (createTestNotificationMutation.isPending) return;
+
+    createTestNotificationMutation.mutate({
+      title: "Manual Test Notification",
+      message: `Created at ${new Date().toLocaleString()}`,
+      type: "system_alert",
+      priority: "normal",
+    });
+  };
 
   return (
-    <div style={{ minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
-
-      {/* Header */}
-      <div style={{ padding: "24px 28px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+    <div style={{ padding: 24, minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Notifications</h1>
-          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Manage your notifications and delivery settings</p>
+          <h1 style={{ margin: 0, fontSize: 22, color: "#0f172a" }}>Notifications</h1>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Manage your notifications and delivery settings</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button style={{ fontSize: 13, fontWeight: 600, color: "#475569", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Simulate Contact Initiated</button>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#64748b" }}>
-            <span>Demo Role:</span>
-            <div style={{ position: "relative" }}>
-              <select style={{ appearance: "none", paddingLeft: 9, paddingRight: 24, paddingTop: 5, paddingBottom: 5, border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#fff", cursor: "pointer", outline: "none" }}>
-                <option>Admin</option><option>Agent</option>
-              </select>
-              <ChevronDown size={11} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={handleSimulateNotification}
+          style={{
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            color: "#334155",
+            borderRadius: 8,
+            padding: "8px 12px",
+            cursor: createTestNotificationMutation.isPending ? "not-allowed" : "pointer",
+            opacity: createTestNotificationMutation.isPending ? 0.65 : 1,
+          }}
+          disabled={createTestNotificationMutation.isPending}
+        >
+          {createTestNotificationMutation.isPending
+            ? "Creating..."
+            : "Simulate Contact Initiated"}
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ padding: "16px 28px 0", display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
+          const active = activeTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", background: "none", border: "none", fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? "#0f172a" : "#64748b", cursor: "pointer", borderBottom: isActive ? "2px solid #0f172a" : "2px solid transparent", marginBottom: -1, transition: "all 0.15s" }}>
-              {tab.icon}{tab.label}
-              {tab.id === "center" && unreadCount > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "#ef4444", color: "#fff" }}>{unreadCount}</span>
-              )}
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                border: active ? "1px solid #0f172a" : "1px solid #e2e8f0",
+                background: active ? "#0f172a" : "#fff",
+                color: active ? "#fff" : "#334155",
+                borderRadius: 8,
+                padding: "7px 12px",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              {tab.label}
+              {tab.id === "center" && unreadCount > 0 ? ` (${unreadCount})` : ""}
             </button>
           );
         })}
       </div>
 
-      <div style={{ padding: "20px 28px" }}>
+      {createTestNotificationMutation.isError && (
+        <p style={{ margin: "0 0 12px", color: "#dc2626", fontSize: 12 }}>
+          {getErrorMessage(
+            createTestNotificationMutation.error,
+            "Unable to create test notification",
+          )}
+        </p>
+      )}
 
-        {/* ── NOTIFICATION CENTER ── */}
-        {activeTab === "center" && (
-          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
-              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Your Notifications</h2>
-              <button onClick={markAllRead} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#475569", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>
-                <Check size={13} /> Mark all read
-              </button>
+      {activeTab === "center" && (
+        <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+            <strong style={{ fontSize: 14, color: "#0f172a" }}>Your Notifications</strong>
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={unreadCount === 0 || markAllReadMutation.isPending}
+              style={{
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                color: "#475569",
+                borderRadius: 8,
+                padding: "6px 10px",
+                fontSize: 12,
+                cursor: unreadCount === 0 || markAllReadMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              Mark all read
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, padding: 14, borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+              <Search size={13} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search notifications..."
+                style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 10px 8px 28px", fontSize: 12 }}
+              />
             </div>
-            <div style={{ display: "flex", gap: 10, padding: "14px 20px", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" }}>
-              <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search notifications..." style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#334155", outline: "none", boxSizing: "border-box" }} />
+            {[
+              { value: typeFilter, set: setTypeFilter, label: "All Types", opts: typeOptions },
+              { value: chanFilter, set: setChanFilter, label: "All Channels", opts: ["bell", "email", "push"] },
+              { value: readFilter, set: setReadFilter, label: "All", opts: ["Unread", "Read"] },
+            ].map(({ value, set, label, opts }) => (
+              <div key={label} style={{ position: "relative" }}>
+                <select
+                  value={value}
+                  onChange={(event) => set(event.target.value)}
+                  style={{
+                    appearance: "none",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    padding: "8px 26px 8px 10px",
+                    fontSize: 12,
+                    color: "#475569",
+                    minWidth: 120,
+                    background: "#fff",
+                  }}
+                >
+                  <option value="">{label}</option>
+                  {opts.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
               </div>
+            ))}
+          </div>
+
+          {notificationsError && <p style={{ margin: 0, padding: "12px 14px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(notificationsError, "Unable to load notifications")}</p>}
+          {markReadMutation.isError && <p style={{ margin: 0, padding: "0 14px 12px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(markReadMutation.error, "Unable to mark as read")}</p>}
+          {markAllReadMutation.isError && <p style={{ margin: 0, padding: "0 14px 12px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(markAllReadMutation.error, "Unable to mark all as read")}</p>}
+
+          <div>
+            {isNotificationsLoading ? (
+              <p style={{ margin: 0, padding: 14, color: "#64748b", fontSize: 13 }}>Loading notifications...</p>
+            ) : filteredNotifications.length === 0 ? (
+              <p style={{ margin: 0, padding: 14, color: "#64748b", fontSize: 13 }}>No notifications found.</p>
+            ) : (
+              filteredNotifications.map((item, index) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: 14,
+                    background: item.read ? "#fff" : "#fffbeb",
+                    borderTop: index === 0 ? "none" : "1px solid #f8fafc",
+                  }}
+                >
+                  <div style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid #e2e8f0", display: "grid", placeItems: "center", background: "#f8fafc" }}>
+                    <ChannelIcon channel={item.channel} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{item.title}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{item.desc}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "#94a3b8" }}>{item.date || "Unknown time"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkRead(item.id, item.read)}
+                    disabled={item.read || markReadMutation.isPending}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "#fff",
+                      color: item.read ? "#cbd5e1" : "#475569",
+                      cursor: item.read || markReadMutation.isPending ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <Check size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === "rules" && (
+        <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+            <strong style={{ fontSize: 14, color: "#0f172a" }}>Notification Rules</strong>
+            <button
+              type="button"
+              disabled
+              title="Create form not implemented"
+              style={{ border: "none", background: "#94a3b8", color: "#fff", borderRadius: 8, padding: "7px 12px", fontSize: 12, cursor: "not-allowed", display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Plus size={14} />
+              Add Rule
+            </button>
+          </div>
+
+          {rulesError && <p style={{ margin: 0, padding: "12px 14px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(rulesError, "Unable to load rules")}</p>}
+          {updateRuleMutation.isError && <p style={{ margin: 0, padding: "0 14px 12px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(updateRuleMutation.error, "Unable to update rule")}</p>}
+          {deleteRuleMutation.isError && <p style={{ margin: 0, padding: "0 14px 12px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(deleteRuleMutation.error, "Unable to delete rule")}</p>}
+
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderTop: "1px solid #f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                {["Name", "Trigger", "Recipients", "Channels", "Status", "Actions"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", padding: "10px 14px" }}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isRulesLoading ? (
+                <tr><td colSpan={6} style={{ padding: 14, fontSize: 13, color: "#64748b" }}>Loading rules...</td></tr>
+              ) : rules.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: 14, fontSize: 13, color: "#64748b" }}>No rules found.</td></tr>
+              ) : (
+                rules.map((rule, index) => (
+                  <tr key={rule.id} style={{ borderTop: index === 0 ? "none" : "1px solid #f8fafc" }}>
+                    <td style={{ padding: "12px 14px", fontSize: 13, color: "#0f172a", fontWeight: 600 }}>{rule.name}</td>
+                    <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569" }}>{rule.trigger}</td>
+                    <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569" }}>{rule.recipients.join(", ")}</td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {rule.channels.map((channel) => (
+                          <span key={channel}><ChannelIcon channel={channel} /></span>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <Toggle
+                        enabled={rule.enabled}
+                        disabled={updateRuleMutation.isPending}
+                        onClick={() => handleToggleRule(rule.id, rule.enabled)}
+                      />
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRule(rule.id)}
+                        disabled={deleteRuleMutation.isPending}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          color: "#ef4444",
+                          cursor: deleteRuleMutation.isPending ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {activeTab === "logs" && (
+        <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+          <div style={{ padding: 14, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: 14, color: "#0f172a" }}>Delivery Logs</strong>
+            <div style={{ display: "flex", gap: 8 }}>
               {[
-                { value: typeFilter, set: setTypeFilter, label: "All Types",    opts: ["Lead","SLA","Summary","System"] },
-                { value: chanFilter, set: setChanFilter, label: "All Channels", opts: ["bell","email"] },
-                { value: readFilter, set: setReadFilter, label: "All",          opts: ["Unread","Read"] },
+                { value: logStatus, set: setLogStatus, label: "All Statuses", opts: ["pending", "sent", "delivered", "failed", "bounced"] },
+                { value: logChan, set: setLogChan, label: "All Channels", opts: ["email", "push", "bell"] },
               ].map(({ value, set, label, opts }) => (
                 <div key={label} style={{ position: "relative" }}>
-                  <select value={value} onChange={(e) => set(e.target.value)} style={{ appearance: "none", paddingLeft: 12, paddingRight: 28, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#64748b", background: "#fff", cursor: "pointer", outline: "none", minWidth: 130 }}>
+                  <select
+                    value={value}
+                    onChange={(event) => set(event.target.value)}
+                    style={{ appearance: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 24px 7px 10px", fontSize: 12, minWidth: 120, background: "#fff", color: "#475569" }}
+                  >
                     <option value="">{label}</option>
-                    {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                    {opts.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                   <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
                 </div>
               ))}
             </div>
-            <div>
-              {filteredNotifs.map((n, idx) => (
-                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "18px 20px", background: n.read ? "#fff" : "#fef9ee", borderBottom: idx < filteredNotifs.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: n.read ? "#f8fafc" : "#fef3c7", border: `1px solid ${n.read ? "#e2e8f0" : "#fde68a"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <BellSVG color={n.read ? "#94a3b8" : "#92400e"} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{n.title}</span>
-                      <ChannelIcon channel={n.channel} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{n.desc}</p>
-                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>{n.date}</p>
-                  </div>
-                  <button onClick={() => markRead(n.id)} style={{ width: 28, height: 28, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: n.read ? "#cbd5e1" : "#64748b" }}>
-                    <Check size={15} />
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
-        )}
 
-        {/* ── RULES ── */}
-        {activeTab === "rules" && (
-          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "20px 24px 16px" }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Notification Rules</h2>
-                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Configure when and how notifications are sent</p>
-              </div>
-              <button style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "#fff", background: "#1e293b", border: "none", borderRadius: 10, padding: "9px 18px", cursor: "pointer" }}>
-                <Plus size={15} /> Add Rule
-              </button>
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderTop: "1px solid #f1f5f9", borderBottom: "1px solid #f1f5f9" }}>
-                  {["Name","Trigger Event","Recipients","Channels","Status","Actions"].map((h) => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map((rule, idx) => (
-                  <tr key={rule.id} style={{ borderBottom: idx < rules.length - 1 ? "1px solid #f8fafc" : "none" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#fafafa")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                  >
-                    <td style={{ padding: "16px 20px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{rule.name}</td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <span style={{ fontSize: 12, color: "#475569", background: "#f1f5f9", padding: "3px 10px", borderRadius: 7, border: "1px solid #e2e8f0" }}>{rule.trigger}</span>
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {rule.recipients.map((r) => (
-                          <span key={r} style={{ fontSize: 12, color: "#475569", background: "#f1f5f9", padding: "3px 10px", borderRadius: 7, border: "1px solid #e2e8f0" }}>{r}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {rule.channels.map((c) => <span key={c}><ChannelIcon channel={c} /></span>)}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <Toggle enabled={rule.enabled} onChange={() => toggleRule(rule.id)} />
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <button style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 4, borderRadius: 6, display: "flex" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                        ><Pencil size={15} /></button>
-                        <button style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 4, borderRadius: 6, display: "flex" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                        ><Trash2 size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {logsError && <p style={{ margin: 0, padding: "12px 14px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(logsError, "Unable to load logs")}</p>}
+          {resendMutation.isError && <p style={{ margin: 0, padding: "0 14px 12px", color: "#dc2626", fontSize: 12 }}>{getErrorMessage(resendMutation.error, "Unable to resend")}</p>}
 
-        {/* ── DELIVERY LOGS ── */}
-        {activeTab === "logs" && (
-          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <div style={{ padding: "20px 24px 16px" }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Delivery Logs</h2>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Track notification delivery status</p>
-            </div>
-            <div style={{ display: "flex", gap: 12, padding: "0 24px 16px" }}>
-              {[
-                { value: logStatus, set: setLogStatus, label: "All Statuses", opts: ["sent","failed"] },
-                { value: logChan,   set: setLogChan,   label: "All Channels", opts: ["email","push","bell"] },
-              ].map(({ value, set, label, opts }) => (
-                <div key={label} style={{ position: "relative", flex: 1 }}>
-                  <select value={value} onChange={(e) => set(e.target.value)} style={{ appearance: "none", width: "100%", paddingLeft: 12, paddingRight: 28, paddingTop: 9, paddingBottom: 9, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 13, color: "#64748b", background: "#f8fafc", cursor: "pointer", outline: "none", boxSizing: "border-box" }}>
-                    <option value="">{label}</option>
-                    {opts.map((o) => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
-                  </select>
-                  <ChevronDown size={12} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-                </div>
-              ))}
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderTop: "1px solid #f1f5f9", borderBottom: "1px solid #f1f5f9" }}>
-                  {["Timestamp","Notification ID","Channel","Recipient","Status","Actions"].map((h) => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log, idx) => (
-                  <tr key={log.id} style={{ borderBottom: idx < filteredLogs.length - 1 ? "1px solid #f8fafc" : "none" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#fafafa")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                  >
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}>{log.timestamp}</td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, fontFamily: "monospace", color: "#475569" }}>{log.notifId}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#475569" }}>
-                        <ChannelIcon channel={log.channel} />
-                        {log.channel.charAt(0).toUpperCase() + log.channel.slice(1)}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: "#475569" }}>{log.recipient}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 99, background: log.status === "sent" ? "#1e293b" : "#ef4444", color: "#fff", display: "inline-block" }}>
-                        {log.status}
-                      </span>
-                      {log.error && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#ef4444" }}>{log.error}</p>}
-                    </td>
-                    <td style={{ padding: "14px 20px" }}>
-                      {log.status === "failed" && (
-                        <button style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#475569", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                        >
-                          <RefreshCw size={12} /> Resend
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderTop: "1px solid #f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                {["Timestamp", "Notification", "Channel", "Recipient", "Status", "Actions"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", padding: "10px 14px" }}>{head}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </tr>
+            </thead>
+            <tbody>
+              {isLogsLoading ? (
+                <tr><td colSpan={6} style={{ padding: 14, fontSize: 13, color: "#64748b" }}>Loading logs...</td></tr>
+              ) : filteredLogs.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: 14, fontSize: 13, color: "#64748b" }}>No logs found.</td></tr>
+              ) : (
+                filteredLogs.map((log, index) => {
+                  const canResend = log.status === "failed" && log.rawChannel === "email";
+                  return (
+                    <tr key={log.id} style={{ borderTop: index === 0 ? "none" : "1px solid #f8fafc" }}>
+                      <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569" }}>{log.timestamp || "-"}</td>
+                      <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569", fontFamily: "monospace" }}>{log.notifId || "-"}</td>
+                      <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569", display: "flex", gap: 6, alignItems: "center" }}><ChannelIcon channel={log.channel} />{log.channel}</td>
+                      <td style={{ padding: "12px 14px", fontSize: 12, color: "#475569" }}>{log.recipient}</td>
+                      <td style={{ padding: "12px 14px", fontSize: 12, color: log.status === "failed" ? "#dc2626" : "#475569", fontWeight: 600 }}>{log.status}</td>
+                      <td style={{ padding: "12px 14px" }}>
+                        {canResend && (
+                          <button
+                            type="button"
+                            onClick={() => handleResend(log.id)}
+                            disabled={resendMutation.isPending}
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 8,
+                              padding: "6px 10px",
+                              fontSize: 12,
+                              background: "#fff",
+                              color: "#475569",
+                              cursor: resendMutation.isPending ? "not-allowed" : "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <RefreshCw size={12} />
+                            Resend
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </section>
+      )}
     </div>
   );
 }
