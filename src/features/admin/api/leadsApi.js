@@ -30,6 +30,25 @@ const mapPriority = (status) => {
   return "Low";
 };
 
+const API_TO_UI_PRIORITY = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
+};
+
+const UI_TO_API_PRIORITY = {
+  Low: "low",
+  Medium: "medium",
+  High: "high",
+  Urgent: "urgent",
+};
+
+const normalizePriority = (priority, status) => {
+  const mapped = API_TO_UI_PRIORITY[String(priority || "").toLowerCase()];
+  return mapped ?? mapPriority(status);
+};
+
 const mapLead = (lead = {}) => {
   const status = mapLeadStatus(lead);
   const sourceType = lead.source?.type;
@@ -43,7 +62,7 @@ const mapLead = (lead = {}) => {
     source: sourceType === "tour" ? "App" : "Website",
     intent: sourceType === "tour" ? "Tour" : "Inquiry",
     status,
-    priority: mapPriority(status),
+    priority: normalizePriority(lead.priority, status),
     assignedTo: formatName(lead.assignedTo),
     createdAt: lead.createdAt,
   };
@@ -53,4 +72,10 @@ export const fetchLeads = async (params = {}) => {
   const { data } = await apiClient.get("/leads", { params });
   const leads = data?.data?.leads ?? [];
   return leads.map(mapLead);
+};
+
+export const updateLeadPriority = async (leadId, priority) => {
+  const apiPriority = UI_TO_API_PRIORITY[priority] ?? String(priority || "").toLowerCase();
+  const { data } = await apiClient.patch(`/leads/${leadId}`, { priority: apiPriority });
+  return data?.data?.lead ?? null;
 };
