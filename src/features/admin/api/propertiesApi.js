@@ -9,6 +9,8 @@ const toTitle = (value = "") =>
 const formatName = (user = {}) =>
   `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
 
+const resolveEntityId = (user = {}) => user?._id || user?.id || null;
+
 const normalizeStatus = (status, isDeleted) => {
   if (isDeleted || ["inactive", "sold", "rented"].includes(status)) {
     return "Archived";
@@ -96,6 +98,8 @@ const mapProperty = (property = {}) => {
     media: { photos: photoCount, docs: 0 },
     compliance: isCompliant ? "Compliant" : "1 issue(s)",
     assignedTo: formatName(property.agent) || formatName(property.owner),
+    assignedAgentId: resolveEntityId(property.agent),
+    assignedOwnerId: resolveEntityId(property.owner),
     type: toTitle(property.type),
   };
 };
