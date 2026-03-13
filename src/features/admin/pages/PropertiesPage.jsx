@@ -5,8 +5,10 @@ import {
   useReactTable, getCoreRowModel, getFilteredRowModel,
   getPaginationRowModel, createColumnHelper, flexRender,
 } from "@tanstack/react-table";
-import { Search, ChevronDown, MoreHorizontal } from "lucide-react";
-import useProperties from "../hooks/useProperties";
+import { Search, ChevronDown } from "lucide-react";
+import useProperties        from "../hooks/useProperties";
+import PropertyActionsMenu  from "../components/PropertyActionsMenu";
+import PropertyDetailPage   from "../components/PropertyDetailPage";
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
 const BedIcon = () => (
@@ -78,16 +80,17 @@ function ComplianceBadge({ value }) {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 const TABS = ["All", "Draft", "Active", "Archived"];
-
 const columnHelper = createColumnHelper();
 
 export default function PropertiesPage() {
   const { data: properties = [], isLoading } = useProperties();
-  const [activeTab,    setActiveTab]    = useState("All");
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [typeFilter,   setTypeFilter]   = useState("");
-  const [agentFilter,  setAgentFilter]  = useState("");
-  const [compFilter,   setCompFilter]   = useState("");
+
+  const [activeTab,        setActiveTab]        = useState("All");
+  const [globalFilter,     setGlobalFilter]     = useState("");
+  const [typeFilter,       setTypeFilter]       = useState("");
+  const [agentFilter,      setAgentFilter]      = useState("");
+  const [compFilter,       setCompFilter]       = useState("");
+  const [selectedProperty, setSelectedProperty] = useState(null); // → opens detail view
 
   // Tab counts
   const tabCounts = useMemo(() =>
@@ -99,23 +102,22 @@ export default function PropertiesPage() {
   // Filtered data
   const filteredData = useMemo(() => {
     let data = properties;
-    if (activeTab !== "All") data = data.filter((p) => p.status === activeTab);
-    if (typeFilter)          data = data.filter((p) => p.type === typeFilter);
+    if (activeTab !== "All")    data = data.filter((p) => p.status === activeTab);
+    if (typeFilter)             data = data.filter((p) => p.type === typeFilter);
     if (agentFilter === "Unassigned") data = data.filter((p) => !p.assignedTo);
-    else if (agentFilter)    data = data.filter((p) => p.assignedTo === agentFilter);
+    else if (agentFilter)       data = data.filter((p) => p.assignedTo === agentFilter);
     if (compFilter === "Compliant")   data = data.filter((p) => p.compliance === "Compliant");
     else if (compFilter === "Issues") data = data.filter((p) => p.compliance !== "Compliant");
     if (globalFilter) {
       const q = globalFilter.toLowerCase();
       data = data.filter((p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q)
+        p.title?.toLowerCase().includes(q) || p.location?.toLowerCase().includes(q)
       );
     }
     return data;
   }, [properties, activeTab, typeFilter, agentFilter, compFilter, globalFilter]);
 
-  // Columns
+  // Table columns
   const columns = useMemo(() => [
     columnHelper.accessor("title", {
       header: "Property",
@@ -141,19 +143,9 @@ export default function PropertiesPage() {
         const p = i.row.original;
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#475569" }}>
-            {p.beds && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <BedIcon /> {p.beds}
-              </span>
-            )}
-            {p.baths && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <BathIcon /> {p.baths}
-              </span>
-            )}
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <AreaIcon /> {p.area} sqm
-            </span>
+            {p.beds  && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><BedIcon />  {p.beds}</span>}
+            {p.baths && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><BathIcon /> {p.baths}</span>}
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}><AreaIcon /> {p.area} sqm</span>
           </div>
         );
       },
@@ -168,12 +160,8 @@ export default function PropertiesPage() {
         const m = i.getValue();
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <PhotoIcon /> {m.photos}
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <DocIcon /> {m.docs}
-            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}><PhotoIcon /> {m?.photos ?? 0}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}><DocIcon />   {m?.docs   ?? 0}</span>
           </div>
         );
       },
@@ -194,24 +182,35 @@ export default function PropertiesPage() {
     columnHelper.display({
       id: "actions",
       header: "",
-      cell: () => (
-        <button style={{ padding: 6, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center" }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-        >
-          <MoreHorizontal size={16} />
-        </button>
+      cell: ({ row }) => (
+        <PropertyActionsMenu
+          property={row.original}
+          onViewDetails={setSelectedProperty}
+        />
       ),
     }),
   ], []);
 
+  // ── useReactTable must be called before any early returns ──────────────────
   const table = useReactTable({
-    data: filteredData, columns,
+    data: filteredData,
+    columns,
     getCoreRowModel:       getCoreRowModel(),
     getFilteredRowModel:   getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 10 } },
   });
+
+  // ── Early returns AFTER all hooks ──────────────────────────────────────────
+  if (selectedProperty) {
+    return (
+      <PropertyDetailPage
+        propertyId={selectedProperty.id}
+        property={selectedProperty}
+        onBack={() => setSelectedProperty(null)}
+      />
+    );
+  }
 
   if (isLoading) return (
     <div style={{ padding: 32 }}>
@@ -220,8 +219,6 @@ export default function PropertiesPage() {
       ))}
     </div>
   );
-
-  const { pageIndex, pageSize } = table.getState().pagination;
 
   return (
     <div style={{ padding: "28px 24px", minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
@@ -311,12 +308,17 @@ export default function PropertiesPage() {
               table.getRowModel().rows.map((row, idx) => (
                 <tr
                   key={row.id}
+                  onClick={() => setSelectedProperty(row.original)}
                   style={{ borderBottom: idx < table.getRowModel().rows.length - 1 ? "1px solid #f8fafc" : "none", background: "#fff", cursor: "pointer", transition: "background 0.1s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#fafafa")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} style={{ padding: "14px 16px", verticalAlign: "middle" }}>
+                    <td
+                      key={cell.id}
+                      style={{ padding: "14px 16px", verticalAlign: "middle" }}
+                      onClick={cell.column.id === "actions" ? (e) => e.stopPropagation() : undefined}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
