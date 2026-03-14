@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, UserPlus } from "lucide-react";
 
 const MENU_WIDTH = 176;
-const MENU_HEIGHT = 140;
+const MENU_HEIGHT = 178;
 const MENU_GAP = 6;
 const VIEWPORT_PADDING = 8;
 
@@ -22,7 +22,7 @@ const getMenuPosition = (buttonEl) => {
   return { top, left };
 };
 
-export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority }) {
+export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority, onAssignAgent }) {
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const buttonRef = useRef(null);
@@ -112,6 +112,16 @@ export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority 
           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
         </svg>
         Change Priority
+      </button>
+
+      <button
+        onClick={handleAction(onAssignAgent)}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#334155", textAlign: "left" }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        <UserPlus size={15} color="#64748b" />
+        {lead?.assignedAgentId ? "Reassign Agent" : "Assign Agent"}
       </button>
     </div>
   ) : null;

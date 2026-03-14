@@ -86,6 +86,9 @@ const mapProperty = (property = {}) => {
     property.location?.state,
   ].filter(Boolean).join(", ");
 
+  const ownerName = formatName(property.owner);
+  const agentName = formatName(property.agent);
+
   return {
     id: property._id,
     title: property.title || "Untitled",
@@ -97,7 +100,8 @@ const mapProperty = (property = {}) => {
     status: normalizeStatus(property.status, property.isDeleted),
     media: { photos: photoCount, docs: 0 },
     compliance: isCompliant ? "Compliant" : "1 issue(s)",
-    assignedTo: formatName(property.agent) || formatName(property.owner),
+    assignedTo: agentName,
+    ownerName,
     assignedAgentId: resolveEntityId(property.agent),
     assignedOwnerId: resolveEntityId(property.owner),
     type: toTitle(property.type),
@@ -176,4 +180,18 @@ export const fetchPropertyDetail = async (propertyId) => {
   const { data } = await apiClient.get(`/admin/properties/${propertyId}`);
   const property = data?.data?.property;
   return property ? mapPropertyDetail(property) : null;
+};
+
+export const assignPropertyAgent = async (propertyId, agentId = null) => {
+  if (!propertyId) return null;
+
+  const { data } = await apiClient.patch(
+    `/admin/properties/${propertyId}/assign-agent`,
+    {
+      agentId: agentId || null,
+    },
+  );
+
+  const property = data?.data?.property;
+  return property ? mapProperty(property) : null;
 };

@@ -1,7 +1,7 @@
 // 📁 src/features/admin/pages/LeadsPage.jsx
 
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel,
   getPaginationRowModel, getSortedRowModel,
@@ -10,7 +10,12 @@ import {
 import { Search, SlidersHorizontal, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
 
 import useLeads            from "../hooks/useLeads";
-import { updateLeadPriority } from "../api/leadsApi";
+import { updateLeadPriority, assignLead } from "../api/leadsApi";
+import {
+  fetchUsers,
+  MOCK_MODE as USERS_MOCK_MODE,
+  MOCK_USERS,
+} from "../api/usersApi";
 import LeadActionsMenu     from "../components/LeadActionsMenu";
 import LeadDetailView      from "../components/LeadDetailView";
 import ChangePriorityModal from "../components/ChangePriorityModal";
@@ -40,6 +45,90 @@ export default function LeadsPage() {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [selectedLead,   setSelectedLead]   = useState(null);
   const [priorityLead,   setPriorityLead]   = useState(null);
+
+  // ── Assign Agent state ─────────────────────────────────────────────────────
+  const [assigningLead,    setAssigningLead]    = useState(null);
+  const [selectedAgentId,  setSelectedAgentId]  = useState("");
+  const [assignError,      setAssignError]      = useState("");
+
+  // ── Agents query ───────────────────────────────────────────────────────────
+  const {
+    data: agentUsers = [],
+    isLoading: isAgentsLoading,
+    isError: isAgentsError,
+    error: agentsQueryError,
+  } = useQuery({
+    queryKey: ["users", "agents", "active"],
+    queryFn: USERS_MOCK_MODE
+      ? () => Promise.resolve(
+          (MOCK_USERS || []).filter(
+            (u) =>
+              String(u?.roleKey || u?.role || "").toLowerCase() === "agent" &&
+              String(u?.statusKey || u?.status || "").toLowerCase() === "active",
+          ),
+        )
+      : async () => {
+          let primaryError = null;
+          try {
+            const strict = await fetchUsers({ role: "agent", status: "active", page: 1, limit: 100 });
+            if (Array.isArray(strict) && strict.length > 0) return strict;
+          } catch (e) { primaryError = e; }
+          try {
+            const fallback = await fetchUsers({ role: "agent", page: 1, limit: 100 });
+            return (fallback || []).filter(
+              (u) => String(u?.statusKey || u?.status || "").toLowerCase() === "active",
+            );
+          } catch (e2) { throw primaryError || e2; }
+        },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const agents = useMemo(
+    () =>
+      (agentUsers || [])
+        .map((u) => ({ id: u?.id, name: u?.name }))
+        .filter((u) => u.id && u.name)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [agentUsers],
+  );
+
+  // ── Assign agent mutation ──────────────────────────────────────────────────
+  const assignLeadMutation = useMutation({
+    mutationFn: ({ leadId, agentId }) => assignLead(leadId, agentId || null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["leads"] });
+      setAssigningLead(null);
+      setSelectedAgentId("");
+      setAssignError("");
+    },
+    onError: (error) => {
+      setAssignError(
+        error?.response?.data?.message || "Could not update agent assignment.",
+      );
+    },
+  });
+
+  const openAssignModal  = (lead) => {
+    setAssigningLead(lead);
+    setSelectedAgentId(lead?.assignedAgentId || "");
+    setAssignError("");
+  };
+
+  const closeAssignModal = () => {
+    if (assignLeadMutation.isPending) return;
+    setAssigningLead(null);
+    setSelectedAgentId("");
+    setAssignError("");
+  };
+
+  const submitAssignModal = () => {
+    if (!assigningLead?.id) return;
+    assignLeadMutation.mutate({ leadId: assigningLead.id, agentId: selectedAgentId || null });
+  };
+
+  const agentsErrorMessage = isAgentsError
+    ? agentsQueryError?.response?.data?.message || agentsQueryError?.message || "Could not load agents list."
+    : "";
 
   const isSameLead = (left, right) => {
     if (!left || !right) return false;
@@ -184,9 +273,11 @@ export default function LeadsPage() {
           lead={row.original}
           onViewDetails={setSelectedLead}
           onChangePriority={setPriorityLead}
+          onAssignAgent={openAssignModal}
         />
       ),
     }),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], []);
 
   const table = useReactTable({
@@ -362,7 +453,7 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Change Priority Modal (from 3-dot menu) */}
+      {/* Change Priority Modal */}
       {priorityLead && (
         <ChangePriorityModal
           lead={priorityLead}
@@ -370,7 +461,96 @@ export default function LeadsPage() {
           onSave={handlePrioritySave}
         />
       )}
+
+      {/* Assign Agent Modal */}
+      {assigningLead && (
+        <div
+          onClick={assignLeadMutation.isPending ? undefined : closeAssignModal}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 520, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #f1f5f9" }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Assign Agent</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{assigningLead.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAssignModal}
+                disabled={assignLeadMutation.isPending}
+                style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, color: "#475569", padding: "6px 10px", fontSize: 12, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: assignLeadMutation.isPending ? 0.6 : 1 }}
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 16 }}>
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b", fontWeight: 600 }}>Assigned Agent</p>
+                <select
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  disabled={assignLeadMutation.isPending || isAgentsLoading}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", fontSize: 13, color: "#0f172a", background: "#fff", outline: "none" }}
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {isAgentsLoading && (
+                <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>
+                  Loading active agents...
+                </div>
+              )}
+
+              {agentsErrorMessage && (
+                <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>
+                  {agentsErrorMessage}
+                </div>
+              )}
+
+              {!isAgentsLoading && !agentsErrorMessage && agents.length === 0 && (
+                <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>
+                  No active agents available.
+                </div>
+              )}
+
+              {assignError && (
+                <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>
+                  {assignError}
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={closeAssignModal}
+                  disabled={assignLeadMutation.isPending}
+                  style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: assignLeadMutation.isPending ? 0.6 : 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitAssignModal}
+                  disabled={assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")}
+                  style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: (assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")) ? 0.5 : 1 }}
+                >
+                  {assignLeadMutation.isPending ? "Saving..." : selectedAgentId ? "Save Assignment" : "Unassign Agent"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

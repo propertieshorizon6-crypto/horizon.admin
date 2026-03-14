@@ -64,6 +64,7 @@ const mapLead = (lead = {}) => {
     status,
     priority: normalizePriority(lead.priority, status),
     assignedTo: formatName(lead.assignedTo),
+    assignedAgentId: lead.assignedTo?._id || lead.assignedTo || null,
     createdAt: lead.createdAt,
   };
 };
@@ -77,5 +78,13 @@ export const fetchLeads = async (params = {}) => {
 export const updateLeadPriority = async (leadId, priority) => {
   const apiPriority = UI_TO_API_PRIORITY[priority] ?? String(priority || "").toLowerCase();
   const { data } = await apiClient.patch(`/leads/${leadId}`, { priority: apiPriority });
+  return data?.data?.lead ?? null;
+};
+
+export const assignLead = async (leadId, agentId = null) => {
+  if (!leadId) return null;
+  const { data } = await apiClient.patch(`/leads/${leadId}/assign`, {
+    agentId: agentId || null,
+  });
   return data?.data?.lead ?? null;
 };
