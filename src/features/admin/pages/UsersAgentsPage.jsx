@@ -37,7 +37,10 @@ const inputStyle = {
 };
 
 const getErrorMessage = (error, fallback) =>
-  error?.response?.data?.message || error?.message || fallback;
+   error?.response?.data?.error?.message ||
+  error?.response?.data?.message ||
+  error?.message ||
+  fallback;
 
 function Modal({ title, onClose, children }) {
   return (
@@ -482,6 +485,19 @@ export default function UsersAgentsPage() {
               </select>
             </div>
             <input required type="password" placeholder="Password" value={createForm.password} onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))} style={inputStyle} />
+
+            {createMutation.isError && (
+  <div style={{
+    padding: "8px 10px", borderRadius: 8,
+    background: "#fef2f2", border: "1px solid #fecaca",
+    color: "#b91c1c", fontSize: 12, fontWeight: 600,
+    display: "flex", alignItems: "center", gap: 6,
+  }}>
+    <AlertCircle size={13} />
+    {getErrorMessage(createMutation.error, "Unable to create user.")}
+  </div>
+)}            
+            
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
               <button type="submit" disabled={createMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: createMutation.isPending ? "not-allowed" : "pointer", opacity: createMutation.isPending ? 0.7 : 1 }}>{createMutation.isPending ? "Creating..." : "Create"}</button>

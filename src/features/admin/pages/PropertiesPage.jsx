@@ -8,10 +8,12 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, Plus, MoreHorizontal } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
+import AddPropertyPage from "./AddPropertyPage";
+import EditPropertyModal from "../components/EditPropertyModal";
 
 const BedIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8">
@@ -148,6 +150,8 @@ export default function PropertiesPage() {
   const [agentFilter, setAgentFilter] = useState("");
   const [compFilter, setCompFilter] = useState("");
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [showAddPage, setShowAddPage] = useState(false);
+  const [editingProperty, setEditingProperty] = useState(null);
 
   const tabCounts = useMemo(
     () =>
@@ -341,10 +345,26 @@ export default function PropertiesPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <PropertyActionsMenu
-            property={row.original}
-            onViewDetails={setSelectedProperty}
-          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedProperty(row.original);
+            }}
+            style={{
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <MoreHorizontal size={16} />
+          </button>
         ),
       }),
     ],
@@ -362,12 +382,25 @@ export default function PropertiesPage() {
 
   if (selectedProperty) {
     return (
-      <PropertyDetailPage
-        propertyId={selectedProperty.id}
-        property={selectedProperty}
-        onBack={() => setSelectedProperty(null)}
-      />
+      <>
+        <PropertyDetailPage
+          propertyId={selectedProperty.id}
+          property={selectedProperty}
+          onBack={() => setSelectedProperty(null)}
+          onEditProperty={setEditingProperty}
+        />
+        {editingProperty && (
+          <EditPropertyModal
+            property={editingProperty}
+            onClose={() => setEditingProperty(null)}
+          />
+        )}
+      </>
     );
+  }
+
+  if (showAddPage) {
+    return <AddPropertyPage onBack={() => setShowAddPage(false)} />;
   }
 
   if (isLoading) {
@@ -399,13 +432,26 @@ export default function PropertiesPage() {
         fontFamily: "system-ui,sans-serif",
       }}
     >
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
-          Properties
-        </h1>
-        <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
-          Manage property listings and compliance
-        </p>
+      <div style={{ marginBottom: 20, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
+            Properties
+          </h1>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
+            Manage property listings and compliance
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddPage(true)}
+          style={{
+            display:"flex", alignItems:"center", gap:7,
+            padding:"9px 18px", borderRadius:9, border:"1px solid #1e293b",
+            background:"#1e293b", color:"#fff", fontSize:13, fontWeight:700,
+            cursor:"pointer",
+          }}
+        >
+          <Plus size={15} /> Add Property
+        </button>
       </div>
 
       <div
@@ -640,11 +686,11 @@ export default function PropertiesPage() {
                     <td
                       key={cell.id}
                       style={{ padding: "14px 16px", verticalAlign: "middle" }}
-                      onClick={
-                        cell.column.id === "actions"
-                          ? (event) => event.stopPropagation()
-                          : undefined
-                      }
+                      onClick={(e) => {
+                        if (cell.column.id === "actions") {
+                          e.stopPropagation();
+                        }
+                      }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -706,7 +752,6 @@ export default function PropertiesPage() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -105,6 +105,17 @@ const mapProperty = (property = {}) => {
     assignedAgentId: resolveEntityId(property.agent),
     assignedOwnerId: resolveEntityId(property.owner),
     type: toTitle(property.type),
+    rawPrice: property.price,
+    rawAddress: property.location?.address,
+    rawCity: property.location?.city,
+    rawState: property.location?.state,
+    rawZip: property.location?.zipCode,
+    rawCountry: property.location?.country,
+    rentFrequency: property.rentFrequency,
+    purpose: property.purpose,
+    parking: property.details?.parking,
+    rawStatus: property.status,
+    description: property.description,
   };
 };
 
@@ -165,6 +176,17 @@ const mapPropertyDetail = (property = {}) => {
     createdBy: ownerName || "Admin User",
     createdAt: property.createdAt,
     updatedAt: property.updatedAt,
+    rawPrice: property.price,
+    rawAddress: property.location?.address,
+    rawCity: property.location?.city,
+    rawState: property.location?.state,
+    rawZip: property.location?.zipCode,
+    rawCountry: property.location?.country,
+    rentFrequency: property.rentFrequency,
+    purpose: property.purpose,
+    parking: property.details?.parking,
+    rawStatus: property.status,
+    rawAmenities: Array.isArray(property.amenities) ? property.amenities : [],
   };
 };
 
@@ -194,4 +216,27 @@ export const assignPropertyAgent = async (propertyId, agentId = null) => {
 
   const property = data?.data?.property;
   return property ? mapProperty(property) : null;
+};
+
+// Create a new property (multipart/form-data)
+export const createProperty = async (formData) => {
+  const { data } = await apiClient.post("/properties", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
+// Edit an existing property (JSON PATCH — admin endpoint)
+export const editProperty = async (propertyId, body) => {
+  if (!propertyId) return null;
+  const { data } = await apiClient.patch(`/admin/properties/${propertyId}`, body);
+  const property = data?.data?.property;
+  return property ? mapProperty(property) : null;
+};
+
+// Delete a property (admin endpoint)
+export const deleteProperty = async (propertyId) => {
+  if (!propertyId) return null;
+  const { data } = await apiClient.delete(`/admin/properties/${propertyId}`);
+  return data;
 };
