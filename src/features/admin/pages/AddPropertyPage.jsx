@@ -72,6 +72,10 @@ export default function AddPropertyPage({ onBack }) {
     e.description = "Description must be at least 20 characters";
   }
 
+  if (form.bedrooms   === "" || isNaN(Number(form.bedrooms)))   e.bedrooms   = "Bedrooms is required";
+if (form.bathrooms  === "" || isNaN(Number(form.bathrooms)))  e.bathrooms  = "Bathrooms is required";
+if (form.squareFeet === "" || isNaN(Number(form.squareFeet))) e.squareFeet = "Area is required";
+
   if (!form.price || isNaN(Number(form.price))) e.price = "Valid price is required";
   if (!form.address.trim()) e.address = "Address is required";
   if (!form.city.trim()) e.city = "City is required";
@@ -81,15 +85,35 @@ export default function AddPropertyPage({ onBack }) {
 };
 
   const mutation = useMutation({
-    mutationFn: (fd) => createProperty(fd),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["properties"] });
-      onBack();
-    },
-    onError: (err) => {
-      setSubmitError(err?.response?.data?.message || "Could not create property.");
-    },
-  });
+  mutationFn: (fd) => createProperty(fd),
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ["properties"] });
+    onBack();
+  },
+  onError: (err) => {
+    const details = err?.response?.data?.error?.details;
+    if (details?.length) {
+      const fieldErrors = {};
+      details.forEach(({ field, message }) => {
+        // "body.location.address" → "address"
+        // "body.details.bedrooms" → "bedrooms"
+        const key = field
+          .replace("body.", "")
+          .replace("location.", "")
+          .replace("details.", "");
+        fieldErrors[key] = message;
+      });
+      setErrors(prev => ({ ...prev, ...fieldErrors }));
+      setSubmitError("Please fix the highlighted errors.");
+    } else {
+      setSubmitError(
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        "Could not create property."
+      );
+    }
+  },
+});
 // ── REPLACE handleSubmit in AddPropertyPage.jsx ───────────────────────────────
 
 const handleSubmit = (e) => {
@@ -262,17 +286,30 @@ const handleSubmit = (e) => {
             <p style={sectionTitle}>Property Details</p>
             <div style={grid2}>
               {[
-                { key:"bedrooms", label:"Bedrooms" },
-                { key:"bathrooms", label:"Bathrooms" },
-                { key:"squareFeet", label:"Area (sq ft)" },
-                { key:"parking", label:"Parking Spaces" },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <label style={labelStyle}>{label}</label>
-                  <input type="number" min="0" style={inputStyle}
-                    value={form[key]} onChange={e => set(key, e.target.value)} placeholder="0" />
-                </div>
-              ))}
+  { key:"bedrooms",   label:"Bedrooms",       required: true  },
+  { key:"bathrooms",  label:"Bathrooms",      required: true  },
+  { key:"squareFeet", label:"Area (sq ft)",   required: true  },
+  { key:"parking",    label:"Parking Spaces", required: false },
+].map(({ key, label, required }) => (
+  <div key={key}>
+    <label style={labelStyle}>
+      {label} {required && <span style={{ color:"#dc2626" }}>*</span>}
+    </label>
+    <input
+      type="number" min="0"
+      required={required}
+      style={{ ...inputStyle, borderColor: errors[key] ? "#fca5a5" : "#e2e8f0" }}
+      value={form[key]}
+      onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]: "" })); }}
+      placeholder="0"
+    />
+    {errors[key] && (
+      <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>
+        {errors[key]}
+      </span>
+    )}
+  </div>
+))}
             </div>
           </div>
 
