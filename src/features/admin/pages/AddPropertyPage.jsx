@@ -1,7 +1,7 @@
 // 📁 src/features/admin/pages/AddPropertyPage.jsx
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Upload, X, Plus } from "lucide-react";
+import { ArrowLeft, Upload, X, Plus, Images } from "lucide-react";
 import { createProperty } from "../api/propertiesApi";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
@@ -15,18 +15,16 @@ const formatAmenity = (a) =>
   a.replace(/([A-Z])/g," $1").replace(/[-_]/g," ").trim()
    .replace(/\b\w/g, c => c.toUpperCase());
 
-const labelStyle = { display:"block", fontSize:12, fontWeight:700, color:"#475569", marginBottom:5 };
-const inputStyle = {
-  width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0",
-  fontSize:13, color:"#0f172a", background:"#fff", outline:"none", boxSizing:"border-box",
-};
-const sectionTitle = { fontSize:14, fontWeight:800, color:"#0f172a", margin:"20px 0 10px" };
-const grid2 = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 };
-const grid3 = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 };
+const labelStyle  = { display:"block", fontSize:12, fontWeight:700, color:"#475569", marginBottom:5 };
+const inputStyle  = { width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, color:"#0f172a", background:"#fff", outline:"none", boxSizing:"border-box" };
+const sectionTitle= { fontSize:14, fontWeight:800, color:"#0f172a", margin:"20px 0 10px" };
+const grid2       = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 };
+const grid3       = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 };
 
 export default function AddPropertyPage({ onBack }) {
   const queryClient = useQueryClient();
-  const fileRef = useRef(null);
+  const featuredRef = useRef(null);
+  const galleryRef  = useRef(null);
 
   const [form, setForm] = useState({
     title:"", description:"", type:"apartment", purpose:"sale",
@@ -35,10 +33,12 @@ export default function AddPropertyPage({ onBack }) {
     bedrooms:"", bathrooms:"", squareFeet:"", parking:"",
     amenities:[],
   });
-  const [featuredFile, setFeaturedFile] = useState(null);
+
+  const [featuredFile,    setFeaturedFile]    = useState(null);
   const [featuredPreview, setFeaturedPreview] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [submitError, setSubmitError] = useState("");
+  const [galleryFiles,    setGalleryFiles]    = useState([]);   // [{file, preview}]
+  const [errors,          setErrors]          = useState({});
+  const [submitError,     setSubmitError]     = useState("");
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -50,127 +50,140 @@ export default function AddPropertyPage({ onBack }) {
         : [...f.amenities, a],
     }));
 
-  const onFileChange = (e) => {
+  // ── Featured image handler ────────────────────────────────────────────────
+  const onFeaturedChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFeaturedFile(file);
     setFeaturedPreview(URL.createObjectURL(file));
-    setErrors(e => ({ ...e, featured:"" }));
+    setErrors(prev => ({ ...prev, featured: "" }));
+    e.target.value = "";
   };
 
+  // ── Gallery images handler ────────────────────────────────────────────────
+  const onGalleryChange = (e) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    const remaining = 10 - galleryFiles.length;
+    const toAdd = files.slice(0, remaining).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
+    }));
+
+    setGalleryFiles(prev => [...prev, ...toAdd]);
+    e.target.value = "";
+  };
+
+  const removeGallery = (id) => {
+    setGalleryFiles(prev => {
+      const item = prev.find(g => g.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter(g => g.id !== id);
+    });
+  };
+
+  // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
-  const e = {};
-  if (!form.title.trim()) {
-    e.title = "Title is required";
-  } else if (form.title.trim().length < 5) {
-    e.title = "Title must be at least 5 characters";
-  }
+    const e = {};
+    if (!form.title.trim())                         e.title       = "Title is required";
+    else if (form.title.trim().length < 5)          e.title       = "Title must be at least 5 characters";
+    if (!form.description.trim())                   e.description = "Description is required";
+    else if (form.description.trim().length < 20)   e.description = "Description must be at least 20 characters";
+    if (form.bedrooms   === "" || isNaN(Number(form.bedrooms)))   e.bedrooms   = "Bedrooms is required";
+    if (form.bathrooms  === "" || isNaN(Number(form.bathrooms)))  e.bathrooms  = "Bathrooms is required";
+    if (form.squareFeet === "" || isNaN(Number(form.squareFeet))) e.squareFeet = "Area is required";
+    if (!form.price || isNaN(Number(form.price)))   e.price       = "Valid price is required";
+    if (!form.address.trim())                       e.address     = "Address is required";
+    if (!form.city.trim())                          e.city        = "City is required";
+    if (!form.country.trim())                       e.country     = "Country is required";
+    if (!featuredFile)                              e.featured    = "Featured image is required";
+    return e;
+  };
 
-  if (!form.description.trim()) {
-    e.description = "Description is required";
-  } else if (form.description.trim().length < 20) {
-    e.description = "Description must be at least 20 characters";
-  }
-
-  if (form.bedrooms   === "" || isNaN(Number(form.bedrooms)))   e.bedrooms   = "Bedrooms is required";
-if (form.bathrooms  === "" || isNaN(Number(form.bathrooms)))  e.bathrooms  = "Bathrooms is required";
-if (form.squareFeet === "" || isNaN(Number(form.squareFeet))) e.squareFeet = "Area is required";
-
-  if (!form.price || isNaN(Number(form.price))) e.price = "Valid price is required";
-  if (!form.address.trim()) e.address = "Address is required";
-  if (!form.city.trim()) e.city = "City is required";
-  if (!form.country.trim()) e.country = "Country is required";
-  if (!featuredFile) e.featured = "Featured image is required";
-  return e;
-};
-
+  // ── Mutation ──────────────────────────────────────────────────────────────
   const mutation = useMutation({
-  mutationFn: (fd) => createProperty(fd),
-  onSuccess: async () => {
-    await queryClient.invalidateQueries({ queryKey: ["properties"] });
-    onBack();
-  },
-  onError: (err) => {
-    const details = err?.response?.data?.error?.details;
-    if (details?.length) {
-      const fieldErrors = {};
-      details.forEach(({ field, message }) => {
-        // "body.location.address" → "address"
-        // "body.details.bedrooms" → "bedrooms"
-        const key = field
-          .replace("body.", "")
-          .replace("location.", "")
-          .replace("details.", "");
-        fieldErrors[key] = message;
-      });
-      setErrors(prev => ({ ...prev, ...fieldErrors }));
-      setSubmitError("Please fix the highlighted errors.");
-    } else {
-      setSubmitError(
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
-        "Could not create property."
-      );
-    }
-  },
-});
-// ── REPLACE handleSubmit in AddPropertyPage.jsx ───────────────────────────────
+    mutationFn: (fd) => createProperty(fd),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      onBack();
+    },
+    onError: (err) => {
+      const details = err?.response?.data?.error?.details;
+      if (details?.length) {
+        const fieldErrors = {};
+        details.forEach(({ field, message }) => {
+          const key = field.replace("body.", "").replace("location.", "").replace("details.", "");
+          fieldErrors[key] = message;
+        });
+        setErrors(prev => ({ ...prev, ...fieldErrors }));
+        setSubmitError("Please fix the highlighted errors.");
+      } else {
+        setSubmitError(
+          err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          "Could not create property."
+        );
+      }
+    },
+  });
 
-const handleSubmit = (e) => {
-  e.preventDefault();
-  const errs = validate();
-  if (Object.keys(errs).length) { setErrors(errs); return; }
-  setErrors({}); setSubmitError("");
+  // ── Submit ────────────────────────────────────────────────────────────────
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({}); setSubmitError("");
 
-  const fd = new FormData();
+    const fd = new FormData();
 
-  // Image
-  fd.append("featured", featuredFile);
+    // Featured image
+    fd.append("featured", featuredFile);
 
-  // Basic fields
-  fd.append("title",       form.title.trim());
-  fd.append("description", form.description.trim());
-  fd.append("type",        form.type);
-  fd.append("purpose",     form.purpose);
-  fd.append("price",       Number(form.price));
-  fd.append("currency",    form.currency);
-  if (form.purpose === "rent") fd.append("rentFrequency", form.rentFrequency);
+    // Gallery images (max 10)
+    galleryFiles.forEach(({ file }) => fd.append("gallery", file));
 
-  // Location — bracket notation
-  fd.append("location[address]", form.address.trim());
-  fd.append("location[city]",    form.city.trim());
-  fd.append("location[country]", form.country.trim());
-  if (form.state)   fd.append("location[state]",   form.state.trim());
-  if (form.zipCode) fd.append("location[zipCode]", form.zipCode.trim());
+    // Basic
+    fd.append("title",       form.title.trim());
+    fd.append("description", form.description.trim());
+    fd.append("type",        form.type);
+    fd.append("purpose",     form.purpose);
+    fd.append("price",       Number(form.price));
+    fd.append("currency",    form.currency);
+    if (form.purpose === "rent") fd.append("rentFrequency", form.rentFrequency);
 
-  // Details — bracket notation
-  if (form.bedrooms   !== "") fd.append("details[bedrooms]",   Number(form.bedrooms));
-  if (form.bathrooms  !== "") fd.append("details[bathrooms]",  Number(form.bathrooms));
-  if (form.squareFeet !== "") fd.append("details[squareFeet]", Number(form.squareFeet));
-  if (form.parking    !== "") fd.append("details[parking]",    Number(form.parking));
+    // Location — bracket notation
+    fd.append("location[address]", form.address.trim());
+    fd.append("location[city]",    form.city.trim());
+    fd.append("location[country]", form.country.trim());
+    if (form.state)   fd.append("location[state]",   form.state.trim());
+    if (form.zipCode) fd.append("location[zipCode]", form.zipCode.trim());
 
-  // Amenities
-  form.amenities.forEach((a) => fd.append("amenities", a));
+    // Details — bracket notation
+    if (form.bedrooms   !== "") fd.append("details[bedrooms]",   Number(form.bedrooms));
+    if (form.bathrooms  !== "") fd.append("details[bathrooms]",  Number(form.bathrooms));
+    if (form.squareFeet !== "") fd.append("details[squareFeet]", Number(form.squareFeet));
+    if (form.parking    !== "") fd.append("details[parking]",    Number(form.parking));
 
-  mutation.mutate(fd);
-};
+    // Amenities
+    form.amenities.forEach((a) => fd.append("amenities", a));
+
+    mutation.mutate(fd);
+  };
 
   const fieldErr = (key) =>
     errors[key] ? (
-      <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>
-        {errors[key]}
-      </span>
+      <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>{errors[key]}</span>
     ) : null;
 
   return (
     <div style={{ padding:"28px 24px", minHeight:"100%", background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
+
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
-        <button
-          onClick={onBack}
-          style={{ border:"1px solid #e2e8f0", background:"#fff", borderRadius:8, padding:"7px 10px",
-            cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#475569" }}
-        >
+        <button onClick={onBack}
+          style={{ border:"1px solid #e2e8f0", background:"#fff", borderRadius:8, padding:"7px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#475569" }}>
           <ArrowLeft size={15} /> Back
         </button>
         <div>
@@ -193,15 +206,14 @@ const handleSubmit = (e) => {
             </div>
             <div>
               <label style={labelStyle}>Description *</label>
-              <textarea
-                style={{ ...inputStyle, minHeight:100, resize:"vertical", borderColor: errors.description?"#fca5a5":"#e2e8f0" }}
+              <textarea style={{ ...inputStyle, minHeight:100, resize:"vertical", borderColor: errors.description?"#fca5a5":"#e2e8f0" }}
                 value={form.description} onChange={e => set("description", e.target.value)}
                 placeholder="Describe the property..." />
               {fieldErr("description")}
             </div>
           </div>
 
-          {/* Type, Purpose, Status */}
+          {/* Category */}
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
             <p style={sectionTitle}>Category</p>
             <div style={grid3}>
@@ -286,30 +298,21 @@ const handleSubmit = (e) => {
             <p style={sectionTitle}>Property Details</p>
             <div style={grid2}>
               {[
-  { key:"bedrooms",   label:"Bedrooms",       required: true  },
-  { key:"bathrooms",  label:"Bathrooms",      required: true  },
-  { key:"squareFeet", label:"Area (sq ft)",   required: true  },
-  { key:"parking",    label:"Parking Spaces", required: false },
-].map(({ key, label, required }) => (
-  <div key={key}>
-    <label style={labelStyle}>
-      {label} {required && <span style={{ color:"#dc2626" }}>*</span>}
-    </label>
-    <input
-      type="number" min="0"
-      required={required}
-      style={{ ...inputStyle, borderColor: errors[key] ? "#fca5a5" : "#e2e8f0" }}
-      value={form[key]}
-      onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]: "" })); }}
-      placeholder="0"
-    />
-    {errors[key] && (
-      <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>
-        {errors[key]}
-      </span>
-    )}
-  </div>
-))}
+                { key:"bedrooms",   label:"Bedrooms",       required:true  },
+                { key:"bathrooms",  label:"Bathrooms",      required:true  },
+                { key:"squareFeet", label:"Area (sq ft)",   required:true  },
+                { key:"parking",    label:"Parking Spaces", required:false },
+              ].map(({ key, label, required }) => (
+                <div key={key}>
+                  <label style={labelStyle}>{label} {required && <span style={{ color:"#dc2626" }}>*</span>}</label>
+                  <input type="number" min="0" required={required}
+                    style={{ ...inputStyle, borderColor: errors[key]?"#fca5a5":"#e2e8f0" }}
+                    value={form[key]}
+                    onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]:"" })); }}
+                    placeholder="0" />
+                  {errors[key] && <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>{errors[key]}</span>}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -320,16 +323,8 @@ const handleSubmit = (e) => {
               {AMENITIES_LIST.map(a => {
                 const active = form.amenities.includes(a);
                 return (
-                  <button
-                    key={a} type="button" onClick={() => toggleAmenity(a)}
-                    style={{
-                      padding:"6px 14px", borderRadius:99, fontSize:12, fontWeight:600, cursor:"pointer",
-                      border: active ? "1px solid #1e293b" : "1px solid #e2e8f0",
-                      background: active ? "#1e293b" : "#f8fafc",
-                      color: active ? "#fff" : "#475569",
-                      transition:"all 0.15s",
-                    }}
-                  >
+                  <button key={a} type="button" onClick={() => toggleAmenity(a)}
+                    style={{ padding:"6px 14px", borderRadius:99, fontSize:12, fontWeight:600, cursor:"pointer", border:active?"1px solid #1e293b":"1px solid #e2e8f0", background:active?"#1e293b":"#f8fafc", color:active?"#fff":"#475569", transition:"all 0.15s" }}>
                     {formatAmenity(a)}
                   </button>
                 );
@@ -337,42 +332,100 @@ const handleSubmit = (e) => {
             </div>
           </div>
 
-          {/* Featured Image */}
+          {/* ── Featured Image ── */}
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
             <p style={sectionTitle}>Featured Image *</p>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={onFileChange} />
+            <p style={{ margin:"-6px 0 12px", fontSize:12, color:"#94a3b8" }}>Main cover image — shown in listing cards</p>
+            <input ref={featuredRef} type="file" accept="image/*" style={{ display:"none" }} onChange={onFeaturedChange} />
 
             {featuredPreview ? (
               <div style={{ position:"relative", display:"inline-block" }}>
                 <img src={featuredPreview} alt="preview"
                   style={{ width:"100%", maxWidth:400, maxHeight:240, objectFit:"cover", borderRadius:10, border:"1px solid #e2e8f0" }} />
-                <button type="button" onClick={() => { setFeaturedFile(null); setFeaturedPreview(null); }}
-                  style={{ position:"absolute", top:8, right:8, background:"#1e293b", border:"none", color:"#fff",
-                    borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <button type="button"
+                  onClick={() => { setFeaturedFile(null); setFeaturedPreview(null); }}
+                  style={{ position:"absolute", top:8, right:8, background:"#1e293b", border:"none", color:"#fff", borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <X size={13} />
                 </button>
               </div>
             ) : (
-              <div
-                onClick={() => fileRef.current?.click()}
-                style={{
-                  border: `2px dashed ${errors.featured ? "#fca5a5" : "#e2e8f0"}`,
-                  borderRadius:10, padding:"40px 20px", textAlign:"center", cursor:"pointer",
-                  background:"#f8fafc", color:"#94a3b8",
-                }}
-              >
+              <div onClick={() => featuredRef.current?.click()}
+                style={{ border:`2px dashed ${errors.featured?"#fca5a5":"#e2e8f0"}`, borderRadius:10, padding:"40px 20px", textAlign:"center", cursor:"pointer", background:"#f8fafc" }}>
                 <Upload size={28} strokeWidth={1.5} style={{ marginBottom:8, color:"#94a3b8" }} />
                 <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:"#475569" }}>Click to upload featured image</p>
-                <p style={{ margin:0, fontSize:11 }}>JPG, PNG or WebP — max 10MB</p>
+                <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>JPG, PNG or WebP — max 10MB</p>
               </div>
             )}
             {fieldErr("featured")}
           </div>
 
-          {/* Error */}
+          {/* ── Gallery Images ── */}
+          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+              <p style={{ ...sectionTitle, margin:0 }}>
+                <Images size={16} style={{ marginRight:6, verticalAlign:"middle" }} />
+                Gallery Images
+                <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", marginLeft:8 }}>optional</span>
+              </p>
+              <span style={{ fontSize:12, color: galleryFiles.length >= 10 ? "#dc2626" : "#94a3b8", fontWeight:600 }}>
+                {galleryFiles.length} / 10
+              </span>
+            </div>
+            <p style={{ margin:"0 0 14px", fontSize:12, color:"#94a3b8" }}>
+              Additional photos shown in the property detail gallery — max 10 images
+            </p>
+
+            <input ref={galleryRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={onGalleryChange} />
+
+            {/* Gallery grid */}
+            {galleryFiles.length > 0 && (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(120px, 1fr))", gap:10, marginBottom:12 }}>
+                {galleryFiles.map(({ id, preview }) => (
+                  <div key={id} style={{ position:"relative", aspectRatio:"1", borderRadius:10, overflow:"hidden", border:"1px solid #e2e8f0" }}>
+                    <img src={preview} alt="gallery"
+                      style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    <button type="button" onClick={() => removeGallery(id)}
+                      style={{ position:"absolute", top:5, right:5, background:"rgba(15,23,42,0.75)", border:"none", color:"#fff", borderRadius:"50%", width:22, height:22, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add more slot */}
+                {galleryFiles.length < 10 && (
+                  <div onClick={() => galleryRef.current?.click()}
+                    style={{ aspectRatio:"1", borderRadius:10, border:"2px dashed #e2e8f0", background:"#f8fafc", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", gap:6 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#22225E")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}>
+                    <Plus size={20} color="#94a3b8" />
+                    <span style={{ fontSize:10, color:"#94a3b8", fontWeight:600 }}>Add More</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Upload zone — shown when empty */}
+            {galleryFiles.length === 0 && (
+              <div onClick={() => galleryRef.current?.click()}
+                style={{ border:"2px dashed #e2e8f0", borderRadius:10, padding:"32px 20px", textAlign:"center", cursor:"pointer", background:"#f8fafc" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#22225E")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}>
+                <Images size={28} strokeWidth={1.5} style={{ marginBottom:8, color:"#94a3b8" }} />
+                <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:"#475569" }}>Click to upload gallery images</p>
+                <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>Select multiple — JPG, PNG or WebP — max 10MB each</p>
+              </div>
+            )}
+
+            {galleryFiles.length >= 10 && (
+              <p style={{ margin:"8px 0 0", fontSize:12, color:"#dc2626", fontWeight:600 }}>
+                Maximum 10 gallery images reached
+              </p>
+            )}
+          </div>
+
+          {/* Submit error */}
           {submitError && (
-            <div style={{ border:"1px solid #fecaca", background:"#fef2f2", color:"#b91c1c",
-              borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:14 }}>
+            <div style={{ border:"1px solid #fecaca", background:"#fef2f2", color:"#b91c1c", borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:14 }}>
               {submitError}
             </div>
           )}
@@ -380,18 +433,11 @@ const handleSubmit = (e) => {
           {/* Actions */}
           <div style={{ display:"flex", justifyContent:"flex-end", gap:10, paddingBottom:32 }}>
             <button type="button" onClick={onBack}
-              style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#334155",
-                borderRadius:9, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#334155", borderRadius:9, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              style={{
-                border:"1px solid #1e293b", background:"#1e293b", color:"#fff",
-                borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700,
-                cursor: mutation.isPending ? "not-allowed" : "pointer",
-                opacity: mutation.isPending ? 0.7 : 1,
-                display:"flex", alignItems:"center", gap:8,
-              }}>
+              style={{ border:"1px solid #1e293b", background:"#1e293b", color:"#fff", borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:mutation.isPending?"not-allowed":"pointer", opacity:mutation.isPending?0.7:1, display:"flex", alignItems:"center", gap:8 }}>
               <Plus size={15} />
               {mutation.isPending ? "Creating..." : "Create Property"}
             </button>
