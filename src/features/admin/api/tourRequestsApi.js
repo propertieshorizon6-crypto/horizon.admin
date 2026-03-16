@@ -1,10 +1,12 @@
+// 📁 src/features/admin/api/tourRequestsApi.js
+
 import apiClient from "../../../services/apiClient";
 
 export const MOCK_MODE = false;
 export const MOCK_TOURS = [];
 
 const TOUR_STATUS_LABEL = {
-  pending: "Requested",
+  pending:   "Requested",
   confirmed: "Confirmed",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -15,150 +17,116 @@ const formatName = (user = {}) =>
 
 const formatDateTime = (dateValue, timeValue) => {
   if (!dateValue) return null;
-
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return null;
-
   if (timeValue && /^\d{2}:\d{2}$/.test(timeValue)) {
-    const [hours, minutes] = timeValue.split(":").map(Number);
-    date.setHours(hours, minutes, 0, 0);
+    const [h, m] = timeValue.split(":").map(Number);
+    date.setHours(h, m, 0, 0);
   }
-
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return date.toLocaleString(undefined, { month:"short", day:"2-digit", year:"numeric", hour:"numeric", minute:"2-digit" });
 };
 
 const resolveLocation = (property = {}) => {
-  if (!property || typeof property !== "object") {
-    return "Location unavailable";
-  }
-
+  if (!property || typeof property !== "object") return "Location unavailable";
   if (typeof property.location === "string") return property.location;
-
-  const parts = [
-    property.location?.city,
-    property.location?.state,
-    property.location?.address,
-  ].filter(Boolean);
-
+  const parts = [property.location?.city, property.location?.state, property.location?.address].filter(Boolean);
   return parts.join(", ") || "Location unavailable";
 };
 
 const mapTour = (tour = {}) => {
-  const preferredSlot = formatDateTime(tour.preferredDate, tour.preferredTime);
-  const finalSlot = formatDateTime(tour.confirmedDate, tour.confirmedTime);
+  const preferredSlot   = formatDateTime(tour.preferredDate, tour.preferredTime);
+  const finalSlot       = formatDateTime(tour.confirmedDate, tour.confirmedTime);
   const preferredDateMs = new Date(tour.preferredDate || 0).getTime();
-  const normalizedStatus = String(tour.status || "").toLowerCase();
-  const isPending = normalizedStatus === "pending";
+  const normalizedStatus= String(tour.status || "").toLowerCase();
+  const isPending       = normalizedStatus === "pending";
 
   return {
-    id: tour._id,
-    createdAt: formatDateTime(tour.createdAt),
-    source: "website",
+    id:           tour._id,
+    createdAt:    formatDateTime(tour.createdAt),
+    source:       "website",
     property: {
-      name: tour.property?.title || "Property",
+      name:     tour.property?.title || "Property",
       location: resolveLocation(tour.property),
     },
     customer: {
-      name: tour.name || tour.lead?.name || "Unknown",
+      name:  tour.name  || tour.lead?.name  || "Unknown",
       phone: tour.phone || tour.lead?.phone || "N/A",
       email: tour.email || tour.lead?.email || null,
     },
-    visitType: "physical",
+    visitType:    "physical",
     preferredSlot,
     finalSlot,
-    agent: formatName(tour.agent),
-    status: TOUR_STATUS_LABEL[normalizedStatus] || "Requested",
-    sla: isPending && preferredDateMs && preferredDateMs < Date.now() ? "Overdue" : null,
+    agent:        formatName(tour.agent),
+    agentId:      tour.agent?._id || tour.agent?.id || null,
+    status:       TOUR_STATUS_LABEL[normalizedStatus] || "Requested",
+    sla:          isPending && preferredDateMs && preferredDateMs < Date.now() ? "Overdue" : null,
   };
 };
 
 const toToursPayload = (responseData = {}) => {
-  const payload = responseData?.data ?? {};
-  const tours = Array.isArray(payload.tours) ? payload.tours : [];
+  const payload   = responseData?.data ?? {};
+  const tours      = Array.isArray(payload.tours) ? payload.tours : [];
   const pagination = payload.pagination ?? {};
-
   return { tours, pagination };
 };
 
-const normalizeTourQueryParams = (params = {}) => {
-  const allowedKeys = ["status", "date", "agentId", "page", "limit"];
-  const cleanParams = {};
-
-  allowedKeys.forEach((key) => {
-    if (!Object.prototype.hasOwnProperty.call(params, key)) return;
-
-    const value = params[key];
-    if (value === undefined || value === null || value === "") return;
-
-    cleanParams[key] = value;
-  });
-
-  return cleanParams;
-};
-
+// ── Fetch all tours ───────────────────────────────────────────────────────────
 export const fetchTourRequests = async (params = {}) => {
-  const safeParams = normalizeTourQueryParams(params);
-  const hasExplicitPagination =
-    Object.prototype.hasOwnProperty.call(safeParams, "page") ||
-    Object.prototype.hasOwnProperty.call(safeParams, "limit");
+  const allowed = ["status","date","agentId","page","limit"];
+  const clean   = {};
+  allowed.forEach((k) => { if (params[k] !== undefined && params[k] !== null && params[k] !== "") clean[k] = params[k]; });
 
-  if (hasExplicitPagination) {
-    const { data } = await apiClient.get("/tours", { params: safeParams });
-    const { tours } = toToursPayload(data);
-    return tours.map(mapTour);
-  }
-
-  const baseParams = { ...safeParams, page: 1, limit: 100 };
-  const { data: firstPageData } = await apiClient.get("/tours", {
-    params: baseParams,
-  });
-
-  const firstPage = toToursPayload(firstPageData);
-  const allTours = [...firstPage.tours];
+  const base = { ...clean, page: 1, limit: 100 };
+  const { data: first } = await apiClient.get("/tours", { params: base });
+  const firstPage  = toToursPayload(first);
+  const allTours   = [...firstPage.tours];
   const totalPages = Number(firstPage.pagination?.pages) || 1;
 
   if (totalPages > 1) {
-    const remainingRequests = [];
-
-    for (let page = 2; page <= totalPages; page += 1) {
-      remainingRequests.push(
-        apiClient.get("/tours", { params: { ...baseParams, page } }),
-      );
-    }
-
-    const remainingResponses = await Promise.all(remainingRequests);
-    remainingResponses.forEach(({ data }) => {
-      const { tours } = toToursPayload(data);
-      allTours.push(...tours);
-    });
+    const reqs = [];
+    for (let p = 2; p <= totalPages; p++) reqs.push(apiClient.get("/tours", { params: { ...base, page: p } }));
+    const responses = await Promise.all(reqs);
+    responses.forEach(({ data }) => { const { tours } = toToursPayload(data); allTours.push(...tours); });
   }
 
   return allTours.map(mapTour);
 };
 
+// ── Confirm tour ──────────────────────────────────────────────────────────────
+// PATCH /api/v1/tours/:id/confirm
+// Body: { confirmedDate, confirmedTime } (optional)
 export const confirmTourRequest = async (tourId, payload = {}) => {
   const { data } = await apiClient.patch(`/tours/${tourId}/confirm`, payload);
   return mapTour(data?.data?.tour ?? {});
 };
 
+// ── Complete tour ─────────────────────────────────────────────────────────────
+// PATCH /api/v1/tours/:id/complete
 export const completeTourRequest = async (tourId) => {
   const { data } = await apiClient.patch(`/tours/${tourId}/complete`);
   return mapTour(data?.data?.tour ?? {});
 };
 
+// ── Cancel tour ───────────────────────────────────────────────────────────────
+// PATCH /api/v1/tours/:id/cancel
 export const cancelTourRequest = async (tourId, reason = "Cancelled by admin") => {
   const { data } = await apiClient.patch(`/tours/${tourId}/cancel`, { reason });
   return mapTour(data?.data?.tour ?? {});
 };
 
+// ── Reschedule tour ───────────────────────────────────────────────────────────
+// PATCH /api/v1/tours/:id/reschedule
 export const rescheduleTourRequest = async (tourId, payload) => {
   const { data } = await apiClient.patch(`/tours/${tourId}/reschedule`, payload);
   return mapTour(data?.data?.tour ?? {});
 };
 
+// ── Assign agent to tour ──────────────────────────────────────────────────────
+// PATCH /api/v1/tours/:id/assign
+// Body: { agentId: "<uuid>" | null }
+export const assignTourAgent = async (tourId, agentId) => {
+  const { data } = await apiClient.patch(`/tours/${tourId}/assign`, {
+    agentId: agentId || null,
+  });
+  return mapTour(data?.data?.tour ?? {});
+};
