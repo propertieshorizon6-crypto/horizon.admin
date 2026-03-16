@@ -1,338 +1,467 @@
 // 📁 src/features/admin/pages/ConversationsPage.jsx
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { MessageSquare, Search, ChevronDown, Bell, Send } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import useConversations from "../hooks/useConversations";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchConversationById,
-  sendConversationMessage,
-  toRelativeTime,
+  MessageSquare, Search, Send, X, ChevronDown,
+  Archive, XCircle, CheckCircle, AlertCircle,
+} from "lucide-react";
+import {
+  fetchConversations,
+  fetchThreads,
+  fetchMessages,
+  sendMessage,
+  closeThread,
+  closeConversation,
+  archiveConversation,
 } from "../api/conversationsApi";
 import { useAuthStore } from "../../../store/useAuthStore";
 
-// ── Tag badge ────────────────────────────────────────────────────────────────
-function Tag({ label }) {
-  if (label === "Unassigned") return (
-    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 99, background: "#dc2626", color: "#fff" }}>
-      Unassigned
+// ── Brand color ───────────────────────────────────────────────────────────────
+const NAVY = "#22225E";
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+function StatusBadge({ status }) {
+  const map = {
+    active:   { bg: "#dcfce7", color: "#15803d", label: "Active"   },
+    closed:   { bg: "#f1f5f9", color: "#475569", label: "Closed"   },
+    archived: { bg: "#fef9c3", color: "#a16207", label: "Archived" },
+  };
+  const s = map[status?.toLowerCase()] ?? map.active;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 99, background: s.bg, color: s.color }}>
+      {s.label}
     </span>
   );
-  if (label === "Pending Agent") return (
-    <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 99, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
-      Pending Agent
-    </span>
-  );
-  if (label === "Open") return (
-    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 99, background: "#1e293b", color: "#fff" }}>
-      Open
-    </span>
-  );
-  return null;
 }
 
-// ── Conversation List Item ───────────────────────────────────────────────────
-function ConvItem({ conv, active, onClick }) {
+// ── Thread status badge ───────────────────────────────────────────────────────
+function ThreadBadge({ status }) {
+  const active = status === "active";
   return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: "14px 16px",
-        borderBottom: "1px solid #f1f5f9",
-        background: active ? "#f0f9ff" : "#fff",
-        cursor: "pointer",
-        borderLeft: active ? "3px solid #0ea5e9" : "3px solid transparent",
-        transition: "background 0.1s",
-      }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f8fafc"; }}
-      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "#fff"; }}
-    >
-      {/* Name + time */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{conv.customer.name}</span>
-        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap", marginLeft: 8 }}>{conv.time}</span>
-      </div>
+    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: active ? "#dbeafe" : "#f1f5f9", color: active ? "#1d4ed8" : "#64748b" }}>
+      {active ? "Open" : "Closed"}
+    </span>
+  );
+}
 
-      {/* Phone */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.4 19.79 19.79 0 0 1 1.61 4.83 2 2 0 0 1 3.59 2.63h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.17a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5z"/>
-        </svg>
-        <span style={{ fontSize: 11, color: "#64748b" }}>{conv.customer.phone}</span>
-      </div>
-
-      {/* Property */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-          <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-        </svg>
-        <span style={{ fontSize: 11, color: "#64748b" }}>{conv.property}</span>
-      </div>
-
-      {/* Last message */}
-      <p style={{ fontSize: 12, color: "#475569", margin: "0 0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {conv.lastMsg}
-      </p>
-
-      {/* Tags */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {conv.tags.map((t) => <Tag key={t} label={t} />)}
-        <Tag label="Open" />
-      </div>
+// ── Avatar initials ───────────────────────────────────────────────────────────
+function Avatar({ name = "", size = 36, bg = "#e2e8f0", color = "#475569" }) {
+  const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, flexShrink: 0 }}>
+      {initials}
     </div>
   );
 }
 
-// ── Chat bubble ──────────────────────────────────────────────────────────────
-function ChatBubble({ msg }) {
-  const isAgent = msg.sender === "agent";
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function Toast({ toast }) {
+  if (!toast) return null;
   return (
-    <div style={{ display: "flex", justifyContent: isAgent ? "flex-end" : "flex-start", marginBottom: 12 }}>
-      <div style={{
-        maxWidth: "70%", padding: "10px 14px", borderRadius: isAgent ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-        background: isAgent ? "#1e3a5f" : "#f1f5f9",
-        color: isAgent ? "#fff" : "#1e293b",
-        fontSize: 13, lineHeight: 1.5,
-      }}>
-        <p style={{ margin: 0 }}>{msg.text}</p>
-        <p style={{ margin: "4px 0 0", fontSize: 10, opacity: 0.6, textAlign: isAgent ? "right" : "left" }}>{msg.time}</p>
-      </div>
+    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, padding: "11px 16px", borderRadius: 10, background: toast.type === "error" ? "#fef2f2" : "#f0fdf4", border: `1px solid ${toast.type === "error" ? "#fecaca" : "#bbf7d0"}`, color: toast.type === "error" ? "#b91c1c" : "#166534", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", gap: 8, fontFamily: "system-ui,sans-serif" }}>
+      {toast.type === "error" ? <AlertCircle size={14}/> : <CheckCircle size={14}/>}
+      {toast.message}
     </div>
   );
 }
 
-const getSenderId = (sender) => {
-  if (!sender) return null;
-  if (typeof sender === "string") return sender;
-  return sender._id || sender.id || null;
-};
+// ── Chat message bubble ───────────────────────────────────────────────────────
+function MessageBubble({ msg, currentUserId }) {
+  const isSystem = msg.type === "system";
+  const isMine   = msg.senderId && currentUserId && msg.senderId === currentUserId;
+  const isAdmin  = ["admin", "manager"].includes(msg.senderRole);
 
+  if (isSystem) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", margin: "12px 0" }}>
+        <span style={{ fontSize: 11, color: "#94a3b8", background: "#f1f5f9", padding: "4px 14px", borderRadius: 99, fontStyle: "italic" }}>
+          {msg.content}
+        </span>
+      </div>
+    );
+  }
+
+  const side = isMine || isAdmin ? "right" : "left";
+
+  return (
+    <div style={{ display: "flex", justifyContent: side === "right" ? "flex-end" : "flex-start", marginBottom: 14, gap: 8, alignItems: "flex-end" }}>
+      {side === "left" && <Avatar name={msg.senderName || "?"} size={28} />}
+      <div style={{ maxWidth: "68%" }}>
+        {side === "left" && (
+          <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
+            {msg.senderName || "Customer"}
+          </p>
+        )}
+        <div style={{
+          padding: "10px 14px", borderRadius: side === "right" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+          background: side === "right" ? NAVY : "#f1f5f9",
+          color: side === "right" ? "#fff" : "#1e293b",
+          fontSize: 13, lineHeight: 1.55,
+        }}>
+          {msg.content}
+        </div>
+        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#94a3b8", textAlign: side === "right" ? "right" : "left" }}>
+          {msg.time}
+        </p>
+      </div>
+      {side === "right" && <Avatar name={msg.senderName || "Me"} size={28} bg={NAVY} color="#fff" />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export default function ConversationsPage() {
-  const { data: conversations = [], isLoading } = useConversations();
-  const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
+  const queryClient   = useQueryClient();
+  const user          = useAuthStore((s) => s.user);
   const currentUserId = user?._id || user?.id || null;
 
-  const [selected,     setSelected]     = useState(null);
-  const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [replyText,    setReplyText]    = useState("");
+  const [search,          setSearch]          = useState("");
+  const [statusFilter,    setStatusFilter]    = useState("");
+  const [selectedConvId,  setSelectedConvId]  = useState(null);
+  const [selectedThreadId,setSelectedThreadId]= useState(null);
+  const [replyText,       setReplyText]       = useState("");
+  const [toast,           setToast]           = useState(null);
   const bottomRef = useRef(null);
 
-  // Auto scroll to bottom when conversation selected
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selected]);
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
 
-  // Stats
-  const stats = useMemo(() => ({
-    total:      conversations.length,
-    open:       conversations.filter((c) => c.status === "Open").length,
-    pendingAgent: conversations.filter((c) => c.tags.includes("Pending Agent")).length,
-    unassigned: conversations.filter((c) => c.tags.includes("Unassigned")).length,
-  }), [conversations]);
-
-  // Filtered list
-  const filtered = useMemo(() => {
-    let data = conversations;
-    if (search) {
-      const q = search.toLowerCase();
-      data = data.filter((c) =>
-        c.customer.name.toLowerCase().includes(q) ||
-        c.customer.phone.includes(q)              ||
-        c.property.toLowerCase().includes(q)      ||
-        c.lastMsg.toLowerCase().includes(q)
-      );
-    }
-    if (statusFilter === "Open")       data = data.filter((c) => c.status === "Open");
-    if (statusFilter === "Unassigned") data = data.filter((c) => c.tags.includes("Unassigned"));
-    return data;
-  }, [conversations, search, statusFilter]);
-
-  const selectedConv = conversations.find((c) => c.id === selected);
-
-  const { data: selectedConversationDetail, isLoading: isDetailLoading } = useQuery({
-    queryKey: ["conversation", selected],
-    queryFn: () => fetchConversationById(selected, { messageLimit: 100 }),
-    enabled: Boolean(selected),
+  // ── Fetch conversations ──────────────────────────────────────────────────
+  const { data: convsData, isLoading: isConvsLoading } = useQuery({
+    queryKey: ["conversations", statusFilter],
+    queryFn:  () => fetchConversations({ status: statusFilter || undefined, limit: 50 }),
     staleTime: 1000 * 30,
   });
 
-  const chatMessages = useMemo(() => {
-    const apiMessages = selectedConversationDetail?.messages;
-    if (Array.isArray(apiMessages) && apiMessages.length > 0) {
-      return apiMessages.map((message, index) => {
-        const senderId = getSenderId(message.sender);
-        return {
-          id: message._id || `msg-${selected}-${index}`,
-          sender: senderId && currentUserId && senderId === currentUserId ? "agent" : "customer",
-          text: message.content || "",
-          time: toRelativeTime(message.createdAt || message.sentAt),
-        };
-      });
-    }
-    return selectedConv?.messages ?? [];
-  }, [selectedConversationDetail, selectedConv, selected, currentUserId]);
+  const conversations = convsData?.conversations ?? [];
 
-  const sendMessageMutation = useMutation({
-    mutationFn: sendConversationMessage,
-    onSuccess: async (_, variables) => {
-      setReplyText("");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", variables.conversationId] }),
-        queryClient.invalidateQueries({ queryKey: ["conversations"] }),
-      ]);
-    },
+  // ── Fetch threads for selected conversation ──────────────────────────────
+  const { data: threads = [], isLoading: isThreadsLoading } = useQuery({
+    queryKey: ["threads", selectedConvId],
+    queryFn:  () => fetchThreads(selectedConvId),
+    enabled:  Boolean(selectedConvId),
+    staleTime: 1000 * 30,
   });
 
+  // ── Fetch messages for selected thread ───────────────────────────────────
+  const { data: messages = [], isLoading: isMsgsLoading } = useQuery({
+    queryKey: ["messages", selectedConvId, selectedThreadId],
+    queryFn:  () => fetchMessages(selectedConvId, selectedThreadId),
+    enabled:  Boolean(selectedConvId && selectedThreadId),
+    staleTime: 1000 * 15,
+    refetchInterval: 10000,
+  });
+
+  // ── Auto scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages.length]);
+  }, [messages.length]);
+
+  // ── Auto select first thread ─────────────────────────────────────────────
+  useEffect(() => {
+    if (threads.length > 0 && !selectedThreadId) {
+      setSelectedThreadId(threads[0].id);
+    }
+  }, [threads, selectedThreadId]);
+
+  // Reset thread when conversation changes
+  useEffect(() => {
+    setSelectedThreadId(null);
+    setReplyText("");
+  }, [selectedConvId]);
+
+  // ── Derived ──────────────────────────────────────────────────────────────
+  const filteredConvs = useMemo(() => {
+    if (!search) return conversations;
+    const q = search.toLowerCase();
+    return conversations.filter((c) =>
+      c.clientName?.toLowerCase().includes(q) ||
+      c.clientEmail?.toLowerCase().includes(q)
+    );
+  }, [conversations, search]);
+
+  const selectedConv   = conversations.find((c) => c.id === selectedConvId);
+  const selectedThread = threads.find((t)  => t.id === selectedThreadId);
+
+  // ── Send message ─────────────────────────────────────────────────────────
+  const sendMutation = useMutation({
+    mutationFn: () => sendMessage(selectedConvId, selectedThreadId, replyText.trim()),
+    onSuccess: () => {
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["messages", selectedConvId, selectedThreadId] });
+      queryClient.invalidateQueries({ queryKey: ["threads", selectedConvId] });
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not send message"),
+  });
+
+  // ── Close thread ─────────────────────────────────────────────────────────
+  const closeThreadMutation = useMutation({
+    mutationFn: () => closeThread(selectedConvId, selectedThreadId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads", selectedConvId] });
+      queryClient.invalidateQueries({ queryKey: ["messages", selectedConvId, selectedThreadId] });
+      showToast("success", "Thread closed");
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not close thread"),
+  });
+
+  // ── Close conversation ───────────────────────────────────────────────────
+  const closeConvMutation = useMutation({
+    mutationFn: () => closeConversation(selectedConvId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      showToast("success", "Conversation closed");
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not close conversation"),
+  });
+
+  // ── Archive conversation ─────────────────────────────────────────────────
+  const archiveMutation = useMutation({
+    mutationFn: () => archiveConversation(selectedConvId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      setSelectedConvId(null);
+      showToast("success", "Conversation archived");
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not archive conversation"),
+  });
 
   const handleSend = () => {
-    const content = replyText.trim();
-    if (!content || !selected || sendMessageMutation.isPending) return;
-
-    sendMessageMutation.mutate({
-      conversationId: selected,
-      content,
-    });
+    if (!replyText.trim() || !selectedConvId || !selectedThreadId) return;
+    if (selectedThread?.status === "closed") {
+      showToast("error", "This thread is closed — cannot send messages");
+      return;
+    }
+    sendMutation.mutate();
   };
 
+  const stats = useMemo(() => ({
+    total:    conversations.length,
+    active:   conversations.filter((c) => c.status === "active").length,
+    closed:   conversations.filter((c) => c.status === "closed").length,
+    archived: conversations.filter((c) => c.status === "archived").length,
+  }), [conversations]);
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 60px)", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
 
-      {/* ── Page Header ── */}
-      <div style={{ padding: "20px 24px 0", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      <Toast toast={toast} />
+
+      {/* ── Header ── */}
+      <div style={{ padding: "18px 24px 12px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <MessageSquare size={20} color="#475569" />
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Conversations</h1>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Bell size={18} color="#64748b" />
-            <span style={{ fontSize: 13, color: "#64748b" }}>Demo Role:</span>
-            <div style={{ position: "relative" }}>
-              <select style={{ appearance: "none", paddingLeft: 9, paddingRight: 24, paddingTop: 5, paddingBottom: 5, border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#fff", cursor: "pointer", outline: "none" }}>
-                <option>Admin</option><option>Agent</option>
-              </select>
-              <ChevronDown size={11} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-            </div>
+          {/* Stats */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { label: `Total: ${stats.total}`,    bg: "#f1f5f9", color: "#475569" },
+              { label: `Active: ${stats.active}`,  bg: "#dcfce7", color: "#15803d" },
+              { label: `Closed: ${stats.closed}`,  bg: "#f1f5f9", color: "#64748b" },
+            ].map(({ label, bg, color }) => (
+              <span key={label} style={{ fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 99, background: bg, color }}>{label}</span>
+            ))}
           </div>
-        </div>
-
-        {/* Stats bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>Total: {stats.total}</span>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 99, background: "#dbeafe", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
-            Open: {stats.open}
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 99, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
-            Pending Agent: {stats.pendingAgent}
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 99, background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" }}>
-            Unassigned: {stats.unassigned}
-          </span>
         </div>
       </div>
 
-      {/* ── Split Panel ── */}
+      {/* ── 3-panel layout ── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", margin: "0 24px 24px", gap: 0, borderRadius: 14, border: "1px solid #e2e8f0", background: "#fff" }}>
 
-        {/* Left — Conversation List */}
-        <div style={{ width: 320, flexShrink: 0, borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* ── Panel 1: Conversation list ── */}
+        <div style={{ width: 280, flexShrink: 0, borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-          {/* Search */}
-          <div style={{ padding: "12px 12px 8px" }}>
-            <div style={{ position: "relative" }}>
+          {/* Search + filter */}
+          <div style={{ padding: "12px 12px 8px", borderBottom: "1px solid #f8fafc" }}>
+            <div style={{ position: "relative", marginBottom: 8 }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations..."
-                style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#334155", outline: "none", boxSizing: "border-box" }}
-              />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..."
+                style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, color: "#334155", outline: "none", boxSizing: "border-box" }} />
             </div>
-          </div>
-
-          {/* Filters */}
-          <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              { value: statusFilter, set: setStatusFilter, label: "All Status", opts: ["Open","Unassigned"] },
-              { label: "All", opts: ["Inquiry","Tour","Message"] },
-              { label: "All Agents", opts: ["Agent Alice","Agent Bob","Agent Chipo"] },
-            ].map(({ value, set, label, opts }, idx) => (
-              <div key={idx} style={{ position: "relative" }}>
-                <select
-                  value={value ?? ""}
-                  onChange={(e) => set && set(e.target.value)}
-                  style={{ appearance: "none", width: "100%", paddingLeft: 10, paddingRight: 26, paddingTop: 7, paddingBottom: 7, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, color: "#475569", background: "#fff", cursor: "pointer", outline: "none", boxSizing: "border-box" }}
-                >
-                  <option value="">{label}</option>
-                  {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-              </div>
-            ))}
+            <div style={{ position: "relative" }}>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ appearance: "none", width: "100%", paddingLeft: 10, paddingRight: 26, paddingTop: 7, paddingBottom: 7, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, color: "#475569", background: "#fff", cursor: "pointer", outline: "none", boxSizing: "border-box" }}>
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="closed">Closed</option>
+                <option value="archived">Archived</option>
+              </select>
+              <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+            </div>
           </div>
 
           {/* List */}
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} style={{ padding: 16, borderBottom: "1px solid #f1f5f9" }}>
+            {isConvsLoading ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} style={{ padding: 16, borderBottom: "1px solid #f8fafc" }}>
                   <div style={{ height: 12, background: "#f1f5f9", borderRadius: 6, marginBottom: 8, width: "60%" }} />
                   <div style={{ height: 10, background: "#f1f5f9", borderRadius: 6, width: "80%" }} />
                 </div>
               ))
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No conversations found</div>
+            ) : filteredConvs.length === 0 ? (
+              <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 12 }}>No conversations found</div>
             ) : (
-              filtered.map((conv) => (
-                <ConvItem
-                  key={conv.id}
-                  conv={conv}
-                  active={selected === conv.id}
-                  onClick={() => setSelected(conv.id)}
-                />
-              ))
+              filteredConvs.map((conv) => {
+                const active = selectedConvId === conv.id;
+                return (
+                  <div key={conv.id} onClick={() => setSelectedConvId(conv.id)}
+                    style={{ padding: "12px 14px", borderBottom: "1px solid #f8fafc", background: active ? "#f0f9ff" : "#fff", cursor: "pointer", borderLeft: `3px solid ${active ? NAVY : "transparent"}`, transition: "all 0.1s" }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f8fafc"; }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "#fff"; }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Avatar name={conv.clientName} size={36} bg={active ? NAVY : "#e2e8f0"} color={active ? "#fff" : "#475569"} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientName}</span>
+                          <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0, marginLeft: 4 }}>{conv.time}</span>
+                        </div>
+                        {conv.clientEmail && (
+                          <p style={{ margin: "2px 0 4px", fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientEmail}</p>
+                        )}
+                        <StatusBadge status={conv.status} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Right — Detail / Empty state */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#fafafa" }}>
+        {/* ── Panel 2: Thread list ── */}
+        <div style={{ width: 240, flexShrink: 0, borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden", background: "#fafafa" }}>
           {!selectedConv ? (
-            // Empty state matching screenshot
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#94a3b8" }}>
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Select a conversation to view details</p>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#cbd5e1", fontSize: 12, padding: 16, textAlign: "center" }}>
+              Select a conversation to see threads
             </div>
           ) : (
             <>
-              {/* Chat header */}
-              <div style={{ padding: "14px 20px", borderBottom: "1px solid #f1f5f9", background: "#fff", flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{selectedConv.customer.name}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{selectedConv.customer.phone} · {selectedConv.property}</p>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {selectedConv.tags.map((t) => <Tag key={t} label={t} />)}
-                    <Tag label="Open" />
-                  </div>
+              {/* Conversation header */}
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", background: "#fff" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{selectedConv.clientName}</span>
+                  <StatusBadge status={selectedConv.status} />
+                </div>
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 6 }}>
+                  {selectedConv.status === "active" && (
+                    <>
+                      <button type="button" onClick={() => closeConvMutation.mutate()} disabled={closeConvMutation.isPending}
+                        title="Close conversation"
+                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        <XCircle size={12} /> Close
+                      </button>
+                      <button type="button" onClick={() => archiveMutation.mutate()} disabled={archiveMutation.isPending}
+                        title="Archive conversation"
+                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        <Archive size={12} /> Archive
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Messages */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-                {isDetailLoading ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Loading messages...</p>
+              {/* Thread list */}
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                <p style={{ margin: 0, padding: "10px 14px 6px", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Threads ({threads.length})
+                </p>
+                {isThreadsLoading ? (
+                  [...Array(2)].map((_, i) => (
+                    <div key={i} style={{ padding: 12, borderBottom: "1px solid #f1f5f9" }}>
+                      <div style={{ height: 11, background: "#f1f5f9", borderRadius: 5, marginBottom: 6, width: "70%" }} />
+                      <div style={{ height: 9, background: "#f1f5f9", borderRadius: 5, width: "50%" }} />
+                    </div>
+                  ))
+                ) : threads.length === 0 ? (
+                  <div style={{ padding: "24px 14px", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>No threads yet</div>
                 ) : (
-                  chatMessages.map((msg) => (
-                    <ChatBubble key={msg.id} msg={msg} />
+                  threads.map((thread) => {
+                    const active = selectedThreadId === thread.id;
+                    return (
+                      <div key={thread.id} onClick={() => setSelectedThreadId(thread.id)}
+                        style={{ padding: "11px 14px", borderBottom: "1px solid #f1f5f9", background: active ? "#eff6ff" : "transparent", cursor: "pointer", borderLeft: `3px solid ${active ? NAVY : "transparent"}`, transition: "all 0.1s" }}
+                        onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f1f5f9"; }}
+                        onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", lineHeight: 1.4, flex: 1 }}>{thread.subject}</span>
+                          <ThreadBadge status={thread.status} />
+                        </div>
+                        {thread.property && (
+                          <p style={{ margin: "0 0 4px", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            🏠 {thread.property}
+                          </p>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 10, color: "#94a3b8" }}>{thread.messageCount} messages</span>
+                          {thread.unreadCount > 0 && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "#dc2626", color: "#fff" }}>{thread.unreadCount}</span>
+                          )}
+                          <span style={{ fontSize: 10, color: "#94a3b8" }}>{thread.time}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Panel 3: Messages ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {!selectedThread ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#94a3b8" }}>
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Select a thread to view messages</p>
+            </div>
+          ) : (
+            <>
+              {/* Thread header */}
+              <div style={{ padding: "12px 20px", borderBottom: "1px solid #f1f5f9", background: "#fff", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{selectedThread.subject}</span>
+                      <ThreadBadge status={selectedThread.status} />
+                    </div>
+                    {selectedThread.property && (
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>🏠 {selectedThread.property}</p>
+                    )}
+                  </div>
+                  {/* Close thread button */}
+                  {selectedThread.status === "active" && (
+                    <button type="button" onClick={() => closeThreadMutation.mutate()} disabled={closeThreadMutation.isPending}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      <X size={13} /> Close Thread
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Messages area */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+                {isMsgsLoading ? (
+                  <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 12, paddingTop: 32 }}>Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, paddingTop: 48 }}>
+                    <MessageSquare size={36} color="#cbd5e1" style={{ marginBottom: 12 }} />
+                    <p style={{ margin: 0 }}>No messages yet</p>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
+                    <MessageBubble key={msg.id} msg={msg} currentUserId={currentUserId} />
                   ))
                 )}
                 <div ref={bottomRef} />
@@ -340,39 +469,33 @@ export default function ConversationsPage() {
 
               {/* Reply box */}
               <div style={{ padding: "12px 16px", borderTop: "1px solid #f1f5f9", background: "#fff", flexShrink: 0 }}>
-                {sendMessageMutation.isError ? (
-                  <p style={{ margin: "0 0 8px", color: "#dc2626", fontSize: 12 }}>
-                    {sendMessageMutation.error?.response?.data?.message || "Unable to send message."}
-                  </p>
-                ) : null}
-                <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder="Type a message..."
-                    rows={2}
-                    style={{ flex: 1, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 13, color: "#334155", resize: "none", outline: "none", fontFamily: "inherit" }}
-                  />
-                  <button
-                    onClick={handleSend}
-                    disabled={!replyText.trim() || sendMessageMutation.isPending}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
-                      background: sendMessageMutation.isPending ? "#94a3b8" : "#1e3a5f",
-                      border: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: !replyText.trim() || sendMessageMutation.isPending ? "not-allowed" : "pointer",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Send size={16} color="#fff" />
-                  </button>
-                </div>
+                {selectedThread.status === "closed" ? (
+                  <div style={{ padding: "10px 14px", borderRadius: 9, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
+                    This thread is closed — no new messages can be sent
+                  </div>
+                ) : (
+                  <>
+                    {sendMutation.isError && (
+                      <p style={{ margin: "0 0 8px", fontSize: 12, color: "#dc2626" }}>
+                        {sendMutation.error?.response?.data?.message || "Unable to send message"}
+                      </p>
+                    )}
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                        placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+                        rows={2}
+                        style={{ flex: 1, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 13, color: "#334155", resize: "none", outline: "none", fontFamily: "inherit" }}
+                      />
+                      <button onClick={handleSend} disabled={!replyText.trim() || sendMutation.isPending}
+                        style={{ width: 42, height: 42, borderRadius: 11, background: !replyText.trim() || sendMutation.isPending ? "#94a3b8" : NAVY, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: !replyText.trim() || sendMutation.isPending ? "not-allowed" : "pointer", flexShrink: 0, transition: "background 0.15s" }}>
+                        <Send size={16} color="#fff" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
