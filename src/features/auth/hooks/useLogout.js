@@ -14,9 +14,7 @@ export default function useLogout() {
       return logoutAdmin({ accessToken, refreshToken });
     },
 
-    onError: (error) => {
-      console.error("Logout API failed:", error);
-    },
+    onError: () => {},
 
     onSettled: async () => {
       clearAuthState();

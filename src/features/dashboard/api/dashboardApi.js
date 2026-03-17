@@ -201,7 +201,6 @@ export const fetchDashboardData = async () => {
     ]);
     return mapDashboardResponse(toApiData(ovRes),toApiData(trRes),toApiData(apRes));
   } catch(err) {
-    console.error("Dashboard fetch failed:",err?.response?.data?.message||err?.message);
     return createEmptyDashboardData();
   }
 };
