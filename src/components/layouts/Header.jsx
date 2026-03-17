@@ -12,8 +12,8 @@ export default function Header() {
   const navigate  = useNavigate();
   const [search, setSearch] = useState("");
   const { data: unreadCountData } = useUnreadNotificationCount({
-    refetchInterval: 1000 * 20,
-    refetchIntervalInBackground: true,
+    refetchInterval: 1000 * 60,
+    refetchIntervalInBackground: false,
   });
 
   const unreadCount = Number(unreadCountData ?? 0);

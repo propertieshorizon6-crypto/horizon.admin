@@ -163,7 +163,6 @@ export default function LeadsPage() {
     } catch (error) {
       queryClient.setQueryData(["leads"], previousLeads);
       setSelectedLead(previousSelectedLead);
-      console.error("Failed to persist lead priority:", error);
     } finally {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     }
