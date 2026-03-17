@@ -538,7 +538,7 @@ export default function LeadsPage() {
                 >
                   Cancel
                 </button>
-                <button
+                <button 
                   type="button"
                   onClick={submitAssignModal}
                   disabled={assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")}

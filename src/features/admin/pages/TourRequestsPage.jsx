@@ -9,7 +9,8 @@
 // Row click → selectedTour state set → Drawer open
 // Drawer action → handleTourUpdate() → tours state update → UI refresh
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel,
   getPaginationRowModel, getSortedRowModel,
@@ -78,6 +79,7 @@ function StatusBadge({ status }) {
 const columnHelper = createColumnHelper();
 
 export default function TourRequestsPage() {
+  const location = useLocation();
   const {
     data: initialTours = [],
     isLoading,
@@ -94,6 +96,15 @@ export default function TourRequestsPage() {
 
   // Actual tours: local update hai to use karo, warna API data
   const tourData = tours ?? initialTours;
+
+  // If navigated with state, open drawer for that tour
+  useEffect(() => {
+    if (location.state && location.state.tourId && tourData.length) {
+      const found = tourData.find(t => t.id === location.state.tourId);
+      if (found) setSelectedTour(found);
+    }
+    // eslint-disable-next-line
+  }, [location.state, tourData]);
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");

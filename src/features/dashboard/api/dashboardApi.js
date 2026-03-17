@@ -1,397 +1,207 @@
+// 📁 src/features/dashboard/api/dashboardApi.js
+
 import apiClient from "../../../services/apiClient";
 
 const createEmptyDashboardData = () => ({
-  stats: [],
-  leadsSource: [],
-  leadsStatus: [],
-  agentLoad: [],
-  liveAlerts: [],
-  queue: [],
+  stats: [], leadsSource: [], leadsStatus: [], agentLoad: [], liveAlerts: [], queue: [],
 });
 
 export const EMPTY_DASHBOARD_DATA = createEmptyDashboardData();
-export const MOCK_DASHBOARD_DATA = createEmptyDashboardData();
+export const MOCK_DASHBOARD_DATA  = createEmptyDashboardData();
 
-const STATUS_COLORS = {
-  New: "#38bdf8",
-  Assigned: "#f97316",
-  "In Progress": "#1e3a5f",
-  Closed: "#22c55e",
+const STATUS_COLORS = { New:"#38bdf8", Assigned:"#f97316", "In Progress":"#1e3a5f", Closed:"#22c55e" };
+
+const toApiData = (r)  => r?.data?.data ?? r?.data ?? {};
+const toArray   = (v)  => (Array.isArray(v) ? v : []);
+const toNumber  = (v)  => { const p = Number(v); return Number.isFinite(p) ? p : 0; };
+
+const formatPersonName = (p = {}) =>
+  `${p?.firstName||""} ${p?.lastName||""}`.trim() || p?.email || "Unknown";
+
+const formatRelativeTime = (d) => {
+  if (!d) return "Just now";
+  const min = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
 };
 
-const toApiData = (response) => response?.data?.data ?? response?.data ?? {};
-const toArray = (value) => (Array.isArray(value) ? value : []);
-
-const toNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+const formatElapsed = (d) => {
+  if (!d) return "Unknown";
+  const diffH = (Date.now() - new Date(d).getTime()) / 3600000;
+  if (diffH < 0) return `${Math.ceil(Math.abs(diffH))}h left`;
+  if (diffH < 1) return "<1h";
+  if (diffH < 24) return `${Math.floor(diffH)}h`;
+  return `${Math.floor(diffH/24)}d`;
 };
 
-const formatPersonName = (person = {}) => {
-  const firstName = person?.firstName || "";
-  const lastName = person?.lastName || "";
-  const fullName = `${firstName} ${lastName}`.trim();
-  return fullName || person?.email || "Unknown";
-};
-
-const formatRelativeTime = (dateValue) => {
-  if (!dateValue) return "Just now";
-
-  const timestamp = new Date(dateValue).getTime();
-  if (!timestamp) return "Just now";
-
-  const diffMs = Date.now() - timestamp;
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-  if (diffMinutes < 1) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-};
-
-const formatElapsed = (dateValue) => {
-  if (!dateValue) return "Unknown";
-
-  const timestamp = new Date(dateValue).getTime();
-  if (!timestamp) return "Unknown";
-
-  const diffHours = (Date.now() - timestamp) / (1000 * 60 * 60);
-
-  if (diffHours < 0) {
-    const hoursLeft = Math.ceil(Math.abs(diffHours));
-    return `${hoursLeft}h left`;
-  }
-
-  if (diffHours < 1) return "<1h";
-  if (diffHours < 24) return `${Math.floor(diffHours)}h`;
-
-  const days = Math.floor(diffHours / 24);
-  return `${days}d`;
-};
-
-const classifyQueueStatus = (dateValue) => {
-  const timestamp = new Date(dateValue).getTime();
-  if (!timestamp) return "unassigned";
-
-  const ageHours = (Date.now() - timestamp) / (1000 * 60 * 60);
-
-  if (ageHours >= 72) return "stale";
-  if (ageHours >= 24) return "overdue";
+const classifyQueueStatus = (d) => {
+  const h = (Date.now() - new Date(d).getTime()) / 3600000;
+  if (h >= 72) return "stale";
+  if (h >= 24) return "overdue";
   return "unassigned";
 };
 
-const classifyPriority = (status) => {
-  if (status === "stale") return "high";
-  if (status === "overdue") return "medium";
-  return "low";
-};
+const classifyPriority = (s) => s === "stale" ? "high" : s === "overdue" ? "medium" : "low";
 
-const dayLabel = (dateKey) => {
-  const date = new Date(`${dateKey}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return dateKey;
-
-  return date.toLocaleDateString(undefined, { weekday: "short" });
+const dayLabel = (k) => {
+  const d = new Date(`${k}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? k : d.toLocaleDateString(undefined, { weekday:"short" });
 };
 
 const buildTrendMap = (items = []) => {
   const map = new Map();
-
-  items.forEach((item) => {
-    const key = item?.date;
-    if (!key) return;
-    map.set(key, toNumber(item?.count));
-  });
-
+  items.forEach((i) => { if (i?.date) map.set(i.date, toNumber(i?.count)); });
   return map;
 };
 
-const takeLast = (items = [], count = 7) =>
-  items.slice(Math.max(0, items.length - count));
+const takeLast = (items = [], n = 7) => items.slice(Math.max(0, items.length - n));
 
 const computeDelta = (series = []) => {
-  const sorted = [...series].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const lastTwo = takeLast(sorted, 2);
-
-  const current = toNumber(lastTwo[lastTwo.length - 1]?.count);
-  const previous = toNumber(lastTwo[lastTwo.length - 2]?.count);
-
-  if (previous <= 0) {
-    return {
-      current,
-      pct: current > 0 ? "100%" : "0%",
-      up: current >= previous,
-    };
-  }
-
-  const change = Math.round((Math.abs(current - previous) / previous) * 100);
-
-  return {
-    current,
-    pct: `${change}%`,
-    up: current >= previous,
-  };
+  const s = [...series].sort((a,b) => String(a.date).localeCompare(String(b.date)));
+  const l = takeLast(s, 2);
+  const curr = toNumber(l[l.length-1]?.count);
+  const prev = toNumber(l[l.length-2]?.count);
+  if (prev <= 0) return { current:curr, pct: curr>0?"100%":"0%", up: curr>=prev };
+  return { current:curr, pct:`${Math.round((Math.abs(curr-prev)/prev)*100)}%`, up: curr>=prev };
 };
 
-const mapStats = (kpis = {}, alerts = {}, trends = {}) => {
-  const leadDelta = computeDelta(toArray(trends.leads));
-  const enquiryDelta = computeDelta(toArray(trends.enquiries));
-  const tourDelta = computeDelta(toArray(trends.tours));
-
-  const pendingTours = toNumber(
-    kpis?.tours?.pendingCount ?? alerts?.counts?.pendingTourConfirmations,
-  );
-  const pendingApprovals = toNumber(alerts?.counts?.pendingApprovals);
-  const unreadNotifications = toNumber(alerts?.unreadNotifications);
-
+const mapStats = (kpis={}, alerts={}, trends={}) => {
+  const ld=computeDelta(toArray(trends.leads));
+  const ed=computeDelta(toArray(trends.enquiries));
+  const td=computeDelta(toArray(trends.tours));
   return [
-    {
-      label: "New Leads Today",
-      value: leadDelta.current,
-      pct: leadDelta.pct,
-      up: leadDelta.up,
-      icon: "L",
-    },
-    {
-      label: "Inquiries Today",
-      value: enquiryDelta.current,
-      pct: enquiryDelta.pct,
-      up: enquiryDelta.up,
-      icon: "I",
-    },
-    {
-      label: "Tour Requests",
-      value: pendingTours,
-      pct: tourDelta.pct,
-      up: tourDelta.up,
-      icon: "T",
-    },
-    {
-      label: "Pending Approvals",
-      value: pendingApprovals,
-      pct: "0%",
-      up: true,
-      icon: "P",
-    },
-    {
-      label: "Unread Alerts",
-      value: unreadNotifications,
-      pct: "0%",
-      up: true,
-      icon: "N",
-    },
+    { label:"New Leads Today",   value:ld.current, pct:ld.pct, up:ld.up, icon:"L" },
+    { label:"Inquiries Today",   value:ed.current, pct:ed.pct, up:ed.up, icon:"I" },
+    { label:"Tour Requests",     value:toNumber(kpis?.tours?.pendingCount??alerts?.counts?.pendingTourConfirmations), pct:td.pct, up:td.up, icon:"T" },
+    { label:"Pending Approvals", value:toNumber(alerts?.counts?.pendingApprovals), pct:"0%", up:true, icon:"P" },
+    { label:"Unread Alerts",     value:toNumber(alerts?.unreadNotifications), pct:"0%", up:true, icon:"N" },
   ];
 };
 
-const mapLeadsSource = (trends = {}) => {
-  const leadMap = buildTrendMap(toArray(trends.leads));
-  const enquiryMap = buildTrendMap(toArray(trends.enquiries));
-  const tourMap = buildTrendMap(toArray(trends.tours));
-
-  const allDates = Array.from(
-    new Set([...leadMap.keys(), ...enquiryMap.keys(), ...tourMap.keys()]),
-  ).sort((a, b) => String(a).localeCompare(String(b)));
-
-  return takeLast(allDates, 7).map((date) => ({
-    day: dayLabel(date),
-    App: leadMap.get(date) || 0,
-    Website: enquiryMap.get(date) || 0,
-    Call: tourMap.get(date) || 0,
-    Whatsapp: 0,
-  }));
+const mapLeadsSource = (trends={}) => {
+  const lm=buildTrendMap(toArray(trends.leads));
+  const em=buildTrendMap(toArray(trends.enquiries));
+  const tm=buildTrendMap(toArray(trends.tours));
+  const dates = Array.from(new Set([...lm.keys(),...em.keys(),...tm.keys()])).sort();
+  return takeLast(dates,7).map(d=>({ day:dayLabel(d), App:lm.get(d)||0, Website:em.get(d)||0, Call:tm.get(d)||0, Whatsapp:0 }));
 };
 
-const mapLeadsStatus = (kpis = {}) => {
-  const source = kpis?.leads?.byStatus || {};
-
-  const buckets = {
-    New: 0,
-    Assigned: 0,
-    "In Progress": 0,
-    Closed: 0,
-  };
-
-  Object.entries(source).forEach(([status, count]) => {
-    const normalized = String(status || "").toLowerCase();
-
-    if (normalized === "new") buckets.New += toNumber(count);
-    else if (normalized === "contacted") buckets.Assigned += toNumber(count);
-    else if (["nurturing", "qualified"].includes(normalized)) {
-      buckets["In Progress"] += toNumber(count);
-    } else if (["converted", "lost", "closed"].includes(normalized)) {
-      buckets.Closed += toNumber(count);
-    }
+const mapLeadsStatus = (kpis={}) => {
+  const src = kpis?.leads?.byStatus||{};
+  const b   = {New:0, Assigned:0, "In Progress":0, Closed:0};
+  Object.entries(src).forEach(([s,c]) => {
+    const n = String(s||"").toLowerCase();
+    if (n==="new")                                   b.New+=toNumber(c);
+    else if (n==="contacted")                        b.Assigned+=toNumber(c);
+    else if (["nurturing","qualified"].includes(n))  b["In Progress"]+=toNumber(c);
+    else if (["converted","lost","closed"].includes(n)) b.Closed+=toNumber(c);
   });
-
-  return Object.entries(buckets).map(([name, value]) => ({
-    name,
-    value,
-    color: STATUS_COLORS[name],
-  }));
+  return Object.entries(b).map(([name,value])=>({name,value,color:STATUS_COLORS[name]}));
 };
 
-const mapAgentLoad = (agentPerformance = {}) =>
-  toArray(agentPerformance?.performance)
-    .map((item) => ({
-      name: formatPersonName(item?.agent),
-      leads: toNumber(item?.leads?.total),
-    }))
-    .sort((a, b) => b.leads - a.leads)
-    .slice(0, 8);
+const mapAgentLoad = (ap={}) =>
+  toArray(ap?.performance)
+    .map(i=>({name:formatPersonName(i?.agent), leads:toNumber(i?.leads?.total)}))
+    .sort((a,b)=>b.leads-a.leads).slice(0,8);
 
-const mapLiveAlerts = (alerts = {}) => {
+const mapLiveAlerts = (alerts={}) => {
   const items = [];
 
-  toArray(alerts?.pendingTours).forEach((tour, index) => {
-    const when = tour?.preferredDate;
+  toArray(alerts?.pendingTours).forEach((t,i) => items.push({
+    id:`pending-tour-${i}`, type:"tour", action:"Tour requested", source:"website",
+    property:t?.property?.title||"Property", person:t?.name||"Unknown",
+    time:formatRelativeTime(t?.preferredDate),
+    timestamp:new Date(t?.preferredDate||Date.now()).getTime(),
+    linkTo:"/dashboard/tour-requests",
+  }));
 
-    items.push({
-      id: `pending-tour-${index}`,
-      type: "tour",
-      action: "Tour requested",
-      source: "website",
-      property: tour?.property?.title || "Property",
-      person: tour?.name || "Unknown",
-      time: formatRelativeTime(when),
-      timestamp: new Date(when || Date.now()).getTime(),
-    });
-  });
+  toArray(alerts?.overdueTours).forEach((t,i) => items.push({
+    id:`overdue-tour-${i}`, type:"tour", action:"Tour follow-up overdue", source:"app",
+    property:t?.property?.title||"Property", person:t?.name||"Unknown",
+    time:formatRelativeTime(t?.preferredDate),
+    timestamp:new Date(t?.preferredDate||Date.now()).getTime(),
+    linkTo:"/dashboard/tour-requests",
+  }));
 
-  toArray(alerts?.overdueTours).forEach((tour, index) => {
-    const when = tour?.preferredDate;
+  toArray(alerts?.unansweredEnquiries).forEach((e,i) => items.push({
+    id:`unanswered-enquiry-${i}`, type:"message", action:"Enquiry waiting response", source:"website",
+    property:e?.property?.title||"Property", person:e?.name||e?.email||"Unknown",
+    time:formatRelativeTime(e?.createdAt),
+    timestamp:new Date(e?.createdAt||Date.now()).getTime(),
+    linkTo:"/dashboard/inquiries",
+  }));
 
-    items.push({
-      id: `overdue-tour-${index}`,
-      type: "tour",
-      action: "Tour follow-up overdue",
-      source: "app",
-      property: tour?.property?.title || "Property",
-      person: tour?.name || "Unknown",
-      time: formatRelativeTime(when),
-      timestamp: new Date(when || Date.now()).getTime(),
-    });
-  });
+  toArray(alerts?.pendingApprovalProperties).forEach((p,i) => items.push({
+    id:`pending-property-${i}`, type:"message", action:"Property pending approval", source:"app",
+    property:p?.title||"Property", person:formatPersonName(p?.owner),
+    time:formatRelativeTime(p?.createdAt),
+    timestamp:new Date(p?.createdAt||Date.now()).getTime(),
+    linkTo:"/dashboard/listings",
+  }));
 
-  toArray(alerts?.unansweredEnquiries).forEach((enquiry, index) => {
-    const when = enquiry?.createdAt;
-
-    items.push({
-      id: `unanswered-enquiry-${index}`,
-      type: "message",
-      action: "Enquiry waiting response",
-      source: "website",
-      property: enquiry?.property?.title || "Property",
-      person: enquiry?.name || enquiry?.email || "Unknown",
-      time: formatRelativeTime(when),
-      timestamp: new Date(when || Date.now()).getTime(),
-    });
-  });
-
-  toArray(alerts?.pendingApprovalProperties).forEach((property, index) => {
-    const when = property?.createdAt;
-
-    items.push({
-      id: `pending-property-${index}`,
-      type: "message",
-      action: "Property pending approval",
-      source: "app",
-      property: property?.title || "Property",
-      person: formatPersonName(property?.owner),
-      time: formatRelativeTime(when),
-      timestamp: new Date(when || Date.now()).getTime(),
-    });
-  });
-
-  return items
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 8)
-    .map((alert) => {
-      const next = { ...alert };
-      delete next.timestamp;
-      return next;
-    });
+  return items.sort((a,b)=>b.timestamp-a.timestamp).slice(0,8).map(({timestamp,...rest})=>rest);
 };
 
-const mapQueue = (alerts = {}) => {
-  const queueItems = [];
+const mapQueue = (alerts={}) => {
+  const items=[];
 
-  toArray(alerts?.unansweredEnquiries).forEach((enquiry, index) => {
-    const createdAt = enquiry?.createdAt;
-    const status = classifyQueueStatus(createdAt);
-
-    queueItems.push({
-      id: `queue-enquiry-${index}`,
-      name: enquiry?.name || enquiry?.email || "Unknown",
-      priority: classifyPriority(status),
-      property: enquiry?.property?.title || "Property",
-      source: "Website",
-      elapsed: formatElapsed(createdAt),
-      status,
-      sortDate: new Date(createdAt || Date.now()).getTime(),
+  toArray(alerts?.unansweredEnquiries).forEach((e,i)=>{
+    const s=classifyQueueStatus(e?.createdAt);
+    items.push({
+      id:`queue-enquiry-${i}`,
+      rawId:    e?._id||null,     // ← actual _id for API calls
+      itemType: "enquiry",
+      name:e?.name||e?.email||"Unknown",
+      priority:classifyPriority(s),
+      property:e?.property?.title||"Property",
+      source:"Website", elapsed:formatElapsed(e?.createdAt), status:s,
+      sortDate:new Date(e?.createdAt||Date.now()).getTime(),
     });
   });
 
-  toArray(alerts?.pendingTours).forEach((tour, index) => {
-    const preferredDate = tour?.preferredDate;
-    const status = classifyQueueStatus(preferredDate);
-
-    queueItems.push({
-      id: `queue-tour-${index}`,
-      name: tour?.name || "Unknown",
-      priority: classifyPriority(status),
-      property: tour?.property?.title || "Property",
-      source: "App",
-      elapsed: formatElapsed(preferredDate),
-      status,
-      sortDate: new Date(preferredDate || Date.now()).getTime(),
+  toArray(alerts?.pendingTours).forEach((t,i)=>{
+    const s=classifyQueueStatus(t?.preferredDate);
+    items.push({
+      id:`queue-tour-${i}`,
+      rawId:    t?._id||null,     // ← actual _id for API calls
+      itemType: "tour",
+      name:t?.name||"Unknown",
+      priority:classifyPriority(s),
+      property:t?.property?.title||"Property",
+      source:"App", elapsed:formatElapsed(t?.preferredDate), status:s,
+      sortDate:new Date(t?.preferredDate||Date.now()).getTime(),
     });
   });
 
-  return queueItems
-    .sort((a, b) => b.sortDate - a.sortDate)
-    .slice(0, 20)
-    .map((item) => {
-      const next = { ...item };
-      delete next.sortDate;
-      return next;
-    });
+  return items.sort((a,b)=>b.sortDate-a.sortDate).slice(0,20).map(({sortDate,...rest})=>rest);
 };
 
-const mapDashboardResponse = (overview = {}, trends = {}, agentPerformance = {}) => {
-  const kpis = overview?.kpis || {};
-  const alerts = overview?.alerts || {};
-
+const mapDashboardResponse = (overview={}, trends={}, agentPerformance={}) => {
+  const kpis=overview?.kpis||{};
+  const alerts=overview?.alerts||{};
   return {
-    stats: mapStats(kpis, alerts, trends),
-    leadsSource: mapLeadsSource(trends),
-    leadsStatus: mapLeadsStatus(kpis),
-    agentLoad: mapAgentLoad(agentPerformance),
-    liveAlerts: mapLiveAlerts(alerts),
-    queue: mapQueue(alerts),
+    stats:mapStats(kpis,alerts,trends),
+    leadsSource:mapLeadsSource(trends),
+    leadsStatus:mapLeadsStatus(kpis),
+    agentLoad:mapAgentLoad(agentPerformance),
+    liveAlerts:mapLiveAlerts(alerts),
+    queue:mapQueue(alerts),
   };
 };
 
 export const fetchDashboardData = async () => {
   try {
-    const [overviewRes, trendsRes, agentPerfRes] = await Promise.all([
+    const [ovRes,trRes,apRes] = await Promise.all([
       apiClient.get("/admin/dashboard"),
-      apiClient.get("/admin/dashboard/trends", { params: { days: 7 } }),
-      apiClient.get("/admin/dashboard/agent-performance", {
-        params: { page: 1, limit: 8 },
-      }),
+      apiClient.get("/admin/dashboard/trends",{ params:{ days:7 } }),
+      apiClient.get("/admin/dashboard/agent-performance",{ params:{ page:1,limit:8 } }),
     ]);
-
-    return mapDashboardResponse(
-      toApiData(overviewRes),
-      toApiData(trendsRes),
-      toApiData(agentPerfRes),
-    );
-  } catch (error) {
-    const details = error?.response?.data?.message || error?.message;
-    console.error("Dashboard fetch failed:", details);
+    return mapDashboardResponse(toApiData(ovRes),toApiData(trRes),toApiData(apRes));
+  } catch(err) {
+    console.error("Dashboard fetch failed:",err?.response?.data?.message||err?.message);
     return createEmptyDashboardData();
   }
 };

@@ -223,6 +223,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
 
   // ── Assign Agent — wired to backend ──────────────────────────────────────
   const handleReassign = (agentId) => {
+    // No change — skip API call
+    if (agentId === tour.agentId) { setShowReassign(false); return; }
     runAction(async () => {
       const updatedTour = await assignTourAgent(tour.id, agentId);
       onUpdate(updatedTour);

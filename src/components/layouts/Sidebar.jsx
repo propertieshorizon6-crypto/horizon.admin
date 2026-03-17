@@ -9,7 +9,7 @@ import {
 import { useAuthStore } from "../../store/useAuthStore";
 import useLogout from "../../features/auth/hooks/useLogout";
 import { getInitials }  from "../../utils/formatters";
-import logo             from "../../assets/logo.png"; // ← real logo
+import logo             from "../../assets/logo-white.svg";
 
 const NAV_ITEMS = [
   { label: "Dashboard",      icon: LayoutDashboard, path: "/admin/dashboard",     end: true  },
@@ -49,10 +49,7 @@ export default function Sidebar() {
           src={logo}
           alt="Horizon Properties"
           style={{
-            height: 54, width: "auto", objectFit: "contain",
-            background: "#fff",       // clean white bg on dark sidebar
-            borderRadius: 12,
-            padding: "5px 10px",
+            height: 72, width: "auto", objectFit: "contain",
           }}
         />
       </div>
