@@ -1,26 +1,60 @@
 // 📁 src/features/settings/pages/SettingsPage.jsx
 
-import { useState }        from "react";
-import { useAuthStore }    from "../../../store/useAuthStore";
-import { getInitials }     from "../../../utils/formatters";
-import PreferencesTab      from "../components/PreferencesTab";
-import ActivityTab         from "../components/ActivityTab";
-import SecurityTab         from "../components/SecurityTab";
-import EditProfileDrawer   from "../components/EditProfileDrawer"; // ← new
+import { useState, useEffect } from "react";
+import { useQuery }            from "@tanstack/react-query";
+import { useAuthStore }        from "../../../store/useAuthStore";
+import { getInitials }         from "../../../utils/formatters";
+import { fetchMyProfile }      from "../api/settingsApi";
+import PreferencesTab          from "../components/PreferencesTab";
+import ActivityTab             from "../components/ActivityTab";
+import SecurityTab             from "../components/SecurityTab";
+import EditProfileDrawer       from "../components/EditProfileDrawer";
 
 const TABS = ["Preferences", "Activity", "Security"];
 
-const ACTIVITY_STATS = [
-  { icon: "👥", value: 12, label: "Leads Assigned"  },
-  { icon: "📅", value: 8,  label: "Tours Scheduled" },
-  { icon: "💬", value: 24, label: "Conversations"   },
-  { icon: "📄", value: 3,  label: "Exports (30d)"   },
-];
+function formatLastLogin(dateVal) {
+  if (!dateVal) return "Never";
+  const d = new Date(dateVal);
+  if (Number.isNaN(d.getTime())) return "Never";
+  return d.toLocaleString(undefined, {
+    month: "short", day: "2-digit", year: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+}
 
 export default function SettingsPage() {
-  const { user }     = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [activeTab,  setActiveTab]  = useState("Preferences");
-  const [drawerOpen, setDrawerOpen] = useState(false); // ← drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Fetch fresh profile on mount
+  const { data: profileData } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn:  fetchMyProfile,
+    staleTime: 5 * 60_000,
+  });
+
+  // Sync auth store when profile loads
+  useEffect(() => {
+    const u = profileData?.user;
+    if (!u) return;
+    updateUser({
+      _id:                   u._id,
+      firstName:             u.firstName,
+      lastName:              u.lastName,
+      name:                  `${u.firstName} ${u.lastName}`.trim(),
+      email:                 u.email,
+      phone:                 u.phone,
+      role:                  u.role,
+      status:                u.status,
+      avatar:                u.avatar,
+      lastLoginAt:           u.lastLoginAt,
+      notificationPreferences: u.notificationPreferences,
+    });
+  }, [profileData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const displayName = user?.name
+    ?? (user?.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "User");
 
   return (
     <div className="p-8 min-h-full bg-slate-50">
@@ -39,36 +73,43 @@ export default function SettingsPage() {
           {/* Profile Card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-md">
-              {getInitials(user?.name ?? "Akash")}
+              {getInitials(displayName)}
             </div>
 
-            <h2 className="text-lg font-bold text-slate-900">{user?.name ?? "Akash"}</h2>
-            <p className="text-sm text-slate-500 mt-0.5">{user?.email ?? "akash@gmail.com"}</p>
-            <span className="mt-2 inline-block bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">
-              {user?.role ?? "Agent"}
+            <h2 className="text-lg font-bold text-slate-900">{displayName}</h2>
+            <p className="text-sm text-slate-500 mt-0.5">{user?.email ?? ""}</p>
+            <span className="mt-2 inline-block bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full capitalize">
+              {user?.role ?? ""}
             </span>
 
             {/* Info rows */}
             <div className="w-full mt-5 space-y-3 text-left">
               <div className="flex items-center gap-3 text-sm text-slate-500">
                 <span className="text-slate-400">✉</span>
-                <span>{user?.email ?? "akash@gmail.com"}</span>
+                <span className="truncate">{user?.email ?? ""}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                <span className="text-slate-400">📞</span>
+                <span>{user?.phone ?? "—"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-500">
                 <span className="text-slate-400">🕐</span>
-                <span>Last login: Never</span>
+                <span>Last login: {formatLastLogin(user?.lastLoginAt)}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-500">
                 <span className="text-slate-400">◎</span>
                 <span>Status:
-                  <span className="ml-2 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                    Active
+                  <span className={`ml-2 text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    user?.status === "active"    ? "bg-green-100 text-green-700"  :
+                    user?.status === "suspended" ? "bg-red-100 text-red-700"      :
+                    "bg-slate-100 text-slate-600"
+                  }`}>
+                    {user?.status ? user.status.charAt(0).toUpperCase() + user.status.slice(1) : "Active"}
                   </span>
                 </span>
               </div>
             </div>
 
-            {/* ✅ Edit Profile Button — opens drawer */}
             <button
               onClick={() => setDrawerOpen(true)}
               className="mt-5 w-full flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
@@ -77,17 +118,34 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Activity Summary */}
+          {/* Account Info */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h3 className="text-sm font-bold text-slate-700 mb-4">Activity Summary (7 days)</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {ACTIVITY_STATS.map(({ icon, value, label }) => (
-                <div key={label} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="text-lg mb-1">{icon}</div>
-                  <div className="text-2xl font-black text-slate-900">{value}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-medium">{label}</div>
-                </div>
-              ))}
+            <h3 className="text-sm font-bold text-slate-700 mb-4">Account Info</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Member since</span>
+                <span className="text-slate-700 font-medium">
+                  {user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Email verified</span>
+                <span className={`font-semibold ${user?.emailVerification ? "text-green-600" : "text-amber-500"}`}>
+                  {user?.emailVerification ? "Verified" : "Pending"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Notifications</span>
+                <span className="text-slate-700 font-medium">
+                  {[
+                    user?.notificationPreferences?.inApp  && "In-App",
+                    user?.notificationPreferences?.email  && "Email",
+                    user?.notificationPreferences?.push   && "Push",
+                  ].filter(Boolean).join(", ") || "None"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -121,7 +179,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ✅ Edit Profile Drawer */}
+      {/* Edit Profile Drawer */}
       <EditProfileDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}

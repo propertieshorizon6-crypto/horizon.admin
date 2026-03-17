@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560">
+  <defs>
+    <!-- Brand: #2D368E (blue) · #C96C38 (orange) · Font: Myriad Pro -->
+
+    <!-- Running-bond brick pattern anchored to wall top-left (80,300) -->
+    <pattern id="brick" x="80" y="300" width="56" height="22" patternUnits="userSpaceOnUse">
+      <rect width="56" height="22" fill="#7A3510"/>
+      <!-- Row 1 -->
+      <rect x="1" y="1"  width="53" height="9" fill="#C96C38"/>
+      <!-- Row 2 (half-brick offset) -->
+      <rect x="29" y="12" width="53" height="9" fill="#C96C38"/>
+      <rect x="-27" y="12" width="53" height="9" fill="#C96C38"/>
+    </pattern>
+
+    <!--
+      Arc path for "Real Property Merchants"
+      Circle centre (280, 305) · radius 247
+      Clockwise (sweep=1) from (64,185) → top (280,58) → (496,185)
+    -->
+    <path id="topArc" d="M 64,185 A 247,247 0 0,1 496,185" fill="none"/>
+  </defs>
+
+  <!-- Background -->
+  <rect width="560" height="560" fill="#ffffff"/>
+
+  <!-- ── "Real Property Merchants" arched above house ── -->
+  <text
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-style="italic"
+    font-size="33"
+    fill="#2D368E">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      Real Property Merchants
+    </textPath>
+  </text>
+
+  <!-- ── House ── -->
+  <!-- Apex knob -->
+  <circle cx="280" cy="196" r="10" fill="#2D368E"/>
+
+  <!-- Roof — wide triangle -->
+  <polygon points="280,206 46,302 514,302" fill="#2D368E"/>
+
+  <!-- Wall — orange running-bond brick -->
+  <rect x="80" y="300" width="400" height="132" fill="url(#brick)"/>
+
+  <!-- HORIZON — bold white with blue outline -->
+  <text
+    x="280" y="396"
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-weight="bold"
+    font-size="80"
+    letter-spacing="1"
+    text-anchor="middle"
+    fill="#ffffff"
+    stroke="#2D368E"
+    stroke-width="3"
+    paint-order="stroke fill">HORIZON</text>
+
+  <!-- ── "Properties®" below house ── -->
+  <text
+    x="280" y="484"
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-style="italic"
+    font-weight="bold"
+    font-size="50"
+    text-anchor="middle"
+    fill="#2D368E">Properties&#174;</text>
+</svg>

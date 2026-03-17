@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 45 480 470">
+  <defs>
+    <!-- Running-bond brick pattern -->
+    <pattern id="brick" x="80" y="300" width="56" height="22" patternUnits="userSpaceOnUse">
+      <rect width="56" height="22" fill="#7A3510"/>
+      <rect x="1" y="1"  width="53" height="9" fill="#C96C38"/>
+      <rect x="29" y="12" width="53" height="9" fill="#C96C38"/>
+      <rect x="-27" y="12" width="53" height="9" fill="#C96C38"/>
+    </pattern>
+
+    <path id="topArc" d="M 64,185 A 247,247 0 0,1 496,185" fill="none"/>
+  </defs>
+
+  <!-- Transparent background -->
+
+  <!-- "Real Property Merchants" arched — white on dark bg -->
+  <text
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-style="italic"
+    font-size="33"
+    fill="#ffffff"
+    opacity="0.85">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      Real Property Merchants
+    </textPath>
+  </text>
+
+  <!-- House -->
+  <circle cx="280" cy="196" r="10" fill="#ffffff"/>
+  <polygon points="280,206 46,302 514,302" fill="#ffffff"/>
+  <rect x="80" y="300" width="400" height="132" fill="url(#brick)"/>
+
+  <!-- HORIZON — bold orange with white outline for dark bg -->
+  <text
+    x="280" y="396"
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-weight="bold"
+    font-size="80"
+    letter-spacing="1"
+    text-anchor="middle"
+    fill="#ffffff"
+    stroke="#C96C38"
+    stroke-width="3"
+    paint-order="stroke fill">HORIZON</text>
+
+  <!-- "Properties®" — white italic -->
+  <text
+    x="280" y="484"
+    font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
+    font-style="italic"
+    font-weight="bold"
+    font-size="50"
+    text-anchor="middle"
+    fill="#ffffff"
+    opacity="0.9">Properties&#174;</text>
+</svg>

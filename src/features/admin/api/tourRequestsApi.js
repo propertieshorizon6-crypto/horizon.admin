@@ -58,6 +58,7 @@ const mapTour = (tour = {}) => {
     finalSlot,
     agent:        formatName(tour.agent),
     agentId:      tour.agent?._id || tour.agent?.id || null,
+    leadId:       tour.lead?._id || null,
     status:       TOUR_STATUS_LABEL[normalizedStatus] || "Requested",
     sla:          isPending && preferredDateMs && preferredDateMs < Date.now() ? "Overdue" : null,
   };

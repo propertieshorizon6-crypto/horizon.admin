@@ -35,6 +35,13 @@ const UI_TO_API_PRIORITY = {
   Urgent: "urgent",
 };
 
+const UI_TO_API_STATUS = {
+  New:           "new",
+  Assigned:      "contacted",
+  "In Progress": "nurturing",
+  Closed:        "converted",
+};
+
 // ✅ Fixed — no more status-based fallback
 const normalizePriority = (priority) => {
   const mapped = API_TO_UI_PRIORITY[String(priority || "").toLowerCase()];
@@ -83,7 +90,7 @@ export const assignLead = async (leadId, agentId = null) => {
 
 // PATCH /api/v1/leads/:id  { status }
 export const updateLeadStatus = async (leadId, status) => {
-  const apiStatus = status.toLowerCase();
+  const apiStatus = UI_TO_API_STATUS[status] ?? status.toLowerCase();
   const { data } = await apiClient.patch(`/leads/${leadId}`, { status: apiStatus });
   return data?.data?.lead ?? null;
 };
