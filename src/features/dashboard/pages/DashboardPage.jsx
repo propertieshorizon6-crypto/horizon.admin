@@ -10,10 +10,11 @@ import { EMPTY_DASHBOARD_DATA } from "../api/dashboardApi";
 const toList = (value) => (Array.isArray(value) ? value : []);
 
 export default function DashboardPage() {
-  const { data, isLoading } = useDashboardData();
+  const { data, isLoading, isError } = useDashboardData();
   const dashboardData = data || EMPTY_DASHBOARD_DATA;
 
   if (isLoading) return <p>Loading...</p>;
+  if (isError) return <p className="text-red-500 p-4">Failed to load dashboard data. Please refresh the page.</p>;
 
   return (
     <div className="space-y-8">

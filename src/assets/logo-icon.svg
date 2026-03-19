@@ -13,9 +13,6 @@
     </pattern>
   </defs>
 
-  <!-- Background -->
-  <rect width="560" height="430" fill="#ffffff"/>
-
   <!-- ── House ── -->
   <!-- Apex knob -->
   <circle cx="280" cy="24" r="12" fill="#2D368E"/>
@@ -47,5 +44,5 @@
     font-weight="bold"
     font-size="48"
     text-anchor="middle"
-    fill="#2D368E">Properties&#174;</text>
+    fill="#ffffff">Properties&#174;</text>
 </svg>

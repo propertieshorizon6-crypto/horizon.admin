@@ -67,7 +67,8 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch {
       useAuthStore.getState().logout();
-      window.location.href = "/auth";
+      window.dispatchEvent(new CustomEvent("auth:session-expired"));
+      window.location.replace("/auth");
       return Promise.reject(error);
     }
   },

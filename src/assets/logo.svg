@@ -20,15 +20,12 @@
     <path id="topArc" d="M 64,185 A 247,247 0 0,1 496,185" fill="none"/>
   </defs>
 
-  <!-- Background -->
-  <rect width="560" height="560" fill="#ffffff"/>
-
   <!-- ── "Real Property Merchants" arched above house ── -->
   <text
     font-family="'Myriad Pro', Myriad, 'Gill Sans', Calibri, sans-serif"
     font-style="italic"
     font-size="33"
-    fill="#2D368E">
+    fill="#ffffff">
     <textPath href="#topArc" startOffset="50%" text-anchor="middle">
       Real Property Merchants
     </textPath>
@@ -65,5 +62,5 @@
     font-weight="bold"
     font-size="50"
     text-anchor="middle"
-    fill="#2D368E">Properties&#174;</text>
+    fill="#ffffff">Properties&#174;</text>
 </svg>

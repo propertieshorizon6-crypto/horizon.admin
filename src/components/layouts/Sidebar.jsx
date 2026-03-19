@@ -9,7 +9,7 @@ import {
 import { useAuthStore } from "../../store/useAuthStore";
 import useLogout from "../../features/auth/hooks/useLogout";
 import { getInitials }  from "../../utils/formatters";
-import logo             from "../../assets/logo-white.svg";
+import logo             from "../../assets/horizon-logo.png";
 
 const NAV_ITEMS = [
   { label: "Dashboard",      icon: LayoutDashboard, path: "/admin/dashboard",     end: true  },

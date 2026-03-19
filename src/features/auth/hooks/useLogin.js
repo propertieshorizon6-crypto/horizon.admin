@@ -25,6 +25,5 @@ export default function useLogin() {
       navigate("/admin/dashboard", { replace: true });
     },
 
-    onError: () => {},
   });
 }

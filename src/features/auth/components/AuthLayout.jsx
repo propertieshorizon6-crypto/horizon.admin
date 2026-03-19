@@ -1,9 +1,8 @@
 import { motion } from "framer-motion";
 import React from "react";
 
-import logo from "../../../assets/logo-white.svg";
+import logo from "../../../assets/horizon-logo.png";
 const LOGO_SRC = logo;
-
 const BRAND_ORANGE = "#CA5428";
 const BRAND_NAVY   = "#22225E";
 
@@ -51,8 +50,8 @@ export default function AuthLayout({ children }) {
             alt="Horizon Properties"
             style={{ height: 90, width: "auto", userSelect: "none", filter: "brightness(1.08)" }}
             draggable={false}
-          />
-        </motion.div>
+          />  
+                </motion.div>
 
         {/* Hero text */}
         <motion.div

@@ -83,7 +83,7 @@ export default function SignupForm() {
 
       {mutation.isError && (
         <p className="text-red-500 text-sm">
-          {mutation.error.message}
+          {mutation.error?.response?.data?.message || mutation.error?.message || "Signup failed. Please try again."}
         </p>
       )}
 
