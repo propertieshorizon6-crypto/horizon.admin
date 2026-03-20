@@ -14,8 +14,6 @@ export default function useLogout() {
       return logoutAdmin({ accessToken, refreshToken });
     },
 
-    onError: () => {},
-
     onSettled: async () => {
       clearAuthState();
       await queryClient.cancelQueries();

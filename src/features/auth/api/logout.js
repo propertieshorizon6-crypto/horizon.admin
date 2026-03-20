@@ -1,12 +1,10 @@
 import axios from "axios";
 import apiClient from "../../../services/apiClient";
 
-const FALLBACK_BASE_URL = "http://localhost:8080/api/v1";
-
 const getApiBaseUrl = () =>
   apiClient.defaults.baseURL ||
   import.meta.env.VITE_API_BASE_URL ||
-  FALLBACK_BASE_URL;
+  "http://localhost:5000/api/v1";
 
 const toLogoutError = (error, fallbackMessage) => {
   const message =
