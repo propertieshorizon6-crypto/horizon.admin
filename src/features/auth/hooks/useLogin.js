@@ -11,7 +11,7 @@ export default function useLogin() {
   return useMutation({
     mutationFn: loginAdmin,
 
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const authData = data?.data || {};
 
       // Store user + token in Zustand
@@ -21,7 +21,11 @@ export default function useLogin() {
         refreshToken: authData.refreshToken,
       });
 
-      // Admin dashboard pe redirect
+      // If "Remember me" is unchecked, remove persisted auth so session clears on browser close
+      if (!variables.rememberMe) {
+        localStorage.removeItem("horizon-auth-store");
+      }
+
       navigate("/admin/dashboard", { replace: true });
     },
 

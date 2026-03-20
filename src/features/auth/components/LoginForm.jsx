@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import useLogin from "../hooks/useLogin";
 
@@ -6,12 +7,13 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const loginMutation = useLogin();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({ email, password, rememberMe });
   };
 
   return (
@@ -34,9 +36,9 @@ export default function LoginForm() {
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
           <label className="text-sm font-medium text-[#0F172A]">Password</label>
-          <button type="button" className="text-xs text-[#1A2744] hover:underline">
+          <Link to="/auth/forgot-password" className="text-xs text-[#1A2744] hover:underline">
             Forgot password?
-          </button>
+          </Link>
         </div>
 
         <div className="relative">
@@ -63,6 +65,8 @@ export default function LoginForm() {
         <input
           type="checkbox"
           id="remember"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
           className="w-4 h-4 rounded border-[#E2E8F0] accent-[#1A2744]"
         />
         <label htmlFor="remember" className="text-sm text-[#64748B]">

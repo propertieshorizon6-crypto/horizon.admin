@@ -2,7 +2,11 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Building2 } from "lucide-react";
 
-export default function AuthCard({ children }) {
+export default function AuthCard({
+  children,
+  title = "Welcome Back",
+  subtitle = "Sign in to access the admin portal",
+}) {
   return (
     <motion.div
       className="w-full max-w-[448px] rounded-2xl bg-white shadow-[0_24px_40px_-8px_rgba(0,0,0,0.12)] overflow-hidden"
@@ -36,10 +40,10 @@ export default function AuthCard({ children }) {
           transition={{ duration: 0.5, delay: 0.15 }}
         >
           <h3 className="text-2xl font-bold text-[#0F172A] mb-1 tracking-tight">
-            Welcome Back
+            {title}
           </h3>
           <p className="text-sm text-[#64748B]">
-            Sign in to access the admin portal
+            {subtitle}
           </p>
         </motion.div>
 
