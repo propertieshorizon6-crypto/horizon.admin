@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Eye, EyeOff, CheckCircle2, AlertTriangle } from "lucide-react";
 import useResetPassword from "../hooks/useResetPassword";
 
 export default function ResetPasswordForm() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const { token } = useParams();
   const navigate = useNavigate();
 
   const [newPassword, setNewPassword] = useState("");

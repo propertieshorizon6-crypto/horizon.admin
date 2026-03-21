@@ -5,6 +5,7 @@ import Homepage          from "../features/home/pages/Homepage";
 import AuthPage             from "../features/auth/pages/AuthPage";
 import ForgotPasswordPage  from "../features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage   from "../features/auth/pages/ResetPasswordPage";
+import VerifyEmailPage     from "../features/auth/pages/VerifyEmailPage";
 import ProtectedRoute    from "../components/ProtectedRoute";
 import DashboardLayout   from "../components/layouts/DashboardLayout";
 import DashboardPage     from "../features/dashboard/pages/DashboardPage";
@@ -21,8 +22,9 @@ import SettingsPage      from "../features/settings/pages/SettingsPage"; // ← 
 export const router = createBrowserRouter([
   { path: "/",     element: <Homepage /> },
   { path: "/auth",                  element: <AuthPage /> },
-  { path: "/auth/forgot-password", element: <ForgotPasswordPage /> },
-  { path: "/auth/reset-password",  element: <ResetPasswordPage /> },
+  { path: "/auth/forgot-password",    element: <ForgotPasswordPage /> },
+  { path: "/reset-password/:token",  element: <ResetPasswordPage /> },
+  { path: "/verify/:token",          element: <VerifyEmailPage /> },
 
   {
     path: "/admin",
