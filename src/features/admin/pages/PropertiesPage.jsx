@@ -8,7 +8,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, ChevronDown, Plus, MoreHorizontal } from "lucide-react";
+import { Search, ChevronDown, Plus } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
@@ -137,7 +137,7 @@ function ComplianceBadge({ value }) {
 }
 
 
-const TABS = ["All", "Draft", "Active", "Archived"];
+const TABS = ["All", "Draft", "Active"];
 const columnHelper = createColumnHelper();
 
 export default function PropertiesPage() {
@@ -313,32 +313,6 @@ export default function PropertiesPage() {
       columnHelper.accessor("compliance", {
         header: "Compliance",
         cell: (info) => <ComplianceBadge value={info.getValue()} />,
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: "",
-        cell: ({ row }) => (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedProperty(row.original);
-            }}
-            style={{
-              padding: "6px 8px",
-              borderRadius: 8,
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: "#94a3b8",
-              display: "flex",
-              alignItems: "center",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            <MoreHorizontal size={16} />
-          </button>
-        ),
       }),
     ],
     [],
