@@ -124,3 +124,8 @@ export const fetchAuditLogStats = async (params = {}) => {
   return data?.data ?? null;
 };
 
+export const fetchAuditLogById = async (id) => {
+  const { data } = await apiClient.get(`/admin/audit-logs/${id}`);
+  return data?.data ?? null;
+};
+

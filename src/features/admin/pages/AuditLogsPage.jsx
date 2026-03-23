@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Calendar, ChevronDown, Eye, Search } from "lucide-react";
 import useAuditLogs from "../hooks/useAuditLogs";
+import AuditLogDetailPanel from "../components/AuditLogDetailPanel";
 
 const ACTION_KEYS = [
   "lead_created",
@@ -171,6 +172,7 @@ export default function AuditLogsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState(null);
 
   const queryParams = useMemo(() => {
     const params = { page: 1, limit: 200 };
@@ -607,6 +609,7 @@ export default function AuditLogsPage() {
                   <td style={{ padding: "16px 20px" }}>
                     <button
                       type="button"
+                      onClick={() => setSelectedLogId(log.id)}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -637,6 +640,11 @@ export default function AuditLogsPage() {
           </tbody>
         </table>
       </div>
+
+      <AuditLogDetailPanel
+        id={selectedLogId}
+        onClose={() => setSelectedLogId(null)}
+      />
     </div>
   );
 }

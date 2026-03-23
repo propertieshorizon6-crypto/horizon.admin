@@ -163,12 +163,6 @@ export const markAllNotificationsAsRead = async () => {
   return true;
 };
 
-export const createTestNotification = async (payload = {}) => {
-  const { data } = await apiClient.post("/notifications/test", payload);
-  const n = data?.data?.notification ?? null;
-  return n ? mapNotification(n) : null;
-};
-
 export const fetchNotificationRules = async (params = {}) => {
   const query = { ...params };
   if (typeof query.isActive === "boolean") query.isActive = query.isActive ? "true" : "false";

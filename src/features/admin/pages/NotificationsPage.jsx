@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Plus, RefreshCw, Search, Trash2, AlertTriangle, X, CheckCircle, AlertCircle } from "lucide-react";
 import {
-  createTestNotification,
   deleteNotificationRule,
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -180,12 +179,6 @@ export default function NotificationsPage() {
     onError: (e) => showToast("error", getErrorMessage(e, "Unable to resend")),
   });
 
-  const testNotifMutation = useMutation({
-    mutationFn: createTestNotification,
-    onSuccess: () => { invalidateNotifs(); showToast("success", "Test notification created"); },
-    onError: (e) => showToast("error", getErrorMessage(e, "Unable to create test notification")),
-  });
-
   // ── Filtered ──────────────────────────────────────────────────────────────
   const typeOptions = useMemo(
     () => [...new Set(notifications.map((n) => n.type).filter(Boolean))].sort(),
@@ -233,11 +226,6 @@ export default function NotificationsPage() {
           <h1 style={{ margin:0, fontSize:22, color:"#0f172a" }}>Notifications</h1>
           <p style={{ margin:"4px 0 0", fontSize:12, color:"#64748b" }}>Manage your notifications and delivery settings</p>
         </div>
-        <button type="button" onClick={() => testNotifMutation.mutate({ title:"Manual Test", message:`Created at ${new Date().toLocaleString()}`, type:"system_alert", priority:"normal" })}
-          disabled={testNotifMutation.isPending}
-          style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#334155", borderRadius:8, padding:"8px 12px", fontSize:13, cursor:testNotifMutation.isPending?"not-allowed":"pointer", opacity:testNotifMutation.isPending?0.65:1 }}>
-          {testNotifMutation.isPending ? "Creating..." : "Simulate Contact Initiated"}
-        </button>
       </div>
 
       {/* Tabs */}
