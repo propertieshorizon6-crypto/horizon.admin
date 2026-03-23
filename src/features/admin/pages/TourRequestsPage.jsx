@@ -287,15 +287,7 @@ export default function TourRequestsPage() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Tour Requests</h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Manage property viewing requests and schedules</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "#64748b" }}>
-          <span>Demo Role:</span>
-          <div style={{ position: "relative" }}>
-            <select style={{ appearance: "none", paddingLeft: 9, paddingRight: 24, paddingTop: 5, paddingBottom: 5, border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 600, color: "#1e293b", background: "#fff", cursor: "pointer", outline: "none" }}>
-              <option>Admin</option><option>Agent</option>
-            </select>
-            <ChevronDown size={11} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
-          </div>
-        </div>
+        
       </div>
 
       {/* Stats */}
