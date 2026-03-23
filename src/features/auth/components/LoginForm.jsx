@@ -85,9 +85,11 @@ export default function LoginForm() {
 
       {/* Error */}
       {loginMutation.isError && (
-        <p className="text-red-500 text-sm text-center">
-          {loginMutation.error?.response?.data?.message || "Login failed"}
-        </p>
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+          {loginMutation.error?.response?.data?.error?.message ||
+            loginMutation.error?.message ||
+            "Login failed. Please try again."}
+        </div>
       )}
     </form>
   );
