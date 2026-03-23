@@ -11,7 +11,7 @@ import {
 import { Search, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
 
 import useLeads            from "../hooks/useLeads";
-import { updateLeadPriority, assignLead, updateLeadStatus } from "../api/leadsApi";
+import { updateLeadPriority, assignLead, updateLeadStatus, archiveLead, unarchiveLead } from "../api/leadsApi";
 import {
   fetchUsers,
   MOCK_MODE as USERS_MOCK_MODE,
@@ -56,6 +56,26 @@ export default function LeadsPage() {
     mutationFn: ({ leadId, status }) => updateLeadStatus(leadId, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
   });
+
+  // ── Archive / Unarchive mutations ───────────────────────────────────────────
+  const archiveMutation = useMutation({
+    mutationFn: ({ leadId, isArchived }) =>
+      isArchived ? unarchiveLead(leadId) : archiveLead(leadId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const unarchiveMoveMutation = useMutation({
+    mutationFn: async ({ leadId, targetStatus }) => {
+      await unarchiveLead(leadId);
+      await updateLeadStatus(leadId, targetStatus);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const handleArchive = (lead) => {
+    if (!lead?.id) return;
+    archiveMutation.mutate({ leadId: lead.id, isArchived: lead.status === "Archived" });
+  };
 
   // ── Assign Agent state ─────────────────────────────────────────────────────
   const [assigningLead,    setAssigningLead]    = useState(null);
@@ -156,7 +176,7 @@ export default function LeadsPage() {
     const previousLeads = queryClient.getQueryData(["leads"]);
     const previousSelectedLead = selectedLead;
 
-    queryClient.setQueryData(["leads"], (prev) => {
+    queryClient.setQueryData(["leads", "all"], (prev) => {
       if (!Array.isArray(prev)) return prev;
       return prev.map((lead) => (
         isSameLead(lead, targetLead) ? { ...lead, priority: newPriority } : lead
@@ -284,6 +304,7 @@ export default function LeadsPage() {
           onViewDetails={setSelectedLead}
           onChangePriority={setPriorityLead}
           onAssignAgent={openAssignModal}
+          onArchive={handleArchive}
         />
       ),
     }),
@@ -461,7 +482,14 @@ export default function LeadsPage() {
               if (!over || active.id === over.id) return;
               const lead = leads.find((l) => l.id === active.id);
               if (!lead || lead.status === over.id) return;
-              updateStatusMutation.mutate({ leadId: active.id, status: over.id });
+
+              if (over.id === "Archived") {
+                archiveMutation.mutate({ leadId: active.id, isArchived: false });
+              } else if (lead.status === "Archived") {
+                unarchiveMoveMutation.mutate({ leadId: active.id, targetStatus: over.id });
+              } else {
+                updateStatusMutation.mutate({ leadId: active.id, status: over.id });
+              }
             }}
             onDragCancel={() => setActiveLead(null)}
           >

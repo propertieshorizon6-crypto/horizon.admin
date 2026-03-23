@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { MoreHorizontal, UserPlus } from "lucide-react";
 
 const MENU_WIDTH = 176;
-const MENU_HEIGHT = 178;
+const MENU_HEIGHT = 218;
 const MENU_GAP = 6;
 const VIEWPORT_PADDING = 8;
 
@@ -22,7 +22,7 @@ const getMenuPosition = (buttonEl) => {
   return { top, left };
 };
 
-export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority, onAssignAgent }) {
+export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority, onAssignAgent, onArchive }) {
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const buttonRef = useRef(null);
@@ -122,6 +122,24 @@ export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority,
       >
         <UserPlus size={15} color="#64748b" />
         {lead?.assignedAgentId ? "Reassign Agent" : "Assign Agent"}
+      </button>
+
+      <button
+        onClick={handleAction(onArchive)}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: lead?.status === "Archived" ? "#0369a1" : "#64748b", textAlign: "left" }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        {lead?.status === "Archived" ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+          </svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        )}
+        {lead?.status === "Archived" ? "Unarchive" : "Archive"}
       </button>
     </div>
   ) : null;

@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ChangePriorityModal from "./ChangePriorityModal";
 import { PRIORITY_STYLE, STATUS_STYLE, STATUSES } from "../constants/leadsConfig";
 import { timeAgo } from "../../../utils/timeAgo";
-import { updateLeadPriority, updateLeadStatus, addLeadNote, fetchLeadNotes } from "../api/leadsApi";
+import { updateLeadPriority, updateLeadStatus, addLeadNote, fetchLeadNotes, archiveLead, unarchiveLead } from "../api/leadsApi";
 
 function Toast({ toast }) {
   if (!toast) return null;
@@ -48,6 +48,17 @@ export default function LeadDetailView({ lead: initialLead, onBack }) {
       showToast("success", `Status changed to ${newStatus}`);
     },
     onError: (err) => showToast("error", err?.response?.data?.message || "Could not update status"),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: () => lead.status === "Archived" ? unarchiveLead(lead.id) : archiveLead(lead.id),
+    onSuccess: () => {
+      const nowArchived = lead.status !== "Archived";
+      setLead((p) => ({ ...p, status: nowArchived ? "Archived" : "New" }));
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      showToast("success", nowArchived ? "Lead archived" : "Lead unarchived");
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not update archive status"),
   });
 
   const handlePrioritySave = (newPriority) => {
@@ -98,7 +109,9 @@ export default function LeadDetailView({ lead: initialLead, onBack }) {
           <QuickActionsCard lead={lead} priStyle={priStyle}
             onStatusChange={(s) => { if (s !== lead.status) statusMutation.mutate(s); }}
             onPriorityClick={() => setShowPriorityModal(true)}
-            isStatusLoading={statusMutation.isPending} />
+            isStatusLoading={statusMutation.isPending}
+            onArchiveClick={() => archiveMutation.mutate()}
+            isArchiveLoading={archiveMutation.isPending} />
           <AssignedAgentCard lead={lead} />
           <TimelineCard lead={lead} />
         </div>
@@ -262,7 +275,8 @@ function ActivityTab({ lead }) {
   );
 }
 
-function QuickActionsCard({ lead, priStyle, onStatusChange, onPriorityClick, isStatusLoading }) {
+function QuickActionsCard({ lead, priStyle, onStatusChange, onPriorityClick, isStatusLoading, onArchiveClick, isArchiveLoading }) {
+  const isArchived = lead.status === "Archived";
   return (
     <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
       <p style={{ margin:"0 0 14px", fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:6 }}>
@@ -270,19 +284,32 @@ function QuickActionsCard({ lead, priStyle, onStatusChange, onPriorityClick, isS
         Quick Actions
       </p>
       <div style={{ position:"relative", marginBottom:10 }}>
-        <select value={lead.status} onChange={(e) => onStatusChange(e.target.value)} disabled={isStatusLoading}
-          style={{ width:"100%", padding:"10px 36px 10px 14px", border:"1px solid #e2e8f0", borderRadius:9, fontSize:13, color:"#374151", background:"#fff", cursor:isStatusLoading?"not-allowed":"pointer", outline:"none", appearance:"none", opacity:isStatusLoading?0.7:1 }}>
-          {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        <select value={lead.status} onChange={(e) => onStatusChange(e.target.value)} disabled={isStatusLoading || isArchived}
+          style={{ width:"100%", padding:"10px 36px 10px 14px", border:"1px solid #e2e8f0", borderRadius:9, fontSize:13, color:"#374151", background:"#fff", cursor:(isStatusLoading||isArchived)?"not-allowed":"pointer", outline:"none", appearance:"none", opacity:(isStatusLoading||isArchived)?0.5:1 }}>
+          {STATUSES.filter((s) => s !== "Archived").map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <ChevronDown size={14} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", color:"#94a3b8", pointerEvents:"none" }} />
       </div>
       <button onClick={onPriorityClick}
-        style={{ width:"100%", padding:"10px 14px", border:`1px solid ${priStyle.border}`, borderRadius:9, fontSize:13, fontWeight:600, color:priStyle.color, background:priStyle.bg, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        style={{ width:"100%", padding:"10px 14px", border:`1px solid ${priStyle.border}`, borderRadius:9, fontSize:13, fontWeight:600, color:priStyle.color, background:priStyle.bg, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
         <span style={{ display:"flex", alignItems:"center", gap:6 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" strokeWidth="2"/></svg>
           {lead.priority}
         </span>
         <ChevronDown size={14} />
+      </button>
+      <button onClick={onArchiveClick} disabled={isArchiveLoading}
+        style={{ width:"100%", padding:"10px 14px", border:`1px solid ${isArchived?"#bae6fd":"#e2e8f0"}`, borderRadius:9, fontSize:13, fontWeight:600, color:isArchived?"#0369a1":"#64748b", background:isArchived?"#f0f9ff":"#f8fafc", cursor:isArchiveLoading?"not-allowed":"pointer", display:"flex", alignItems:"center", gap:8, opacity:isArchiveLoading?0.6:1 }}>
+        {isArchived ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        )}
+        {isArchiveLoading ? "Saving..." : isArchived ? "Unarchive Lead" : "Archive Lead"}
       </button>
     </div>
   );

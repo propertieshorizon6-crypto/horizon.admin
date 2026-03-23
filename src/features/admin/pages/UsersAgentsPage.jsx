@@ -142,6 +142,9 @@ function Modal({ title, onClose, children }) {
               background: "#fff",
               color: "#64748b",
               cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             <X size={14} />

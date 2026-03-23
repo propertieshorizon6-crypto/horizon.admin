@@ -98,7 +98,7 @@ export default function Sidebar() {
           </div>
           <div>
             <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>
-              {user?.name ?? "Akash"}
+              {user?.name ?? "User"}
             </div>
             <span style={{
               display: "inline-block", background: "#22c55e", color: "#fff",

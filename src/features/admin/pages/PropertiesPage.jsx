@@ -147,7 +147,6 @@ export default function PropertiesPage() {
   const [activeTab, setActiveTab] = useState("All");
   const [globalFilter, setGlobalFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [agentFilter, setAgentFilter] = useState("");
   const [compFilter, setCompFilter] = useState("");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showAddPage, setShowAddPage] = useState(false);
@@ -173,13 +172,6 @@ export default function PropertiesPage() {
     [properties],
   );
 
-  const assignedAgentOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(properties.map((property) => property.assignedTo).filter(Boolean)),
-      ).sort((a, b) => a.localeCompare(b)),
-    [properties],
-  );
 
   const filteredData = useMemo(() => {
     let data = properties;
@@ -192,11 +184,6 @@ export default function PropertiesPage() {
       data = data.filter((property) => property.type === typeFilter);
     }
 
-    if (agentFilter === "Unassigned") {
-      data = data.filter((property) => !property.assignedAgentId);
-    } else if (agentFilter) {
-      data = data.filter((property) => property.assignedTo === agentFilter);
-    }
 
     if (compFilter === "Compliant") {
       data = data.filter((property) => property.compliance === "Compliant");
@@ -218,7 +205,6 @@ export default function PropertiesPage() {
     properties,
     activeTab,
     typeFilter,
-    agentFilter,
     compFilter,
     globalFilter,
   ]);
@@ -327,19 +313,6 @@ export default function PropertiesPage() {
       columnHelper.accessor("compliance", {
         header: "Compliance",
         cell: (info) => <ComplianceBadge value={info.getValue()} />,
-      }),
-      columnHelper.accessor("assignedTo", {
-        header: "Assigned To",
-        cell: (info) => {
-          const assignedTo = info.getValue();
-          return assignedTo ? (
-            <span style={{ fontSize: 13, color: "#374151" }}>{assignedTo}</span>
-          ) : (
-            <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>
-              Unassigned
-            </span>
-          );
-        },
       }),
       columnHelper.display({
         id: "actions",
@@ -504,12 +477,6 @@ export default function PropertiesPage() {
             setValue: setTypeFilter,
             label: "Type",
             options: typeOptions,
-          },
-          {
-            value: agentFilter,
-            setValue: setAgentFilter,
-            label: "Assigned Agent",
-            options: [...assignedAgentOptions, "Unassigned"],
           },
           {
             value: compFilter,

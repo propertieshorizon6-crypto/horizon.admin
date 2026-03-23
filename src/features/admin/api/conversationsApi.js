@@ -97,6 +97,12 @@ export const archiveConversation = async (conversationId) => {
   return data;
 };
 
+// PATCH /api/v1/conversations/:id/unarchive
+export const unarchiveConversation = async (conversationId) => {
+  const { data } = await apiClient.patch(`/conversations/${conversationId}/unarchive`);
+  return data;
+};
+
 // PATCH /api/v1/conversations/:id/read
 export const markConversationRead = async (conversationId) => {
   const { data } = await apiClient.patch(`/conversations/${conversationId}/read`);

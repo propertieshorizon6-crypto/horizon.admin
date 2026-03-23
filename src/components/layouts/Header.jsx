@@ -73,14 +73,14 @@ export default function Header() {
         >
           <div className="text-right">
             <p className="text-sm font-bold text-slate-800 leading-tight">
-              {user?.name ?? "Akash"}
+              {user?.name ?? "User"}
             </p>
             <p className="text-xs text-slate-400 capitalize leading-tight">
               {user?.role ?? "Agent"}
             </p>
           </div>
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {getInitials(user?.name ?? "Akash")}
+            {getInitials(user?.name ?? "User")}
           </div>
         </button>
 

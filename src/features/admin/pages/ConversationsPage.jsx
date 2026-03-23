@@ -1,6 +1,6 @@
 // 📁 src/features/admin/pages/ConversationsPage.jsx
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MessageSquare, Search, Send, X, ChevronDown,
@@ -14,6 +14,7 @@ import {
   closeThread,
   closeConversation,
   archiveConversation,
+  unarchiveConversation,
 } from "../api/conversationsApi";
 import { useAuthStore } from "../../../store/useAuthStore";
 
@@ -185,6 +186,13 @@ export default function ConversationsPage() {
     );
   }, [conversations, search]);
 
+  const sortedConvs = useMemo(() => {
+    if (statusFilter !== "") return filteredConvs;
+    const archived = filteredConvs.filter((c) => c.status === "archived");
+    const others   = filteredConvs.filter((c) => c.status !== "archived");
+    return [...archived, ...others];
+  }, [filteredConvs, statusFilter]);
+
   const selectedConv   = conversations.find((c) => c.id === selectedConvId);
   const selectedThread = threads.find((t)  => t.id === selectedThreadId);
 
@@ -231,6 +239,16 @@ export default function ConversationsPage() {
     onError: (err) => showToast("error", err?.response?.data?.message || "Could not archive conversation"),
   });
 
+  // ── Unarchive conversation ───────────────────────────────────────────────
+  const unarchiveMutation = useMutation({
+    mutationFn: () => unarchiveConversation(selectedConvId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      showToast("success", "Conversation unarchived");
+    },
+    onError: (err) => showToast("error", err?.response?.data?.message || "Could not unarchive conversation"),
+  });
+
   const handleSend = () => {
     if (!replyText.trim() || !selectedConvId || !selectedThreadId) return;
     if (selectedThread?.status === "closed") {
@@ -263,9 +281,10 @@ export default function ConversationsPage() {
           {/* Stats */}
           <div style={{ display: "flex", gap: 8 }}>
             {[
-              { label: `Total: ${stats.total}`,    bg: "#f1f5f9", color: "#475569" },
-              { label: `Active: ${stats.active}`,  bg: "#dcfce7", color: "#15803d" },
-              { label: `Closed: ${stats.closed}`,  bg: "#f1f5f9", color: "#64748b" },
+              { label: `Total: ${stats.total}`,       bg: "#f1f5f9", color: "#475569" },
+              { label: `Active: ${stats.active}`,     bg: "#dcfce7", color: "#15803d" },
+              { label: `Closed: ${stats.closed}`,     bg: "#f1f5f9", color: "#64748b" },
+              { label: `Archived: ${stats.archived}`, bg: "#fef9c3", color: "#a16207" },
             ].map(({ label, bg, color }) => (
               <span key={label} style={{ fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 99, background: bg, color }}>{label}</span>
             ))}
@@ -307,30 +326,32 @@ export default function ConversationsPage() {
                   <div style={{ height: 10, background: "#f1f5f9", borderRadius: 6, width: "80%" }} />
                 </div>
               ))
-            ) : filteredConvs.length === 0 ? (
+            ) : sortedConvs.length === 0 ? (
               <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 12 }}>No conversations found</div>
             ) : (
-              filteredConvs.map((conv) => {
+              sortedConvs.map((conv) => {
                 const active = selectedConvId === conv.id;
                 return (
-                  <div key={conv.id} onClick={() => setSelectedConvId(conv.id)}
-                    style={{ padding: "12px 14px", borderBottom: "1px solid #f8fafc", background: active ? "#f0f9ff" : "#fff", cursor: "pointer", borderLeft: `3px solid ${active ? NAVY : "transparent"}`, transition: "all 0.1s" }}
-                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f8fafc"; }}
-                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "#fff"; }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Avatar name={conv.clientName} size={36} bg={active ? NAVY : "#e2e8f0"} color={active ? "#fff" : "#475569"} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientName}</span>
-                          <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0, marginLeft: 4 }}>{conv.time}</span>
+                  <React.Fragment key={conv.id}>
+                    <div onClick={() => setSelectedConvId(conv.id)}
+                      style={{ padding: "12px 14px", borderBottom: "1px solid #f8fafc", background: active ? "#f0f9ff" : "#fff", cursor: "pointer", borderLeft: `3px solid ${active ? NAVY : "transparent"}`, transition: "all 0.1s" }}
+                      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f8fafc"; }}
+                      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "#fff"; }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <Avatar name={conv.clientName} size={36} bg={active ? NAVY : "#e2e8f0"} color={active ? "#fff" : "#475569"} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientName}</span>
+                            <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0, marginLeft: 4 }}>{conv.time}</span>
+                          </div>
+                          {conv.clientEmail && (
+                            <p style={{ margin: "2px 0 4px", fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientEmail}</p>
+                          )}
+                          <StatusBadge status={conv.status} />
                         </div>
-                        {conv.clientEmail && (
-                          <p style={{ margin: "2px 0 4px", fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientEmail}</p>
-                        )}
-                        <StatusBadge status={conv.status} />
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })
             )}
@@ -366,6 +387,13 @@ export default function ConversationsPage() {
                         <Archive size={12} /> Archive
                       </button>
                     </>
+                  )}
+                  {selectedConv.status === "archived" && (
+                    <button type="button" onClick={() => unarchiveMutation.mutate()} disabled={unarchiveMutation.isPending}
+                      title="Unarchive conversation"
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                      <Archive size={12} /> Unarchive
+                    </button>
                   )}
                 </div>
               </div>

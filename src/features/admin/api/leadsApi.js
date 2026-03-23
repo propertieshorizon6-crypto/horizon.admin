@@ -101,6 +101,18 @@ export const addLeadNote = async (leadId, content) => {
   return data?.data?.note ?? null;
 };
 
+// PATCH /api/v1/leads/:id/archive
+export const archiveLead = async (leadId) => {
+  const { data } = await apiClient.patch(`/leads/${leadId}/archive`);
+  return data?.data?.lead ?? null;
+};
+
+// PATCH /api/v1/leads/:id/unarchive
+export const unarchiveLead = async (leadId) => {
+  const { data } = await apiClient.patch(`/leads/${leadId}/unarchive`);
+  return data?.data?.lead ?? null;
+};
+
 // GET /api/v1/leads/:id/notes
 export const fetchLeadNotes = async (leadId, params = {}) => {
   if (!leadId) return { notes: [] };
