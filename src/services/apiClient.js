@@ -28,8 +28,11 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Never retry refresh endpoint itself
-    if (originalRequest.url?.includes("/auth/refresh")) {
+    // Never retry auth endpoints (login/refresh) — pass errors through directly
+    if (
+      originalRequest.url?.includes("/auth/refresh") ||
+      originalRequest.url?.includes("/auth/login")
+    ) {
       return Promise.reject(error);
     }
 
