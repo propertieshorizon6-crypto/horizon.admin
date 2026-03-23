@@ -40,16 +40,6 @@ export default function useLogin() {
         refreshToken: authData.refreshToken,
       });
 
-      // If "Remember me" is unchecked, move auth to sessionStorage so it
-      // survives page reloads but clears when the browser tab/window closes.
-      if (!variables.rememberMe) {
-        const stored = localStorage.getItem("horizon-auth-store");
-        if (stored) {
-          sessionStorage.setItem("horizon-auth-store", stored);
-          localStorage.removeItem("horizon-auth-store");
-        }
-      }
-
       navigate("/admin/dashboard", { replace: true });
     },
 

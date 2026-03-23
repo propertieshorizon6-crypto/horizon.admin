@@ -7,7 +7,6 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
 
   const loginMutation = useLogin();
@@ -42,7 +41,7 @@ export default function LoginForm() {
       setFieldErrors(errors);
       return;
     }
-    loginMutation.mutate({ email, password, rememberMe });
+    loginMutation.mutate({ email, password });
   };
 
   return (
@@ -107,20 +106,6 @@ export default function LoginForm() {
         {fieldErrors.password && (
           <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
         )}
-      </div>
-
-      {/* Remember Me */}
-      <div className="flex items-center gap-2.5">
-        <input
-          type="checkbox"
-          id="remember"
-          checked={rememberMe}
-          onChange={(e) => setRememberMe(e.target.checked)}
-          className="w-4 h-4 rounded border-[#E2E8F0] accent-[#1A2744]"
-        />
-        <label htmlFor="remember" className="text-sm text-[#64748B]">
-          Remember me
-        </label>
       </div>
 
       {/* Server Error */}
