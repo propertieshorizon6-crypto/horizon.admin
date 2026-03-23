@@ -115,7 +115,7 @@ const mapLiveAlerts = (alerts={}) => {
     property:t?.property?.title||"Property", person:t?.name||"Unknown",
     time:formatRelativeTime(t?.preferredDate),
     timestamp:new Date(t?.preferredDate||Date.now()).getTime(),
-    linkTo:"/dashboard/tour-requests",
+    linkTo:"/admin/tour-requests",
   }));
 
   toArray(alerts?.overdueTours).forEach((t,i) => items.push({
@@ -123,7 +123,7 @@ const mapLiveAlerts = (alerts={}) => {
     property:t?.property?.title||"Property", person:t?.name||"Unknown",
     time:formatRelativeTime(t?.preferredDate),
     timestamp:new Date(t?.preferredDate||Date.now()).getTime(),
-    linkTo:"/dashboard/tour-requests",
+    linkTo:"/admin/tour-requests",
   }));
 
   toArray(alerts?.unansweredEnquiries).forEach((e,i) => items.push({
@@ -131,7 +131,7 @@ const mapLiveAlerts = (alerts={}) => {
     property:e?.property?.title||"Property", person:e?.name||e?.email||"Unknown",
     time:formatRelativeTime(e?.createdAt),
     timestamp:new Date(e?.createdAt||Date.now()).getTime(),
-    linkTo:"/dashboard/inquiries",
+    linkTo:"/admin/inquiries",
   }));
 
   toArray(alerts?.pendingApprovalProperties).forEach((p,i) => items.push({
@@ -139,7 +139,7 @@ const mapLiveAlerts = (alerts={}) => {
     property:p?.title||"Property", person:formatPersonName(p?.owner),
     time:formatRelativeTime(p?.createdAt),
     timestamp:new Date(p?.createdAt||Date.now()).getTime(),
-    linkTo:"/dashboard/listings",
+    linkTo:"/admin/listings",
   }));
 
   return items.sort((a,b)=>b.timestamp-a.timestamp).slice(0,8).map(({timestamp,...rest})=>rest);

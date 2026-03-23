@@ -27,6 +27,59 @@ const columnHelper = createColumnHelper();
 const ALLOWED_ROLES = new Set(["Agent", "Manager", "Admin"]);
 const ROLE_OPTIONS = ["Agent", "Manager", "Admin"];
 const STATUS_OPTIONS = ["Active", "Inactive", "Suspended"];
+
+const DIAL_CODES = [
+  { name: "Zambia",                       code: "ZM", dial: "+260" },
+  { name: "Zimbabwe",                     code: "ZW", dial: "+263" },
+  { name: "South Africa",                 code: "ZA", dial: "+27"  },
+  { name: "Nigeria",                      code: "NG", dial: "+234" },
+  { name: "Kenya",                        code: "KE", dial: "+254" },
+  { name: "Tanzania",                     code: "TZ", dial: "+255" },
+  { name: "Uganda",                       code: "UG", dial: "+256" },
+  { name: "Ghana",                        code: "GH", dial: "+233" },
+  { name: "Ethiopia",                     code: "ET", dial: "+251" },
+  { name: "Egypt",                        code: "EG", dial: "+20"  },
+  { name: "Morocco",                      code: "MA", dial: "+212" },
+  { name: "Tunisia",                      code: "TN", dial: "+216" },
+  { name: "Algeria",                      code: "DZ", dial: "+213" },
+  { name: "Botswana",                     code: "BW", dial: "+267" },
+  { name: "Namibia",                      code: "NA", dial: "+264" },
+  { name: "Malawi",                       code: "MW", dial: "+265" },
+  { name: "Mozambique",                   code: "MZ", dial: "+258" },
+  { name: "Rwanda",                       code: "RW", dial: "+250" },
+  { name: "Senegal",                      code: "SN", dial: "+221" },
+  { name: "Ivory Coast",                  code: "CI", dial: "+225" },
+  { name: "Cameroon",                     code: "CM", dial: "+237" },
+  { name: "Angola",                       code: "AO", dial: "+244" },
+  { name: "Dem. Rep. of Congo",           code: "CD", dial: "+243" },
+  { name: "United States",                code: "US", dial: "+1"   },
+  { name: "Canada",                       code: "CA", dial: "+1"   },
+  { name: "United Kingdom",               code: "GB", dial: "+44"  },
+  { name: "Germany",                      code: "DE", dial: "+49"  },
+  { name: "France",                       code: "FR", dial: "+33"  },
+  { name: "Italy",                        code: "IT", dial: "+39"  },
+  { name: "Spain",                        code: "ES", dial: "+34"  },
+  { name: "Netherlands",                  code: "NL", dial: "+31"  },
+  { name: "Australia",                    code: "AU", dial: "+61"  },
+  { name: "India",                        code: "IN", dial: "+91"  },
+  { name: "China",                        code: "CN", dial: "+86"  },
+  { name: "United Arab Emirates",         code: "AE", dial: "+971" },
+  { name: "Saudi Arabia",                 code: "SA", dial: "+966" },
+  { name: "Pakistan",                     code: "PK", dial: "+92"  },
+  { name: "Brazil",                       code: "BR", dial: "+55"  },
+  { name: "Turkey",                       code: "TR", dial: "+90"  },
+  { name: "Russia",                       code: "RU", dial: "+7"   },
+];
+
+// Split a stored phone (e.g. "+260971234567") into { dialCode, number }
+function parsePhone(phone = "") {
+  const sorted = [...DIAL_CODES].sort((a, b) => b.dial.length - a.dial.length);
+  for (const { dial } of sorted) {
+    if (phone.startsWith(dial)) return { dialCode: dial, number: phone.slice(dial.length) };
+  }
+  return { dialCode: "+260", number: phone };
+}
+
 const inputStyle = {
   width: "100%",
   padding: "8px 10px",
@@ -178,15 +231,39 @@ export default function UsersAgentsPage() {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
+    phoneDialCode: "+260",
+    phoneNumber: "",
     role: "Agent",
     password: "",
   });
+  const [createErrors, setCreateErrors] = useState({});
+
+  const validateCreate = (form) => {
+    const e = {};
+    if (!form.firstName.trim())                       e.firstName = "First name is required";
+    else if (form.firstName.trim().length > 50)       e.firstName = "First name cannot exceed 50 characters";
+    if (!form.lastName.trim())                        e.lastName  = "Last name is required";
+    else if (form.lastName.trim().length > 50)        e.lastName  = "Last name cannot exceed 50 characters";
+    if (!form.email.trim())                           e.email     = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "Invalid email format";
+    if (form.phoneNumber) {
+      const full = `${form.phoneDialCode}${form.phoneNumber}`;
+      if (!/^\+?[1-9]\d{1,14}$/.test(full))          e.phoneNumber = "Invalid phone number";
+    }
+    if (!form.password)                               e.password  = "Password is required";
+    else if (form.password.length < 8)                e.password  = "Must be at least 8 characters";
+    else if (form.password.length > 128)              e.password  = "Must not exceed 128 characters";
+    else if (!/[a-z]/.test(form.password))            e.password  = "Must contain a lowercase letter";
+    else if (!/[A-Z]/.test(form.password))            e.password  = "Must contain an uppercase letter";
+    else if (!/[0-9]/.test(form.password))            e.password  = "Must contain a number";
+    return e;
+  };
   const [editForm, setEditForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
+    phoneDialCode: "+260",
+    phoneNumber: "",
   });
   const [roleForm, setRoleForm] = useState("Agent");
   const [statusForm, setStatusForm] = useState({ status: "Active", reason: "" });
@@ -203,10 +280,22 @@ export default function UsersAgentsPage() {
     onSuccess: async () => {
       await invalidateUserQueries();
       setModal({ type: "", user: null });
+      setCreateErrors({});
       setActionStatus({ type: "success", message: "User created successfully." });
     },
-    onError: (error) =>
-      setActionStatus({ type: "error", message: getErrorMessage(error, "Unable to create user.") }),
+    onError: (error) => {
+      const details = error?.response?.data?.error?.details;
+      if (details?.length) {
+        const fieldErrs = {};
+        details.forEach(({ field, message }) => {
+          const key = field.replace("body.", "");
+          fieldErrs[key] = message;
+        });
+        setCreateErrors(fieldErrs);
+      } else {
+        setCreateErrors({ _general: getErrorMessage(error, "Unable to create user.") });
+      }
+    },
   });
 
   const updateMutation = useMutation({
@@ -321,11 +410,13 @@ export default function UsersAgentsPage() {
             currentUserId={currentUserId}
             onViewDetails={setSelectedUser}
             onEditUser={(user) => {
+              const { dialCode, number } = parsePhone(user.phone || "");
               setEditForm({
                 firstName: user.firstName || "",
                 lastName: user.lastName || "",
                 email: user.email || "",
-                phone: user.phone || "",
+                phoneDialCode: dialCode,
+                phoneNumber: number,
               });
               setModal({ type: "edit", user });
             }}
@@ -380,7 +471,8 @@ export default function UsersAgentsPage() {
           <button
             type="button"
             onClick={() => {
-              setCreateForm({ firstName: "", lastName: "", email: "", phone: "", role: "Agent", password: "" });
+              setCreateForm({ firstName: "", lastName: "", email: "", phoneDialCode: "+260", phoneNumber: "", role: "Agent", password: "" });
+              setCreateErrors({});
               setModal({ type: "create", user: null });
             }}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}
@@ -472,32 +564,105 @@ export default function UsersAgentsPage() {
 
       {modal.type === "create" && (
         <Modal title="Create User" onClose={closeModal}>
-          <form onSubmit={(event) => { event.preventDefault(); createMutation.mutate(createForm); }} style={{ display: "grid", gap: 10 }}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const errs = validateCreate(createForm);
+              if (Object.keys(errs).length) { setCreateErrors(errs); return; }
+              setCreateErrors({});
+              const { phoneDialCode, phoneNumber, ...rest } = createForm;
+              createMutation.mutate({
+                ...rest,
+                phone: phoneNumber ? `${phoneDialCode}${phoneNumber}` : undefined,
+              });
+            }}
+            style={{ display: "grid", gap: 10 }}
+          >
+            {/* First / Last name */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <input required placeholder="First name" value={createForm.firstName} onChange={(event) => setCreateForm((prev) => ({ ...prev, firstName: event.target.value }))} style={inputStyle} />
-              <input required placeholder="Last name" value={createForm.lastName} onChange={(event) => setCreateForm((prev) => ({ ...prev, lastName: event.target.value }))} style={inputStyle} />
+              <div>
+                <input
+                  placeholder="First name *"
+                  value={createForm.firstName}
+                  onChange={(e) => { setCreateForm((p) => ({ ...p, firstName: e.target.value })); setCreateErrors((p) => ({ ...p, firstName: "" })); }}
+                  style={{ ...inputStyle, borderColor: createErrors.firstName ? "#fca5a5" : "#e2e8f0" }}
+                />
+                {createErrors.firstName && <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.firstName}</span>}
+              </div>
+              <div>
+                <input
+                  placeholder="Last name *"
+                  value={createForm.lastName}
+                  onChange={(e) => { setCreateForm((p) => ({ ...p, lastName: e.target.value })); setCreateErrors((p) => ({ ...p, lastName: "" })); }}
+                  style={{ ...inputStyle, borderColor: createErrors.lastName ? "#fca5a5" : "#e2e8f0" }}
+                />
+                {createErrors.lastName && <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.lastName}</span>}
+              </div>
             </div>
-            <input required type="email" placeholder="Email" value={createForm.email} onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))} style={inputStyle} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <input placeholder="Phone" value={createForm.phone} onChange={(event) => setCreateForm((prev) => ({ ...prev, phone: event.target.value }))} style={inputStyle} />
-              <select value={createForm.role} onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value }))} style={inputStyle}>
-                {ROLE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </div>
-            <input required type="password" placeholder="Password" value={createForm.password} onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))} style={inputStyle} />
 
-            {createMutation.isError && (
-  <div style={{
-    padding: "8px 10px", borderRadius: 8,
-    background: "#fef2f2", border: "1px solid #fecaca",
-    color: "#b91c1c", fontSize: 12, fontWeight: 600,
-    display: "flex", alignItems: "center", gap: 6,
-  }}>
-    <AlertCircle size={13} />
-    {getErrorMessage(createMutation.error, "Unable to create user.")}
-  </div>
-)}            
-            
+            {/* Email */}
+            <div>
+              <input
+                type="email"
+                placeholder="Email *"
+                value={createForm.email}
+                onChange={(e) => { setCreateForm((p) => ({ ...p, email: e.target.value })); setCreateErrors((p) => ({ ...p, email: "" })); }}
+                style={{ ...inputStyle, borderColor: createErrors.email ? "#fca5a5" : "#e2e8f0" }}
+              />
+              {createErrors.email && <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.email}</span>}
+            </div>
+
+            {/* Phone with country code */}
+            <div>
+              <div style={{ display: "flex" }}>
+                <select
+                  value={createForm.phoneDialCode}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, phoneDialCode: e.target.value }))}
+                  style={{ ...inputStyle, width: "auto", borderRight: "none", borderRadius: "8px 0 0 8px", background: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                >
+                  {DIAL_CODES.map((c) => (
+                    <option key={c.code + c.dial} value={c.dial}>{c.name} ({c.dial})</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  placeholder="Phone number (optional)"
+                  value={createForm.phoneNumber}
+                  onChange={(e) => { setCreateForm((p) => ({ ...p, phoneNumber: e.target.value.replace(/\D/g, "") })); setCreateErrors((p) => ({ ...p, phoneNumber: "" })); }}
+                  style={{ ...inputStyle, borderRadius: "0 8px 8px 0", flex: 1, borderColor: createErrors.phoneNumber ? "#fca5a5" : "#e2e8f0" }}
+                />
+              </div>
+              {createErrors.phoneNumber && <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.phoneNumber}</span>}
+            </div>
+
+            {/* Role */}
+            <select value={createForm.role} onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value }))} style={inputStyle}>
+              {ROLE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+
+            {/* Password */}
+            <div>
+              <input
+                type="password"
+                placeholder="Password *"
+                value={createForm.password}
+                onChange={(e) => { setCreateForm((p) => ({ ...p, password: e.target.value })); setCreateErrors((p) => ({ ...p, password: "" })); }}
+                style={{ ...inputStyle, borderColor: createErrors.password ? "#fca5a5" : "#e2e8f0" }}
+              />
+              {createErrors.password
+                ? <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.password}</span>
+                : <span style={{ fontSize: 11, color: "#94a3b8", marginTop: 3, display: "block" }}>Min 8 chars · uppercase · lowercase · number</span>
+              }
+            </div>
+
+            {/* General API error */}
+            {createErrors._general && (
+              <div style={{ padding: "8px 10px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <AlertCircle size={13} />
+                {createErrors._general}
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
               <button type="submit" disabled={createMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: createMutation.isPending ? "not-allowed" : "pointer", opacity: createMutation.isPending ? 0.7 : 1 }}>{createMutation.isPending ? "Creating..." : "Create"}</button>
@@ -515,7 +680,8 @@ export default function UsersAgentsPage() {
             if ((editForm.firstName || "").trim() !== (user.firstName || "").trim()) payload.firstName = editForm.firstName.trim();
             if ((editForm.lastName || "").trim() !== (user.lastName || "").trim()) payload.lastName = editForm.lastName.trim();
             if ((editForm.email || "").trim().toLowerCase() !== (user.email || "").trim().toLowerCase()) payload.email = editForm.email.trim().toLowerCase();
-            if ((editForm.phone || "").trim() !== (user.phone || "").trim()) payload.phone = editForm.phone.trim();
+            const fullPhone = editForm.phoneNumber ? `${editForm.phoneDialCode}${editForm.phoneNumber}` : "";
+            if (fullPhone !== (user.phone || "")) payload.phone = fullPhone;
             if (!Object.keys(payload).length) {
               setActionStatus({ type: "error", message: "No changes to save." });
               return;
@@ -527,7 +693,33 @@ export default function UsersAgentsPage() {
               <input required value={editForm.lastName} onChange={(event) => setEditForm((prev) => ({ ...prev, lastName: event.target.value }))} style={inputStyle} />
             </div>
             <input required type="email" value={editForm.email} onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))} style={inputStyle} />
-            <input value={editForm.phone} onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))} style={inputStyle} />
+
+            {/* Phone with country code */}
+            <div style={{ display: "flex" }}>
+              <select
+                value={editForm.phoneDialCode}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, phoneDialCode: event.target.value }))}
+                style={{ ...inputStyle, width: "auto", borderRight: "none", borderRadius: "8px 0 0 8px", background: "#f8fafc", color: "#475569", cursor: "pointer" }}
+              >
+                {DIAL_CODES.map((c) => (
+                  <option key={c.code + c.dial} value={c.dial}>{c.name} ({c.dial})</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={editForm.phoneNumber}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, phoneNumber: event.target.value.replace(/\D/g, "") }))}
+                style={{ ...inputStyle, borderRadius: "0 8px 8px 0", flex: 1 }}
+              />
+            </div>
+
+            {updateMutation.isError && (
+              <div style={{ padding: "8px 10px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <AlertCircle size={13} />
+                {getErrorMessage(updateMutation.error, "Unable to update user.")}
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
               <button type="submit" disabled={updateMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: updateMutation.isPending ? "not-allowed" : "pointer", opacity: updateMutation.isPending ? 0.7 : 1 }}>{updateMutation.isPending ? "Saving..." : "Save"}</button>

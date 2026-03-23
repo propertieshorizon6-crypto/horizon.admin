@@ -1,8 +1,11 @@
 // 📁 src/features/admin/components/KanbanColumn.jsx
 
+import { useDroppable } from "@dnd-kit/core";
 import KanbanCard from "./KanbanCard";
 
 export default function KanbanColumn({ col, leads }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.status });
+
   return (
     <div style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column" }}>
 
@@ -18,7 +21,16 @@ export default function KanbanColumn({ col, leads }) {
         </span>
       </div>
 
-      <div style={{ flex: 1, borderRadius: 12, padding: "10px 8px", background: col.bg, border: `1.5px dashed ${col.border}`, minHeight: 120 }}>
+      <div
+        ref={setNodeRef}
+        style={{
+          flex: 1, borderRadius: 12, padding: "10px 8px",
+          background: isOver ? col.bg : col.bg,
+          border: isOver ? `2px solid ${col.color}` : `1.5px dashed ${col.border}`,
+          minHeight: 120,
+          transition: "border 0.15s",
+        }}
+      >
         {leads.length === 0
           ? <div style={{ textAlign: "center", padding: "24px 0", color: "#cbd5e1", fontSize: 12 }}>No leads</div>
           : leads.map((lead) => <KanbanCard key={lead.id} lead={lead} />)

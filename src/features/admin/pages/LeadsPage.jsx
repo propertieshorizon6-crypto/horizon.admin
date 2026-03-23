@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel,
   getPaginationRowModel, getSortedRowModel,
   flexRender, createColumnHelper,
 } from "@tanstack/react-table";
-import { Search, SlidersHorizontal, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
+import { Search, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
 
 import useLeads            from "../hooks/useLeads";
-import { updateLeadPriority, assignLead } from "../api/leadsApi";
+import { updateLeadPriority, assignLead, updateLeadStatus } from "../api/leadsApi";
 import {
   fetchUsers,
   MOCK_MODE as USERS_MOCK_MODE,
@@ -45,6 +46,16 @@ export default function LeadsPage() {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [selectedLead,   setSelectedLead]   = useState(null);
   const [priorityLead,   setPriorityLead]   = useState(null);
+  const [activeLead,     setActiveLead]     = useState(null);
+
+  // ── DnD sensors ────────────────────────────────────────────────────────────
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // ── Update lead status mutation ─────────────────────────────────────────────
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ leadId, status }) => updateLeadStatus(leadId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
 
   // ── Assign Agent state ─────────────────────────────────────────────────────
   const [assigningLead,    setAssigningLead]    = useState(null);
@@ -351,8 +362,11 @@ export default function LeadsPage() {
             <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
           </div>
         ))}
-        <button style={{ padding: "9px 11px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#fff", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}>
-          <SlidersHorizontal size={15} />
+        <button
+          onClick={() => { setGlobalFilter(""); setSourceFilter(""); setPriorityFilter(""); }}
+          style={{ padding: "9px 14px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#fff", cursor: "pointer", color: "#64748b", fontSize: 13, whiteSpace: "nowrap" }}
+        >
+          Clear Filters
         </button>
       </div>
 
@@ -439,13 +453,37 @@ export default function LeadsPage() {
               );
             })}
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", overflowX: "auto", paddingBottom: 8 }}>
-            {kanbanGroups.map((col) => (
-              <div key={col.status} style={{ flex: "1 1 0", minWidth: 220, maxWidth: 300 }}>
-                <KanbanColumn col={col} leads={col.leads} />
-              </div>
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            onDragStart={({ active }) => setActiveLead(active.data.current?.lead ?? null)}
+            onDragEnd={({ active, over }) => {
+              setActiveLead(null);
+              if (!over || active.id === over.id) return;
+              const lead = leads.find((l) => l.id === active.id);
+              if (!lead || lead.status === over.id) return;
+              updateStatusMutation.mutate({ leadId: active.id, status: over.id });
+            }}
+            onDragCancel={() => setActiveLead(null)}
+          >
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", overflowX: "auto", paddingBottom: 8 }}>
+              {kanbanGroups.map((col) => (
+                <div key={col.status} style={{ flex: "1 1 0", minWidth: 220, maxWidth: 300 }}>
+                  <KanbanColumn col={col} leads={col.leads} />
+                </div>
+              ))}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeLead ? (
+                <div style={{ opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
+                  <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 14, boxShadow: "0 12px 32px rgba(0,0,0,0.18)", minWidth: 220 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{activeLead.name}</p>
+                    {activeLead.email && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>✉ {activeLead.email}</p>}
+                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏢 {activeLead.property}</p>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
           <p style={{ marginTop: 12, fontSize: 12, color: "#94a3b8" }}>
             Showing <strong style={{ color: "#475569" }}>{filteredData.length}</strong> leads across {kanbanGroups.filter((c) => c.leads.length > 0).length} columns
           </p>

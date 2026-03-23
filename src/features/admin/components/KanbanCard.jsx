@@ -1,16 +1,37 @@
 // 📁 src/features/admin/components/KanbanCard.jsx
 
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { PRIORITY_STYLE, SOURCE_ICON, INTENT_ICON } from "../constants/leadsConfig";
 import { timeAgo } from "../../../utils/timeAgo";
 
 export default function KanbanCard({ lead }) {
   const pri = PRIORITY_STYLE[lead.priority] ?? PRIORITY_STYLE["Low"];
 
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lead.id,
+    data: { lead },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.4 : 1,
+  };
+
   return (
     <div
-      style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 14, marginBottom: 10, cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", transition: "box-shadow 0.15s, transform 0.15s" }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "none"; }}
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={{
+        background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0",
+        padding: 14, marginBottom: 10, cursor: isDragging ? "grabbing" : "grab",
+        boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.15)" : "0 1px 3px rgba(0,0,0,0.04)",
+        transition: "box-shadow 0.15s, opacity 0.15s",
+        ...style,
+      }}
+      onMouseEnter={(e) => { if (!isDragging) e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)"; }}
+      onMouseLeave={(e) => { if (!isDragging) e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{lead.name}</p>

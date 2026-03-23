@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import useLogin from "../hooks/useLogin";
 
 export default function LoginForm() {
@@ -8,11 +8,40 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
 
   const loginMutation = useLogin();
 
+  const validateFields = () => {
+    const errors = { email: "", password: "" };
+    let valid = true;
+
+    if (!email.trim()) {
+      errors.email = "Email is required.";
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address.";
+      valid = false;
+    }
+
+    if (!password) {
+      errors.password = "Password is required.";
+      valid = false;
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters.";
+      valid = false;
+    }
+
+    return { valid, errors };
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const { valid, errors } = validateFields();
+    if (!valid) {
+      setFieldErrors(errors);
+      return;
+    }
     loginMutation.mutate({ email, password, rememberMe });
   };
 
@@ -25,11 +54,21 @@ export default function LoginForm() {
         <input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+            if (loginMutation.isError) loginMutation.reset();
+          }}
           placeholder="you@company.com"
-          required
-          className="h-11 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 text-sm outline-none transition focus:border-[#1A2744] focus:ring-2 focus:ring-[#1A2744]/20"
+          className={`h-11 w-full rounded-lg border bg-[#F8FAFC] px-4 text-sm outline-none transition focus:ring-2 ${
+            fieldErrors.email
+              ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+              : "border-[#E2E8F0] focus:border-[#1A2744] focus:ring-[#1A2744]/20"
+          }`}
         />
+        {fieldErrors.email && (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
+        )}
       </div>
 
       {/* Password */}
@@ -45,10 +84,17 @@ export default function LoginForm() {
           <input
             type={showPassword ? "text" : "password"}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+              if (loginMutation.isError) loginMutation.reset();
+            }}
             placeholder="••••••••"
-            required
-            className="h-11 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 pr-12 text-sm outline-none transition focus:border-[#1A2744] focus:ring-2 focus:ring-[#1A2744]/20"
+            className={`h-11 w-full rounded-lg border bg-[#F8FAFC] px-4 pr-12 text-sm outline-none transition focus:ring-2 ${
+              fieldErrors.password
+                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                : "border-[#E2E8F0] focus:border-[#1A2744] focus:ring-[#1A2744]/20"
+            }`}
           />
           <button
             type="button"
@@ -58,6 +104,9 @@ export default function LoginForm() {
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        {fieldErrors.password && (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
+        )}
       </div>
 
       {/* Remember Me */}
@@ -74,6 +123,14 @@ export default function LoginForm() {
         </label>
       </div>
 
+      {/* Server Error */}
+      {loginMutation.isError && (
+        <div className="flex items-start gap-2.5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{loginMutation.error?.message || "Login failed. Please try again."}</span>
+        </div>
+      )}
+
       {/* Submit */}
       <button
         type="submit"
@@ -82,15 +139,6 @@ export default function LoginForm() {
       >
         {loginMutation.isPending ? "Signing In..." : "Sign In"}
       </button>
-
-      {/* Error */}
-      {loginMutation.isError && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-          {loginMutation.error?.response?.data?.error?.message ||
-            loginMutation.error?.message ||
-            "Login failed. Please try again."}
-        </div>
-      )}
     </form>
   );
 }
