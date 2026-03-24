@@ -32,10 +32,14 @@ export default function useLogin() {
 
     onSuccess: (data, variables) => {
       const authData = data?.data || {};
+      const user = authData.user ?? {};
+      if (!user.name && (user.firstName || user.lastName)) {
+        user.name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+      }
 
       // Store user + token in Zustand
       setAuth({
-        user: authData.user,
+        user,
         accessToken: authData.accessToken,
         refreshToken: authData.refreshToken,
       });
