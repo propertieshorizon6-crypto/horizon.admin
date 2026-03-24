@@ -464,7 +464,7 @@ export default function UsersAgentsPage() {
   const closeModal = () => setModal({ type: "", user: null });
 
   return (
-    <div style={{ padding: "28px 24px", minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
+    <div className="p-4 md:p-6 min-h-full" style={{ background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Users & Agents</h1>
@@ -526,7 +526,7 @@ export default function UsersAgentsPage() {
         ))}
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #f1f5f9" }}>

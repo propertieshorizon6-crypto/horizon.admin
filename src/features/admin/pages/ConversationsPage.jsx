@@ -279,7 +279,7 @@ export default function ConversationsPage() {
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Conversations</h1>
           </div>
           {/* Stats */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {[
               { label: `Total: ${stats.total}`,       bg: "#f1f5f9", color: "#475569" },
               { label: `Active: ${stats.active}`,     bg: "#dcfce7", color: "#15803d" },
@@ -293,10 +293,10 @@ export default function ConversationsPage() {
       </div>
 
       {/* ── 3-panel layout ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden", margin: "0 24px 24px", gap: 0, borderRadius: 14, border: "1px solid #e2e8f0", background: "#fff" }}>
+      <div className="flex flex-col md:flex-row" style={{ flex: 1, overflow: "hidden", margin: "0 24px 24px", gap: 0, borderRadius: 14, border: "1px solid #e2e8f0", background: "#fff" }}>
 
         {/* ── Panel 1: Conversation list ── */}
-        <div style={{ width: 280, flexShrink: 0, borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="w-full max-h-[45vh] md:max-h-none md:w-70 md:shrink-0" style={{ borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
           {/* Search + filter */}
           <div style={{ padding: "12px 12px 8px", borderBottom: "1px solid #f8fafc" }}>
@@ -359,7 +359,7 @@ export default function ConversationsPage() {
         </div>
 
         {/* ── Panel 2: Thread list ── */}
-        <div style={{ width: 240, flexShrink: 0, borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", overflow: "hidden", background: "#fafafa" }}>
+        <div className="hidden md:flex md:w-60 md:shrink-0" style={{ borderRight: "1px solid #f1f5f9", flexDirection: "column", overflow: "hidden", background: "#fafafa" }}>
           {!selectedConv ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#cbd5e1", fontSize: 12, padding: 16, textAlign: "center" }}>
               Select a conversation to see threads

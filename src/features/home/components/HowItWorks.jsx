@@ -139,7 +139,7 @@ const HowItWorks = () => {
 
                   {/* Card Content Wrapper */}
                   <div
-                    className={`ml-20 md:ml-0 md:w-5/12 ${
+                    className={`ml-14 sm:ml-20 md:ml-0 md:w-5/12 ${
                       !isEven ? "md:pr-8 md:text-right" : "md:pl-8"
                     }`}
                   >

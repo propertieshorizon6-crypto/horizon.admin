@@ -372,9 +372,8 @@ export default function PropertiesPage() {
 
   return (
     <div
+      className="p-4 md:p-6 min-h-full"
       style={{
-        padding: "28px 24px",
-        minHeight: "100%",
         background: "#f8fafc",
         fontFamily: "system-ui,sans-serif",
       }}
@@ -506,7 +505,7 @@ export default function PropertiesPage() {
           background: "#fff",
           borderRadius: 14,
           border: "1px solid #e2e8f0",
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
         <div

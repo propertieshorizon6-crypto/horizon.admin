@@ -207,7 +207,7 @@ export default function NotificationsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding:24, minHeight:"100%", background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
+    <div className="p-4 md:p-6 min-h-full" style={{ background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
       <Toast toast={toast} />
 
       {/* Delete rule modal */}
@@ -319,6 +319,7 @@ export default function NotificationsPage() {
 
           {rulesError && <p style={{ margin:0, padding:"12px 14px", color:"#dc2626", fontSize:12 }}>{getErrorMessage(rulesError, "Unable to load rules")}</p>}
 
+          <div style={{ overflowX: "auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ borderBottom:"1px solid #f1f5f9" }}>
@@ -357,6 +358,7 @@ export default function NotificationsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </section>
       )}
 
@@ -384,6 +386,7 @@ export default function NotificationsPage() {
 
           {logsError && <p style={{ margin:0, padding:"12px 14px", color:"#dc2626", fontSize:12 }}>{getErrorMessage(logsError, "Unable to load logs")}</p>}
 
+          <div style={{ overflowX: "auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ borderBottom:"1px solid #f1f5f9" }}>
@@ -425,6 +428,7 @@ export default function NotificationsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </section>
       )}
     </div>

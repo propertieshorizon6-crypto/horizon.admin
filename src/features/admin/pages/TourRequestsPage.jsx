@@ -279,7 +279,7 @@ export default function TourRequestsPage() {
 
   return (
     // 🔑 position: relative nahi chahiye — drawer fixed position mein hai
-    <div style={{ padding: "28px 24px", minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
+    <div className="p-4 md:p-6 min-h-full" style={{ background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
@@ -334,8 +334,8 @@ export default function TourRequestsPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "7%" }} />
             <col style={{ width: "9%" }} />

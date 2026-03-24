@@ -35,7 +35,7 @@ const Footer = () => {
           </div>
 
           {/* Navigation Links */}
-          <div className="flex items-center gap-6 text-[14px]">
+          <div className="flex items-center flex-wrap gap-x-6 gap-y-3 text-[14px] justify-center md:justify-start">
             <a
               href="#"
               className="text-[#64748b] hover:text-[#0f172a] transition-colors duration-200"

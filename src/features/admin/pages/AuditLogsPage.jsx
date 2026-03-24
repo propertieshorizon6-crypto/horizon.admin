@@ -225,11 +225,10 @@ export default function AuditLogsPage() {
 
   return (
     <div
+      className="p-4 md:p-7 min-h-full"
       style={{
-        minHeight: "100%",
         background: "#f8fafc",
         fontFamily: "system-ui,sans-serif",
-        padding: "28px",
       }}
     >
       <div
@@ -468,7 +467,7 @@ export default function AuditLogsPage() {
           background: "#fff",
           borderRadius: 14,
           border: "1px solid #e2e8f0",
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>

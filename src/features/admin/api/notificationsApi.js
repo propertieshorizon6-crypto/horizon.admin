@@ -1,5 +1,3 @@
-// 📁 src/features/admin/api/notificationsApi.js
-
 import apiClient from "../../../services/apiClient";
 
 export const MOCK_MODE = false;

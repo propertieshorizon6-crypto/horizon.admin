@@ -178,7 +178,7 @@ export default function AddPropertyPage({ onBack }) {
     ) : null;
 
   return (
-    <div style={{ padding:"28px 24px", minHeight:"100%", background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
+    <div className="p-4 md:p-6 min-h-full" style={{ background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
 
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>

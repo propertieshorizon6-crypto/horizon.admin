@@ -4,7 +4,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Target, Mail, CalendarDays,
-  MessageSquare, Building2, Users, Bell, ClipboardList, LogOut,
+  MessageSquare, Building2, Users, Bell, ClipboardList, LogOut, X,
 } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
 import useLogout from "../../features/auth/hooks/useLogout";
@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { label: "Audit Logs",     icon: ClipboardList,   path: "/admin/audit-logs",     end: false },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
 
@@ -33,11 +33,33 @@ export default function Sidebar() {
   };
 
   return (
-    <aside style={{
-      width: 232, minHeight: "100vh", background: "#0d1828",
-      display: "flex", flexDirection: "column", flexShrink: 0,
-      fontFamily: "'Sora','DM Sans',system-ui,sans-serif",
-    }}>
+    <aside
+      className={[
+        // On mobile: fixed overlay starting BELOW the header (top-15 = 60px)
+        "fixed top-15 bottom-0 left-0 z-30 shadow-2xl",
+        // On desktop (md+): back in normal flow, full height, no shadow needed
+        "md:relative md:top-auto md:bottom-auto md:z-auto md:translate-x-0 md:shadow-none",
+        // Width
+        "w-58 shrink-0",
+        // Slide transition
+        "transition-transform duration-300 ease-in-out",
+        // Mobile open/closed
+        isOpen ? "translate-x-0" : "-translate-x-full",
+      ].join(" ")}
+      style={{
+        background: "#0d1828",
+        display: "flex", flexDirection: "column",
+        fontFamily: "'Sora','DM Sans',system-ui,sans-serif",
+      }}
+    >
+      {/* Close button — mobile only */}
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+        aria-label="Close menu"
+      >
+        <X size={18} />
+      </button>
 
       {/* ── Logo ── */}
       <div style={{
@@ -64,6 +86,7 @@ export default function Sidebar() {
               key={item.label}
               to={item.path}
               end={item.end}
+              onClick={onClose}
               style={({ isActive }) => ({
                 display: "flex", alignItems: "center", gap: 13,
                 padding: "11px 14px", borderRadius: 10, marginBottom: 2,
@@ -89,7 +112,7 @@ export default function Sidebar() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <div style={{
             width: 38, height: 38, borderRadius: "50%",
-            background: "#22225E",  // brand color from PDF
+            background: "#22225E",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0,
             border: "2px solid rgba(202,84,40,0.5)",

@@ -343,7 +343,7 @@ export default function LeadsPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: "28px 24px", minHeight: "100%", background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
+    <div className="p-4 md:p-6 min-h-full" style={{ background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
@@ -393,7 +393,7 @@ export default function LeadsPage() {
 
       {/* TABLE VIEW */}
       {view === "table" && (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflowX: "auto" }}>
           {/* Status tabs */}
           <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "10px 14px", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" }}>
             {TABS.map((tab) => {

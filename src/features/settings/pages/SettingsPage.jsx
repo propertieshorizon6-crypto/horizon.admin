@@ -57,7 +57,7 @@ export default function SettingsPage() {
     ?? (user?.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "User");
 
   return (
-    <div className="p-8 min-h-full bg-slate-50">
+    <div className="p-4 md:p-8 min-h-full bg-slate-50">
 
       {/* Page Header */}
       <div className="mb-6">
@@ -65,7 +65,7 @@ export default function SettingsPage() {
         <p className="text-sm text-slate-500 mt-1">Manage your account settings and preferences</p>
       </div>
 
-      <div className="grid grid-cols-[320px_1fr] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
 
         {/* ── Left Column ── */}
         <div className="flex flex-col gap-5">

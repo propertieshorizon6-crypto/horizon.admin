@@ -429,7 +429,7 @@ export default function InquiriesPage() {
   }
 
   return (
-    <div className="p-8 min-h-full bg-slate-50">
+    <div className="p-4 md:p-8 min-h-full bg-slate-50">
 
       {/* Detail Modal */}
       {selectedInquiry && (
@@ -452,7 +452,7 @@ export default function InquiriesPage() {
 
       {/* Search + Filter Bar */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="relative w-80">
+        <div className="relative w-full sm:w-80">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={globalFilter}
