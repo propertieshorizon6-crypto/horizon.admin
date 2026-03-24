@@ -361,12 +361,12 @@ export default function AddPropertyPage({ onBack }) {
 
           {/* ── Gallery Images ── */}
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <p style={{ ...sectionTitle, margin:0 }}>
-                <Images size={16} style={{ marginRight:6, verticalAlign:"middle" }} />
-                Gallery Images
-                <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", marginLeft:8 }}>optional</span>
-              </p>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <Images size={16} strokeWidth={2} style={{ color:"#475569", flexShrink:0 }} />
+                <span style={{ fontSize:14, fontWeight:800, color:"#0f172a" }}>Gallery Images</span>
+                <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", background:"#f1f5f9", borderRadius:99, padding:"2px 8px" }}>optional</span>
+              </div>
               <span style={{ fontSize:12, color: galleryFiles.length >= 10 ? "#dc2626" : "#94a3b8", fontWeight:600 }}>
                 {galleryFiles.length} / 10
               </span>
