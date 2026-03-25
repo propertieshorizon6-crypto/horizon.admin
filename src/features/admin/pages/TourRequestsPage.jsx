@@ -16,7 +16,7 @@ import {
   getPaginationRowModel, getSortedRowModel,
   flexRender, createColumnHelper,
 } from "@tanstack/react-table";
-import { Search, ChevronDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { Search, ChevronDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import useTourRequests from "../hooks/useTourRequests";
 import TourDetailDrawer from "../components/TourDetailDrawer";
 
@@ -208,21 +208,6 @@ export default function TourRequestsPage() {
           : <span style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>Not set</span>;
       },
     }),
-    columnHelper.accessor("agent", {
-      header: "Agent",
-      cell: (i) => {
-        const a = i.getValue();
-        return (
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <User size={11} color="#94a3b8" />
-            {a
-              ? <span style={{ fontSize: 12, color: "#374151", whiteSpace: "nowrap" }}>{a}</span>
-              : <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>Unassigned</span>
-            }
-          </div>
-        );
-      },
-    }),
     columnHelper.accessor("status", {
       header: "Status",
       cell: (i) => <StatusBadge status={i.getValue()} />,
@@ -337,16 +322,15 @@ export default function TourRequestsPage() {
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", overflowX: "auto" }}>
         <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "4%" }} />
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "9%" }} />
             <col style={{ width: "8%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "4%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "9%" }} />
             <col style={{ width: "7%" }} />
           </colgroup>
           <thead>
@@ -363,7 +347,7 @@ export default function TourRequestsPage() {
           </thead>
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
-              <tr><td colSpan={11} style={{ padding: "50px 0", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No tour requests found</td></tr>
+              <tr><td colSpan={10} style={{ padding: "50px 0", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No tour requests found</td></tr>
             ) : (
               table.getRowModel().rows.map((row, idx) => {
                 // 🔑 Selected row highlighting — kaunsi row drawer mein open hai

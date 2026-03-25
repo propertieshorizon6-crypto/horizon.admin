@@ -1,20 +1,13 @@
 // 📁 src/features/admin/components/TourDetailDrawer.jsx
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { X, User, Calendar, MapPin, Phone, Mail, CheckCircle, XCircle, ChevronDown } from "lucide-react";
+import { X, User, Calendar, MapPin, Phone, Mail, CheckCircle, XCircle } from "lucide-react";
 import {
   cancelTourRequest,
   completeTourRequest,
   confirmTourRequest,
   rescheduleTourRequest,
-  assignTourAgent,
 } from "../api/tourRequestsApi";
-import {
-  fetchUsers,
-  MOCK_MODE as USERS_MOCK_MODE,
-  MOCK_USERS,
-} from "../api/usersApi";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -55,77 +48,6 @@ function SourceIcon({ source }) {
   return (
     <div style={{ width:28, height:28, borderRadius:6, background:"#fce7f3", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.4 19.79 19.79 0 0 1 1.61 4.83 2 2 0 0 1 3.59 2.63h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.17a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5z"/></svg>
-    </div>
-  );
-}
-
-// ── Reassign Agent Modal — real agents from API ───────────────────────────────
-function ReassignModal({ currentAgentId, onConfirm, onClose }) {
-  const [selectedId, setSelectedId] = useState(currentAgentId ?? "");
-
-  const { data: agentUsers = [], isLoading } = useQuery({
-    queryKey: ["users", "agents", "active"],
-    queryFn: USERS_MOCK_MODE
-      ? () => Promise.resolve((MOCK_USERS || []).filter((u) =>
-          String(u?.role || "").toLowerCase() === "agent" &&
-          String(u?.status || "").toLowerCase() === "active"
-        ))
-      : async () => {
-          try {
-            const res = await fetchUsers({ role: "agent", status: "active", page: 1, limit: 100 });
-            if (Array.isArray(res) && res.length > 0) return res;
-          } catch {}
-          const fallback = await fetchUsers({ role: "agent", page: 1, limit: 100 });
-          return (fallback || []).filter((u) => String(u?.status || "").toLowerCase() === "active");
-        },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const agents = agentUsers
-    .map((u) => ({ id: u?.id || u?._id, name: u?.name }))
-    .filter((u) => u.id && u.name)
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}
-      onClick={onClose}>
-      <div style={{ background:"#fff", borderRadius:16, padding:24, width:360, boxShadow:"0 20px 60px rgba(0,0,0,0.15)" }}
-        onClick={(e)=>e.stopPropagation()}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-          <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#0f172a" }}>Assign Agent</h3>
-          <button onClick={onClose} style={{ border:"none", background:"none", cursor:"pointer", color:"#94a3b8", padding:4 }}><X size={16}/></button>
-        </div>
-
-        <p style={{ margin:"0 0 12px", fontSize:12, color:"#64748b" }}>Select an agent for this tour</p>
-
-        {isLoading ? (
-          <p style={{ fontSize:12, color:"#94a3b8", padding:"12px 0" }}>Loading agents...</p>
-        ) : (
-          <div style={{ position:"relative", marginBottom:20 }}>
-            <select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              style={{ appearance:"none", width:"100%", padding:"10px 32px 10px 12px", borderRadius:9, border:"1px solid #e2e8f0", fontSize:13, color:"#0f172a", background:"#fff", outline:"none", cursor:"pointer" }}
-            >
-              <option value="">Unassigned</option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
-            <ChevronDown size={13} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#94a3b8", pointerEvents:"none" }}/>
-          </div>
-        )}
-
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:10, fontSize:13, fontWeight:600, color:"#475569", background:"#fff", cursor:"pointer" }}>Cancel</button>
-          <button
-            onClick={() => onConfirm(selectedId || null)}
-            style={{ flex:1, padding:"10px", border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", background:"#1e293b", cursor:"pointer" }}
-          >
-            {selectedId ? "Assign" : "Unassign"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -197,7 +119,6 @@ function CancelConfirmModal({ tourId, onConfirm, onClose }) {
 
 // ── Main Drawer ───────────────────────────────────────────────────────────────
 export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
-  const [showReassign,  setShowReassign]  = useState(false);
   const [showSchedule,  setShowSchedule]  = useState(false);
   const [showCancel,    setShowCancel]    = useState(false);
   const [actionSuccess, setActionSuccess] = useState("");
@@ -219,18 +140,6 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
     try { await fn(); }
     catch (err) { showError(err?.response?.data?.message || err?.message || "Unable to update tour."); }
     finally { setIsSubmitting(false); }
-  };
-
-  // ── Assign Agent — wired to backend ──────────────────────────────────────
-  const handleReassign = (agentId) => {
-    // No change — skip API call
-    if (agentId === tour.agentId) { setShowReassign(false); return; }
-    runAction(async () => {
-      const updatedTour = await assignTourAgent(tour.id, agentId);
-      onUpdate(updatedTour);
-      setShowReassign(false);
-      showSuccess(agentId ? "Agent assigned successfully" : "Agent unassigned");
-    });
   };
 
   // ── Propose Schedule ──────────────────────────────────────────────────────
@@ -358,22 +267,6 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                 </div>
               </div>
 
-              {/* Assigned Agent */}
-              <div style={{ marginBottom:20 }}>
-                <SectionTitle title="Assigned Agent"/>
-                <div style={{ padding:"12px 14px", background:"#fafafa", borderRadius:12, border:"1px solid #f1f5f9", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  {tour.agent ? (
-                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#0f172a" }}>{tour.agent}</p>
-                  ) : (
-                    <p style={{ margin:0, fontSize:13, color:"#94a3b8", fontStyle:"italic" }}>No agent assigned</p>
-                  )}
-                  <button onClick={() => setShowReassign(true)} disabled={isSubmitting}
-                    style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:7, border:"1px solid #e2e8f0", background:"#fff", color:"#475569", cursor:"pointer" }}>
-                    {tour.agent ? "Change" : "Assign"}
-                  </button>
-                </div>
-              </div>
-
               {/* Preferred Slots */}
               <div style={{ marginBottom:20 }}>
                 <SectionTitle title="Preferred Slots"/>
@@ -455,13 +348,6 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
       </div>
 
       {/* Modals */}
-      {showReassign && (
-        <ReassignModal
-          currentAgentId={tour?.agentId}
-          onConfirm={handleReassign}
-          onClose={() => setShowReassign(false)}
-        />
-      )}
       {showSchedule && (
         <ProposeScheduleModal
           onConfirm={handleProposeSchedule}
