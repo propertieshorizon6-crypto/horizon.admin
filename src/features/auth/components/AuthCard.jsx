@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import logo from "../../../assets/logo.png";
 
 export default function AuthCard({
   children,
@@ -26,10 +27,12 @@ export default function AuthCard({
 
         {/* Mobile Only Logo */}
         <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-          <div className="w-11 h-11 rounded-xl bg-[#1A2744] flex items-center justify-center shadow-md">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-[#1A2744]">Horizon Properties</h1>
+          <img
+            src={logo}
+            alt="Horizon Properties"
+            style={{ height: 64, width: "auto", userSelect: "none" }}
+            draggable={false}
+          />
         </div>
 
         {/* Header */}

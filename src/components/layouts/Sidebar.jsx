@@ -49,7 +49,6 @@ export default function Sidebar({ isOpen, onClose }) {
       style={{
         background: "#0d1828",
         display: "flex", flexDirection: "column",
-        fontFamily: "'Sora','DM Sans',system-ui,sans-serif",
       }}
     >
       {/* Close button — mobile only */}
