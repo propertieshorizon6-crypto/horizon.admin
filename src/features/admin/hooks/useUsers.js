@@ -8,7 +8,7 @@ export default function useUsers() {
     queryKey: ["users"],
     queryFn: MOCK_MODE
       ? () => new Promise((res) => setTimeout(() => res(MOCK_USERS), 350))
-      : () => fetchUsers({ roles: "admin,manager,agent", limit: 200 }),
+      : () => fetchUsers({ roles: "admin,manager,agent", limit: 50 }),
     staleTime: 1000 * 60 * 5,
   });
 }
