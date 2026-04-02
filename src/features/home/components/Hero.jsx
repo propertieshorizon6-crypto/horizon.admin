@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Shield, ArrowRight, ChevronDown } from "lucide-react";
+import logo from "../../../assets/logo.png";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
@@ -41,16 +42,20 @@ const Hero = () => {
           </motion.div>
 
           {/* Main Heading */}
-          <motion.h1
-            className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-[#0f172a] mb-6 leading-[1.1] tracking-tight"
-            style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)" }}
+          <motion.div
+            className="mb-6 flex flex-col items-center gap-3"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
           >
-            Horizon Properties
-            <span className="block text-[#1a2b4b]">Admin Console</span>
-          </motion.h1>
+            <img src={logo} alt="Horizon Properties" className="h-16 object-contain" />
+            <h1
+              className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-[#1a2b4b] leading-[1.1] tracking-tight"
+              style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)" }}
+            >
+              Admin Console
+            </h1>
+          </motion.div>
 
           {/* Subtext */}
           <motion.p

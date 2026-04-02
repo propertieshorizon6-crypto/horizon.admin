@@ -1,6 +1,6 @@
 
-import { Building2 } from "lucide-react";
 import { motion } from "framer-motion";
+import logo from "../../../assets/logo.png";
 import { useInView } from "react-intersection-observer";
 
 const Footer = () => {
@@ -18,12 +18,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo Section */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#fbbf24] flex items-center justify-center shadow-[0_0_20px_0_rgba(245,159,10,0.3)]">
-              <Building2
-                className="w-6 h-6 text-white"
-                aria-hidden="true"
-              />
-            </div>
+            <img src={logo} alt="Horizon Properties" className="w-10 h-10 object-contain" />
             <div>
               <h3 className="font-bold text-[#0f172a] text-base leading-tight">
                 Horizon Properties

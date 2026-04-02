@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MoreHorizontal, Mail, Phone, MapPin, Calendar, Clock, User } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, Clock, User } from "lucide-react";
 import { MOCK_MODE as USERS_MOCK_MODE, fetchUserDetail } from "../api/usersApi";
 import { MOCK_MODE as PROPERTIES_MOCK_MODE, fetchProperties } from "../api/propertiesApi";
 
@@ -551,10 +551,6 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
           </div>
         </div>
 
-        {/* Top-right 3-dot */}
-        <button style={{ padding: "7px 9px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#fff", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
-          <MoreHorizontal size={18} />
-        </button>
       </div>
 
       {/* ── STAT CARDS ─────────────────────────────────────────────────────── */}

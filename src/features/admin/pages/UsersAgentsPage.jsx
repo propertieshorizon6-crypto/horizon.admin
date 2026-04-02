@@ -8,7 +8,7 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { Search, ChevronDown, UserPlus, X, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Search, ChevronDown, UserPlus, X, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import useUsers from "../hooks/useUsers";
 import UserActionsMenu from "../components/UserActionsMenu";
 import UserDetailPage from "../components/UserDetailPage";
@@ -240,6 +240,7 @@ export default function UsersAgentsPage() {
     password: "",
   });
   const [createErrors, setCreateErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateCreate = (form) => {
     const e = {};
@@ -249,7 +250,9 @@ export default function UsersAgentsPage() {
     else if (form.lastName.trim().length > 50)        e.lastName  = "Last name cannot exceed 50 characters";
     if (!form.email.trim())                           e.email     = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "Invalid email format";
-    if (form.phoneNumber) {
+    if (!form.phoneNumber.trim()) {
+      e.phoneNumber = "Phone number is required";
+    } else {
       const full = `${form.phoneDialCode}${form.phoneNumber}`;
       if (!/^\+?[1-9]\d{1,14}$/.test(full))          e.phoneNumber = "Invalid phone number";
     }
@@ -287,7 +290,10 @@ export default function UsersAgentsPage() {
       setActionStatus({ type: "success", message: "User created successfully." });
     },
     onError: (error) => {
-      const details = error?.response?.data?.error?.details;
+      const errBody = error?.response?.data?.error;
+      const details = Array.isArray(errBody?.details) ? errBody.details
+                    : Array.isArray(errBody?.stack)   ? errBody.stack
+                    : null;
       if (details?.length) {
         const fieldErrs = {};
         details.forEach(({ field, message }) => {
@@ -461,7 +467,7 @@ export default function UsersAgentsPage() {
     );
   }
 
-  const closeModal = () => setModal({ type: "", user: null });
+  const closeModal = () => { setModal({ type: "", user: null }); setShowPassword(false); };
 
   return (
     <div className="p-4 md:p-6 min-h-full" style={{ background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
@@ -629,7 +635,7 @@ export default function UsersAgentsPage() {
                 </select>
                 <input
                   type="tel"
-                  placeholder="Phone number (optional)"
+                  placeholder="Phone number *"
                   value={createForm.phoneNumber}
                   onChange={(e) => { setCreateForm((p) => ({ ...p, phoneNumber: e.target.value.replace(/\D/g, "") })); setCreateErrors((p) => ({ ...p, phoneNumber: "" })); }}
                   style={{ ...inputStyle, borderRadius: "0 8px 8px 0", flex: 1, borderColor: createErrors.phoneNumber ? "#fca5a5" : "#e2e8f0" }}
@@ -645,13 +651,22 @@ export default function UsersAgentsPage() {
 
             {/* Password */}
             <div>
-              <input
-                type="password"
-                placeholder="Password *"
-                value={createForm.password}
-                onChange={(e) => { setCreateForm((p) => ({ ...p, password: e.target.value })); setCreateErrors((p) => ({ ...p, password: "" })); }}
-                style={{ ...inputStyle, borderColor: createErrors.password ? "#fca5a5" : "#e2e8f0" }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password *"
+                  value={createForm.password}
+                  onChange={(e) => { setCreateForm((p) => ({ ...p, password: e.target.value })); setCreateErrors((p) => ({ ...p, password: "" })); }}
+                  style={{ ...inputStyle, borderColor: createErrors.password ? "#fca5a5" : "#e2e8f0", paddingRight: 38 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center", padding: 0 }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {createErrors.password
                 ? <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{createErrors.password}</span>
                 : <span style={{ fontSize: 11, color: "#94a3b8", marginTop: 3, display: "block" }}>Min 8 chars · uppercase · lowercase · number</span>
