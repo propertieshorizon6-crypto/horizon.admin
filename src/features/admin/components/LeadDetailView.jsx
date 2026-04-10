@@ -78,7 +78,7 @@ export default function LeadDetailView({ lead: initialLead, onBack }) {
           </button>
           <div>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
-              <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:"#0f172a" }}>{lead.name}</h1>
+              <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:"#000000" }}>{lead.name}</h1>
               <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:99, background:stsStyle.bg, color:stsStyle.color }}>{lead.status}</span>
               <button onClick={() => setShowPriorityModal(true)} title="Click to change priority"
                 style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:99, background:priStyle.bg, color:priStyle.color, border:`1px solid ${priStyle.border}`, cursor:"pointer", opacity:priorityMutation.isPending?0.6:1 }}>
@@ -139,7 +139,7 @@ function ContactCard({ lead }) {
         ].map(({ label, value, prefix="" }) => (
           <div key={label} style={{ background:"#f8fafc", borderRadius:10, border:"1px solid #f1f5f9", padding:"14px 16px" }}>
             <p style={{ margin:"0 0 6px", fontSize:11, color:"#94a3b8", fontWeight:500 }}>{label}</p>
-            <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#1e293b" }}>{prefix}{value}</p>
+            <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#000000" }}>{prefix}{value}</p>
           </div>
         ))}
       </div>
@@ -153,7 +153,7 @@ function TabsCard({ lead, activeTab, setActiveTab, showToast }) {
       <div style={{ display:"flex", borderBottom:"1px solid #f1f5f9", padding:"0 8px", background:"#fafafa" }}>
         {["Details","Notes","Activity"].map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            style={{ padding:"13px 16px", background:"transparent", border:"none", cursor:"pointer", fontSize:13, fontWeight:activeTab===tab?700:500, color:activeTab===tab?"#0f172a":"#94a3b8", borderBottom:activeTab===tab?"2px solid #22225E":"2px solid transparent", marginBottom:-1, transition:"all 0.15s" }}>
+            style={{ padding:"13px 16px", background:"transparent", border:"none", cursor:"pointer", fontSize:13, fontWeight:activeTab===tab?700:500, color:activeTab===tab?"#000000":"#94a3b8", borderBottom:activeTab===tab?"2px solid #2D368E":"2px solid transparent", marginBottom:-1, transition:"all 0.15s" }}>
             {tab}
           </button>
         ))}
@@ -179,7 +179,7 @@ function DetailsTab({ lead }) {
         ].map(({ label, value, prefix="" }) => (
           <div key={label}>
             <p style={{ margin:"0 0 5px", fontSize:11, color:"#94a3b8", fontWeight:500 }}>{label}</p>
-            <p style={{ margin:0, fontSize:14, fontWeight:600, color:"#1e293b" }}>{prefix}{value}</p>
+            <p style={{ margin:0, fontSize:14, fontWeight:600, color:"#000000" }}>{prefix}{value}</p>
           </div>
         ))}
       </div>
@@ -189,7 +189,7 @@ function DetailsTab({ lead }) {
           <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", background:"#f8fafc", borderRadius:12, border:"1px solid #f1f5f9" }}>
             <div style={{ width:38, height:38, borderRadius:10, background:"#e2e8f0", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🏢</div>
             <div>
-              <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"#1e293b" }}>{lead.property}</p>
+              <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"#000000" }}>{lead.property}</p>
               <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>📍 Property</p>
             </div>
           </div>
@@ -236,7 +236,7 @@ function NotesTab({ lead, showToast }) {
         style={{ width:"100%", padding:"10px 14px", border:"1px solid #e2e8f0", borderRadius:10, fontSize:13, color:"#374151", resize:"none", outline:"none", minHeight:80, boxSizing:"border-box", fontFamily:"system-ui,sans-serif" }} />
       <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end" }}>
         <button onClick={handleAdd} disabled={!noteText.trim() || addNoteMutation.isPending}
-          style={{ padding:"8px 18px", background:"#22225E", color:"#fff", border:"none", borderRadius:8, cursor:addNoteMutation.isPending?"not-allowed":"pointer", fontSize:13, fontWeight:600, opacity:addNoteMutation.isPending?0.7:1 }}>
+          style={{ padding:"8px 18px", background:"#2D368E", color:"#fff", border:"none", borderRadius:8, cursor:addNoteMutation.isPending?"not-allowed":"pointer", fontSize:13, fontWeight:600, opacity:addNoteMutation.isPending?0.7:1 }}>
           {addNoteMutation.isPending ? "Adding..." : "Add Note"}
         </button>
       </div>
@@ -324,11 +324,11 @@ function AssignedAgentCard({ lead }) {
       </p>
       {lead.assignedTo ? (
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:"50%", background:"#22225E", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700 }}>
+          <div style={{ width:36, height:36, borderRadius:"50%", background:"#2D368E", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700 }}>
             {lead.assignedTo[0]}
           </div>
           <div>
-            <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#1e293b" }}>{lead.assignedTo}</p>
+            <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#000000" }}>{lead.assignedTo}</p>
             <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>Agent</p>
           </div>
         </div>
@@ -357,7 +357,7 @@ function TimelineCard({ lead }) {
       ].map(({ label, value, icon }) => (
         <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid #f8fafc" }}>
           <span style={{ fontSize:12, color:"#64748b", display:"flex", alignItems:"center", gap:6 }}><span>{icon}</span>{label}</span>
-          <span style={{ fontSize:12, fontWeight:600, color:"#1e293b" }}>{value}</span>
+          <span style={{ fontSize:12, fontWeight:600, color:"#000000" }}>{value}</span>
         </div>
       ))}
     </div>

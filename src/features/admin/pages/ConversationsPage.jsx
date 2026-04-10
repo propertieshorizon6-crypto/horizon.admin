@@ -19,7 +19,7 @@ import {
 import { useAuthStore } from "../../../store/useAuthStore";
 
 // ── Brand color ───────────────────────────────────────────────────────────────
-const NAVY = "#22225E";
+const NAVY = "#2D368E";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -97,7 +97,7 @@ function MessageBubble({ msg, currentUserId }) {
         <div style={{
           padding: "10px 14px", borderRadius: side === "right" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
           background: side === "right" ? NAVY : "#f1f5f9",
-          color: side === "right" ? "#fff" : "#1e293b",
+          color: side === "right" ? "#fff" : "#000000",
           fontSize: 13, lineHeight: 1.55,
         }}>
           {msg.content}
@@ -276,7 +276,7 @@ export default function ConversationsPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <MessageSquare size={20} color="#475569" />
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Conversations</h1>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>Conversations</h1>
           </div>
           {/* Stats */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -303,7 +303,7 @@ export default function ConversationsPage() {
             <div style={{ position: "relative", marginBottom: 8 }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..."
-                style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, color: "#334155", outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, color: "#000000", outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ position: "relative" }}>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
@@ -341,7 +341,7 @@ export default function ConversationsPage() {
                         <Avatar name={conv.clientName} size={36} bg={active ? NAVY : "#e2e8f0"} color={active ? "#fff" : "#475569"} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientName}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#000000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.clientName}</span>
                             <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0, marginLeft: 4 }}>{conv.time}</span>
                           </div>
                           {conv.clientEmail && (
@@ -369,7 +369,7 @@ export default function ConversationsPage() {
               {/* Conversation header */}
               <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", background: "#fff" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{selectedConv.clientName}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#000000" }}>{selectedConv.clientName}</span>
                   <StatusBadge status={selectedConv.status} />
                 </div>
                 {/* Actions */}
@@ -421,7 +421,7 @@ export default function ConversationsPage() {
                         onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#f1f5f9"; }}
                         onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", lineHeight: 1.4, flex: 1 }}>{thread.subject}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#000000", lineHeight: 1.4, flex: 1 }}>{thread.subject}</span>
                           <ThreadBadge status={thread.status} />
                         </div>
                         {thread.property && (
@@ -461,7 +461,7 @@ export default function ConversationsPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{selectedThread.subject}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#000000" }}>{selectedThread.subject}</span>
                       <ThreadBadge status={selectedThread.status} />
                     </div>
                     {selectedThread.property && (
@@ -515,7 +515,7 @@ export default function ConversationsPage() {
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                         placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
                         rows={2}
-                        style={{ flex: 1, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 13, color: "#334155", resize: "none", outline: "none", fontFamily: "inherit" }}
+                        style={{ flex: 1, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 13, color: "#000000", resize: "none", outline: "none", fontFamily: "inherit" }}
                       />
                       <button onClick={handleSend} disabled={!replyText.trim() || sendMutation.isPending}
                         style={{ width: 42, height: 42, borderRadius: 11, background: !replyText.trim() || sendMutation.isPending ? "#94a3b8" : NAVY, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: !replyText.trim() || sendMutation.isPending ? "not-allowed" : "pointer", flexShrink: 0, transition: "background 0.15s" }}>

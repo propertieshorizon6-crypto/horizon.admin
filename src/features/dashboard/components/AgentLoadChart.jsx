@@ -56,7 +56,7 @@ export default function AgentLoadChart({ data = [] }) {
 }
 
 const tooltipStyle = {
-  background: "#1e293b",
+  background: "#2D368E",
   border: "none",
   borderRadius: 8,
   fontSize: 12,

@@ -15,7 +15,7 @@ function DonutCenter({ viewBox, total }) {
       <text
         x={cx} y={cy - 6}
         textAnchor="middle"
-        fill="#0f172a"
+        fill="#2D368E"
         fontSize={26}
         fontWeight={900}
       >
@@ -78,7 +78,7 @@ export default function LeadsStatusChart({ data = [] }) {
 }
 
 const tooltipStyle = {
-  background: "#1e293b",
+  background: "#2D368E",
   border: "none",
   borderRadius: 8,
   fontSize: 12,

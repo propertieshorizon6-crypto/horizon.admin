@@ -111,7 +111,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
           padding: "24px 24px 20px", borderBottom: "1px solid #f1f5f9",
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#000000" }}>
               Edit Profile
             </h2>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
@@ -147,7 +147,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
 
           {/* First Name */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#000000", marginBottom: 8 }}>
               First Name
             </label>
             <input
@@ -162,7 +162,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
 
           {/* Last Name */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#000000", marginBottom: 8 }}>
               Last Name
             </label>
             <input
@@ -177,7 +177,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
 
           {/* Phone */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#000000", marginBottom: 8 }}>
               Phone Number
             </label>
             <input
@@ -195,7 +195,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
 
           {/* Email — read-only */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#000000", marginBottom: 8 }}>
               Email
             </label>
             <input
@@ -208,7 +208,7 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
 
           {/* Role — read-only */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#000000", marginBottom: 8 }}>
               Role
             </label>
             <input
@@ -248,7 +248,7 @@ const inputStyle = {
   width: "100%", padding: "10px 14px",
   border: "1.5px solid #e2e8f0",
   borderRadius: 10, fontSize: 14,
-  color: "#0f172a", outline: "none",
+  color: "#000000", outline: "none",
   boxSizing: "border-box",
   background: "#fff",
   transition: "border-color 0.15s",

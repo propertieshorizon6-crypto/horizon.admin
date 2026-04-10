@@ -20,7 +20,7 @@ const Footer = () => {
           <div className="flex items-center gap-3">
             <img src={logo} alt="Horizon Properties" className="w-10 h-10 object-contain" />
             <div>
-              <h3 className="font-bold text-[#0f172a] text-base leading-tight">
+              <h3 className="font-bold text-[#2D368E] text-base leading-tight">
                 Horizon Properties
               </h3>
               <p className="text-[12px] text-[#64748b] leading-tight">
@@ -33,19 +33,19 @@ const Footer = () => {
           <div className="flex items-center flex-wrap gap-x-6 gap-y-3 text-[14px] justify-center md:justify-start">
             <a
               href="#"
-              className="text-[#64748b] hover:text-[#0f172a] transition-colors duration-200"
+              className="text-[#64748b] hover:text-[#2D368E] transition-colors duration-200"
             >
               Terms of Service
             </a>
             <a
               href="#"
-              className="text-[#64748b] hover:text-[#0f172a] transition-colors duration-200"
+              className="text-[#64748b] hover:text-[#2D368E] transition-colors duration-200"
             >
               Privacy Policy
             </a>
             <a
               href="mailto:admin-support@horizon.properties"
-              className="text-[#64748b] hover:text-[#0f172a] transition-colors duration-200"
+              className="text-[#64748b] hover:text-[#2D368E] transition-colors duration-200"
             >
               Support
             </a>

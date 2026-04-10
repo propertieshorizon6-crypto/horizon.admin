@@ -24,7 +24,7 @@ const actionButtonStyle = {
   border: "none",
   cursor: "pointer",
   fontSize: 13,
-  color: "#334155",
+  color: "#000000",
   textAlign: "left",
 };
 

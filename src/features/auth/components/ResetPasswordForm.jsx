@@ -29,7 +29,7 @@ export default function ResetPasswordForm() {
           <AlertTriangle className="w-7 h-7 text-amber-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Invalid reset link</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Invalid reset link</h4>
           <p className="text-sm text-[#64748B]">
             This password reset link is missing or invalid. Please request a new one.
           </p>
@@ -51,7 +51,7 @@ export default function ResetPasswordForm() {
           <CheckCircle2 className="w-7 h-7 text-green-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Password reset!</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Password reset!</h4>
           <p className="text-sm text-[#64748B]">
             Your password has been updated. Redirecting you to login…
           </p>
@@ -78,7 +78,7 @@ export default function ResetPasswordForm() {
 
       {/* New Password */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#0F172A]">New Password</label>
+        <label className="text-sm font-medium text-[#2D368E]">New Password</label>
         <div className="relative">
           <input
             type={showNew ? "text" : "password"}
@@ -101,7 +101,7 @@ export default function ResetPasswordForm() {
 
       {/* Confirm Password */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#0F172A]">Confirm Password</label>
+        <label className="text-sm font-medium text-[#2D368E]">Confirm Password</label>
         <div className="relative">
           <input
             type={showConfirm ? "text" : "password"}

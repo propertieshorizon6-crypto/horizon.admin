@@ -130,7 +130,7 @@ function Modal({ title, onClose, children }) {
             borderBottom: "1px solid #f1f5f9",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>{title}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: "#000000" }}>{title}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -397,7 +397,7 @@ export default function UsersAgentsPage() {
       header: "User",
       cell: (info) => (
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{info.getValue()}</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{info.getValue()}</p>
           <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8" }}>{info.row.original.email}</p>
         </div>
       ),
@@ -473,7 +473,7 @@ export default function UsersAgentsPage() {
     <div className="p-4 md:p-6 min-h-full" style={{ background: "#f8fafc", fontFamily: "system-ui,sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Users & Agents</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>Users & Agents</h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Manage team members and their roles</p>
         </div>
         {isAdmin && (
@@ -484,7 +484,7 @@ export default function UsersAgentsPage() {
               setCreateErrors({});
               setModal({ type: "create", user: null });
             }}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}
           >
             <UserPlus size={14} />
             Add User
@@ -500,7 +500,7 @@ export default function UsersAgentsPage() {
           ["Admins / Managers", stats.admins],
         ].map(([label, value]) => (
           <div key={label} style={{ flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}>
-            <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{value}</p>
+            <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#000000" }}>{value}</p>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>{label}</p>
           </div>
         ))}
@@ -683,7 +683,7 @@ export default function UsersAgentsPage() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
-              <button type="submit" disabled={createMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: createMutation.isPending ? "not-allowed" : "pointer", opacity: createMutation.isPending ? 0.7 : 1 }}>{createMutation.isPending ? "Creating..." : "Create"}</button>
+              <button type="submit" disabled={createMutation.isPending} style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: createMutation.isPending ? "not-allowed" : "pointer", opacity: createMutation.isPending ? 0.7 : 1 }}>{createMutation.isPending ? "Creating..." : "Create"}</button>
             </div>
           </form>
         </Modal>
@@ -740,7 +740,7 @@ export default function UsersAgentsPage() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
-              <button type="submit" disabled={updateMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: updateMutation.isPending ? "not-allowed" : "pointer", opacity: updateMutation.isPending ? 0.7 : 1 }}>{updateMutation.isPending ? "Saving..." : "Save"}</button>
+              <button type="submit" disabled={updateMutation.isPending} style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: updateMutation.isPending ? "not-allowed" : "pointer", opacity: updateMutation.isPending ? 0.7 : 1 }}>{updateMutation.isPending ? "Saving..." : "Save"}</button>
             </div>
           </form>
         </Modal>
@@ -762,7 +762,7 @@ export default function UsersAgentsPage() {
             </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
-              <button type="submit" disabled={changeRoleMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: changeRoleMutation.isPending ? "not-allowed" : "pointer", opacity: changeRoleMutation.isPending ? 0.7 : 1 }}>{changeRoleMutation.isPending ? "Updating..." : "Update"}</button>
+              <button type="submit" disabled={changeRoleMutation.isPending} style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: changeRoleMutation.isPending ? "not-allowed" : "pointer", opacity: changeRoleMutation.isPending ? 0.7 : 1 }}>{changeRoleMutation.isPending ? "Updating..." : "Update"}</button>
             </div>
           </form>
         </Modal>
@@ -785,7 +785,7 @@ export default function UsersAgentsPage() {
             <textarea rows={3} value={statusForm.reason} onChange={(event) => setStatusForm((prev) => ({ ...prev, reason: event.target.value }))} placeholder="Reason (optional)" style={{ ...inputStyle, resize: "vertical" }} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={closeModal} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>Cancel</button>
-              <button type="submit" disabled={changeStatusMutation.isPending} style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: changeStatusMutation.isPending ? "not-allowed" : "pointer", opacity: changeStatusMutation.isPending ? 0.7 : 1 }}>{changeStatusMutation.isPending ? "Updating..." : "Update"}</button>
+              <button type="submit" disabled={changeStatusMutation.isPending} style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: changeStatusMutation.isPending ? "not-allowed" : "pointer", opacity: changeStatusMutation.isPending ? 0.7 : 1 }}>{changeStatusMutation.isPending ? "Updating..." : "Update"}</button>
             </div>
           </form>
         </Modal>

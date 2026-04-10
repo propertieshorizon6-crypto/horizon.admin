@@ -232,7 +232,7 @@ export default function LeadsPage() {
       header: "Contact",
       cell: ({ row: { original: r } }) => (
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{r.name}</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{r.name}</p>
           {r.email && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8" }}>✉ {r.email}</p>}
           {r.phone && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#94a3b8" }}>📞 {r.phone}</p>}
         </div>
@@ -348,12 +348,12 @@ export default function LeadsPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Leads</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>Leads</h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Manage and track all incoming leads</p>
         </div>
         <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 4, gap: 2 }}>
           {[{ id: "table", label: "Table" }, { id: "kanban", label: "Board" }].map(({ id, label }) => (
-            <button key={id} onClick={() => setView(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: view === id ? "#fff" : "transparent", color: view === id ? "#0f172a" : "#64748b", boxShadow: view === id ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+            <button key={id} onClick={() => setView(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: view === id ? "#fff" : "transparent", color: view === id ? "#000000" : "#64748b", boxShadow: view === id ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
               {id === "table" ? <LayoutList size={15} /> : <LayoutGrid size={15} />} {label}
             </button>
           ))}
@@ -368,7 +368,7 @@ export default function LeadsPage() {
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Search by name, email, phone, or property..."
-            style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 9, paddingBottom: 9, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 13, color: "#334155", outline: "none", boxSizing: "border-box", background: "#fafafa" }}
+            style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 9, paddingBottom: 9, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 13, color: "#000000", outline: "none", boxSizing: "border-box", background: "#fafafa" }}
           />
         </div>
         {[
@@ -400,9 +400,9 @@ export default function LeadsPage() {
               const count    = tabCounts[tab] ?? 0;
               const isActive = activeTab === tab;
               return (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: isActive ? "#f1f5f9" : "transparent", color: isActive ? "#0f172a" : "#64748b", fontSize: 13, fontWeight: isActive ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: isActive ? "#f1f5f9" : "transparent", color: isActive ? "#000000" : "#64748b", fontSize: 13, fontWeight: isActive ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
                   {tab}
-                  {count > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: isActive ? "#1e293b" : "#e2e8f0", color: isActive ? "#fff" : "#64748b" }}>{count}</span>}
+                  {count > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: isActive ? "#2D368E" : "#e2e8f0", color: isActive ? "#fff" : "#64748b" }}>{count}</span>}
                 </button>
               );
             })}
@@ -451,7 +451,7 @@ export default function LeadsPage() {
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed", opacity: table.getCanPreviousPage() ? 1 : 0.4 }}>Previous</button>
               {Array.from({ length: table.getPageCount() }).map((_, i) => (
-                <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: table.getState().pagination.pageIndex === i ? "none" : "1px solid #e2e8f0", background: table.getState().pagination.pageIndex === i ? "#1e293b" : "#fff", color: table.getState().pagination.pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>{i + 1}</button>
+                <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: table.getState().pagination.pageIndex === i ? "none" : "1px solid #e2e8f0", background: table.getState().pagination.pageIndex === i ? "#2D368E" : "#fff", color: table.getState().pagination.pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>{i + 1}</button>
               ))}
               <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanNextPage() ? "pointer" : "not-allowed", opacity: table.getCanNextPage() ? 1 : 0.4 }}>Next</button>
             </div>
@@ -467,7 +467,7 @@ export default function LeadsPage() {
               const count    = tabCounts[tab] ?? 0;
               const isActive = activeTab === tab;
               return (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${isActive ? "#1e293b" : "#e2e8f0"}`, background: isActive ? "#1e293b" : "#fff", color: isActive ? "#fff" : "#64748b", fontSize: 12, fontWeight: isActive ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${isActive ? "#2D368E" : "#e2e8f0"}`, background: isActive ? "#2D368E" : "#fff", color: isActive ? "#fff" : "#64748b", fontSize: 12, fontWeight: isActive ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
                   {tab}
                   {count > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 99, background: isActive ? "rgba(255,255,255,0.2)" : "#e2e8f0", color: isActive ? "#fff" : "#64748b" }}>{count}</span>}
                 </button>
@@ -504,7 +504,7 @@ export default function LeadsPage() {
               {activeLead ? (
                 <div style={{ opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
                   <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 14, boxShadow: "0 12px 32px rgba(0,0,0,0.18)", minWidth: 220 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{activeLead.name}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{activeLead.name}</p>
                     {activeLead.email && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>✉ {activeLead.email}</p>}
                     <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏢 {activeLead.property}</p>
                   </div>
@@ -540,7 +540,7 @@ export default function LeadsPage() {
             {/* Modal Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #f1f5f9" }}>
               <div>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Assign Agent</p>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#000000" }}>Assign Agent</p>
                 <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{assigningLead.name}</p>
               </div>
               <button
@@ -561,7 +561,7 @@ export default function LeadsPage() {
                   value={selectedAgentId}
                   onChange={(e) => setSelectedAgentId(e.target.value)}
                   disabled={assignLeadMutation.isPending || isAgentsLoading}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", fontSize: 13, color: "#0f172a", background: "#fff", outline: "none" }}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", fontSize: 13, color: "#000000", background: "#fff", outline: "none" }}
                 >
                   <option value="">Unassigned</option>
                   {agents.map((a) => (
@@ -599,7 +599,7 @@ export default function LeadsPage() {
                   type="button"
                   onClick={closeAssignModal}
                   disabled={assignLeadMutation.isPending}
-                  style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: assignLeadMutation.isPending ? 0.6 : 1 }}
+                  style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#000000", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: assignLeadMutation.isPending ? 0.6 : 1 }}
                 >
                   Cancel
                 </button>
@@ -607,7 +607,7 @@ export default function LeadsPage() {
                   type="button"
                   onClick={submitAssignModal}
                   disabled={assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")}
-                  style={{ border: "1px solid #1e293b", background: "#1e293b", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: (assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")) ? 0.5 : 1 }}
+                  style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: assignLeadMutation.isPending ? "not-allowed" : "pointer", opacity: (assignLeadMutation.isPending || (selectedAgentId || "") === (assigningLead?.assignedAgentId || "")) ? 0.5 : 1 }}
                 >
                   {assignLeadMutation.isPending ? "Saving..." : selectedAgentId ? "Save Assignment" : "Unassign Agent"}
                 </button>

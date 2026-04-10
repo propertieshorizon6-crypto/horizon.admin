@@ -10,7 +10,7 @@ const Hero = () => {
   return (
     <section className="relative overflow-hidden py-20 lg:py-32 bg-background">
       {/* Background Aurora / Gradient Effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a2b4b]/5 via-transparent to-[#f59e0b]/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#2D368E]/5 via-transparent to-[#f59e0b]/5 pointer-events-none" />
 
       {/* Radial Blur Shapes - Top Right (Accent) */}
       <motion.div
@@ -22,7 +22,7 @@ const Hero = () => {
 
       {/* Radial Blur Shapes - Bottom Left (Primary) */}
       <motion.div
-        className="absolute bottom-10 left-[5%] w-96 h-96 rounded-full bg-[#1a2b4b]/10 blur-[80px] lg:blur-[120px] pointer-events-none"
+        className="absolute bottom-10 left-[5%] w-96 h-96 rounded-full bg-[#2D368E]/10 blur-[80px] lg:blur-[120px] pointer-events-none"
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 0.5, scale: 1 }}
         transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
@@ -32,7 +32,7 @@ const Hero = () => {
         <div className="text-center max-w-4xl mx-auto">
           {/* Enterprise Badge */}
           <motion.div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1a2b4b]/10 text-[#1a2b4b] text-sm font-medium mb-6"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2D368E]/10 text-[#2D368E] text-sm font-medium mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
@@ -50,7 +50,7 @@ const Hero = () => {
           >
             <img src={logo} alt="Horizon Properties" className="h-16 object-contain" />
             <h1
-              className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-[#1a2b4b] leading-[1.1] tracking-tight"
+              className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-[#2D368E] leading-[1.1] tracking-tight"
               style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)" }}
             >
               Admin Console
@@ -76,13 +76,13 @@ const Hero = () => {
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.45 }}
           >
             <motion.button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium bg-[#1a2b4b] text-white h-11 rounded-md px-8 group w-full sm:w-auto transition-all duration-200 hover:shadow-[0_10px_15px_-3px_rgba(26,43,75,0.2)]"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium bg-[#2D368E] text-white h-11 rounded-md px-8 group w-full sm:w-auto transition-all duration-200 hover:shadow-[0_10px_15px_-3px_rgba(26,43,75,0.2)]"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
              <Link
                   to="/auth"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium bg-[#1a2b4b] text-white h-11 rounded-md px-8 group w-full sm:w-auto transition-all duration-200 hover:shadow-[0_10px_15px_-3px_rgba(26,43,75,0.2)]"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium bg-[#2D368E] text-white h-11 rounded-md px-8 group w-full sm:w-auto transition-all duration-200 hover:shadow-[0_10px_15px_-3px_rgba(26,43,75,0.2)]"
                 >
                   Sign In
                   <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -90,7 +90,7 @@ const Hero = () => {
             </motion.button>
 
             <motion.button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium border border-[#e2e8f0] bg-white text-[#1a2b4b] hover:bg-[#f1f5f9] h-11 rounded-md px-8 w-full sm:w-auto transition-all duration-200"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium border border-[#e2e8f0] bg-white text-[#2D368E] hover:bg-[#f1f5f9] h-11 rounded-md px-8 w-full sm:w-auto transition-all duration-200"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.95 }}
             >

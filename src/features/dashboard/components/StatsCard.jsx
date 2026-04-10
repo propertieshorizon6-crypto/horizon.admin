@@ -18,7 +18,7 @@ export default function StatsCard({ icon, label, value, pct, up }) {
         </span>
       </div>
 
-      <p className="text-3xl font-black text-slate-900 leading-none">{value}</p>
+      <p className="text-3xl font-black text-[#2D368E] leading-none">{value}</p>
       <p className="text-xs text-slate-400 font-medium mt-1.5">{label}</p>
     </div>
   );

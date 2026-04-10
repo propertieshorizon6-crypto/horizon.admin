@@ -8,7 +8,7 @@ export default function useProperties() {
     queryKey: ["properties"],
     queryFn:  MOCK_MODE
       ? () => new Promise((res) => setTimeout(() => res(MOCK_PROPERTIES), 400))
-      : fetchProperties,
+      : () => fetchProperties(),
     staleTime: 1000 * 60 * 5,
   });
 }

@@ -92,7 +92,7 @@ export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority,
 
       <button
         onClick={handleAction(onViewDetails)}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#334155", textAlign: "left" }}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#000000", textAlign: "left" }}
         onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
@@ -104,7 +104,7 @@ export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority,
 
       <button
         onClick={handleAction(onChangePriority)}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#334155", textAlign: "left" }}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#000000", textAlign: "left" }}
         onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
@@ -116,7 +116,7 @@ export default function LeadActionsMenu({ lead, onViewDetails, onChangePriority,
 
       <button
         onClick={handleAction(onAssignAgent)}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#334155", textAlign: "left" }}
+        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 14px", background: "transparent", border: "none", cursor: "pointer", fontSize: 13, color: "#000000", textAlign: "left" }}
         onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >

@@ -57,9 +57,9 @@ function DeleteRuleModal({ rule, onConfirm, onCancel, isDeleting }) {
           <div style={{ width:52, height:52, borderRadius:"50%", background:"#fef2f2", border:"1px solid #fecaca", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
             <AlertTriangle size={24} color="#dc2626"/>
           </div>
-          <h3 style={{ margin:"0 0 6px", fontSize:16, fontWeight:800, color:"#0f172a" }}>Delete Rule?</h3>
+          <h3 style={{ margin:"0 0 6px", fontSize:16, fontWeight:800, color:"#000000" }}>Delete Rule?</h3>
           <p style={{ margin:"0 0 6px", fontSize:13, color:"#64748b" }}>Are you sure you want to delete</p>
-          <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:700, color:"#0f172a", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"5px 14px" }}>
+          <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:700, color:"#000000", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"5px 14px" }}>
             {rule?.name}
           </p>
           <p style={{ margin:"0 0 4px", fontSize:12, color:"#94a3b8" }}>This action <strong style={{ color:"#dc2626" }}>cannot be undone</strong>.</p>
@@ -223,7 +223,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, color:"#0f172a" }}>Notifications</h1>
+          <h1 style={{ margin:0, fontSize:22, color:"#000000" }}>Notifications</h1>
           <p style={{ margin:"4px 0 0", fontSize:12, color:"#64748b" }}>Manage your notifications and delivery settings</p>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function NotificationsPage() {
           const active = activeTab === tab.id;
           return (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
-              style={{ border:active?"1px solid #0f172a":"1px solid #e2e8f0", background:active?"#0f172a":"#fff", color:active?"#fff":"#334155", borderRadius:8, padding:"7px 12px", fontSize:13, cursor:"pointer" }}>
+              style={{ border:active?"1px solid #2D368E":"1px solid #e2e8f0", background:active?"#2D368E":"#fff", color:active?"#fff":"#000000", borderRadius:8, padding:"7px 12px", fontSize:13, cursor:"pointer" }}>
               {tab.label}{tab.id==="center" && unreadCount>0 ? ` (${unreadCount})` : ""}
             </button>
           );
@@ -245,7 +245,7 @@ export default function NotificationsPage() {
       {activeTab === "center" && (
         <section style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:14, borderBottom:"1px solid #f1f5f9" }}>
-            <strong style={{ fontSize:14, color:"#0f172a" }}>Your Notifications</strong>
+            <strong style={{ fontSize:14, color:"#000000" }}>Your Notifications</strong>
             <button type="button" onClick={() => { if (unreadCount===0 || markAllReadMutation.isPending) return; markAllReadMutation.mutate(); }}
               disabled={unreadCount===0 || markAllReadMutation.isPending}
               style={{ border:"1px solid #e2e8f0", background:"#f8fafc", color:"#475569", borderRadius:8, padding:"6px 10px", fontSize:12, cursor:unreadCount===0?"not-allowed":"pointer" }}>
@@ -290,7 +290,7 @@ export default function NotificationsPage() {
                     <ChannelIcon channel={item.channel} />
                   </div>
                   <div style={{ flex:1 }}>
-                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#0f172a" }}>{item.title}</p>
+                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>{item.title}</p>
                     <p style={{ margin:"2px 0 0", fontSize:12, color:"#64748b" }}>{item.desc}</p>
                     <p style={{ margin:"3px 0 0", fontSize:11, color:"#94a3b8" }}>{item.date || "Unknown time"}</p>
                   </div>
@@ -310,7 +310,7 @@ export default function NotificationsPage() {
       {activeTab === "rules" && (
         <section style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:14, borderBottom:"1px solid #f1f5f9" }}>
-            <strong style={{ fontSize:14, color:"#0f172a" }}>Notification Rules</strong>
+            <strong style={{ fontSize:14, color:"#000000" }}>Notification Rules</strong>
             <button type="button" disabled title="Create form not implemented"
               style={{ border:"none", background:"#94a3b8", color:"#fff", borderRadius:8, padding:"7px 12px", fontSize:12, cursor:"not-allowed", display:"flex", alignItems:"center", gap:6 }}>
               <Plus size={14} /> Add Rule
@@ -336,7 +336,7 @@ export default function NotificationsPage() {
               ) : (
                 rules.map((rule, idx) => (
                   <tr key={rule.id} style={{ borderTop:idx===0?"none":"1px solid #f8fafc" }}>
-                    <td style={{ padding:"12px 14px", fontSize:13, color:"#0f172a", fontWeight:600 }}>{rule.name}</td>
+                    <td style={{ padding:"12px 14px", fontSize:13, color:"#000000", fontWeight:600 }}>{rule.name}</td>
                     <td style={{ padding:"12px 14px", fontSize:12, color:"#475569" }}>{rule.trigger}</td>
                     <td style={{ padding:"12px 14px", fontSize:12, color:"#475569" }}>{rule.recipients.join(", ")}</td>
                     <td style={{ padding:"12px 14px" }}>
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
       {activeTab === "logs" && (
         <section style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12 }}>
           <div style={{ padding:14, borderBottom:"1px solid #f1f5f9", display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-            <strong style={{ fontSize:14, color:"#0f172a" }}>Delivery Logs</strong>
+            <strong style={{ fontSize:14, color:"#000000" }}>Delivery Logs</strong>
             <div style={{ display:"flex", gap:8 }}>
               {[
                 { value:logStatus, set:setLogStatus, label:"All Statuses", opts:["pending","sent","delivered","failed","bounced"] },

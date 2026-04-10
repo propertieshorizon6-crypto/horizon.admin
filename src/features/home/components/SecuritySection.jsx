@@ -9,7 +9,7 @@ const SecuritySection = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.3 });
 
   return (
-    <section className="py-16 bg-[#1A2B4B] text-[#FFFFFF]" ref={ref}>
+    <section className="py-16 bg-[#2D368E] text-[#FFFFFF]" ref={ref}>
       <div className="container mx-auto px-4">
         <div className="text-center">
           {/* Lock Icon */}

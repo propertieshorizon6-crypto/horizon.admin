@@ -65,9 +65,9 @@ function DeleteConfirmModal({ property, onConfirm, onCancel, isDeleting }) {
           <div style={{ width:56, height:56, borderRadius:"50%", background:"#fef2f2", border:"1px solid #fecaca", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
             <AlertTriangle size={26} color="#dc2626"/>
           </div>
-          <h3 style={{ margin:"0 0 8px", fontSize:17, fontWeight:800, color:"#0f172a" }}>Delete Property?</h3>
+          <h3 style={{ margin:"0 0 8px", fontSize:17, fontWeight:800, color:"#000000" }}>Delete Property?</h3>
           <p style={{ margin:"0 0 6px", fontSize:13, color:"#64748b", lineHeight:1.6 }}>Are you sure you want to delete</p>
-          <p style={{ margin:"0 0 6px", fontSize:13, fontWeight:700, color:"#0f172a", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 14px", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          <p style={{ margin:"0 0 6px", fontSize:13, fontWeight:700, color:"#00000", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:"6px 14px", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
             {property?.title ?? "this property"}
           </p>
           <p style={{ margin:"0 0 4px", fontSize:12, color:"#94a3b8" }}>This action <strong style={{ color:"#dc2626" }}>cannot be undone</strong>.</p>
@@ -100,7 +100,7 @@ function RejectModal({ property, onConfirm, onCancel, isRejecting }) {
             <XCircle size={20} color="#dc2626"/>
           </div>
           <div>
-            <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#0f172a" }}>Reject Property</h3>
+            <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#000000" }}>Reject Property</h3>
             <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>{property?.title}</p>
           </div>
         </div>
@@ -111,8 +111,8 @@ function RejectModal({ property, onConfirm, onCancel, isRejecting }) {
           <textarea value={reason} onChange={(e)=>setReason(e.target.value)}
             placeholder="Describe why this property is being rejected (min 10 characters)..."
             rows={4}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:9, border:"1px solid #e2e8f0", fontSize:13, color:"#0f172a", resize:"vertical", outline:"none", boxSizing:"border-box", fontFamily:"system-ui,sans-serif" }}
-            onFocus={(e)=>(e.target.style.borderColor="#22225E")}
+            style={{ width:"100%", padding:"10px 12px", borderRadius:9, border:"1px solid #e2e8f0", fontSize:13, color:"#000000", resize:"vertical", outline:"none", boxSizing:"border-box", fontFamily:"system-ui,sans-serif" }}
+            onFocus={(e)=>(e.target.style.borderColor="#2D368E")}
             onBlur={(e)=>(e.target.style.borderColor="#e2e8f0")} />
           <p style={{ margin:"6px 0 0", fontSize:11, color:"#94a3b8" }}>{reason.length}/500 (min 10)</p>
         </div>
@@ -142,15 +142,15 @@ function UnpublishModal({ property, onConfirm, onCancel, isUnpublishing }) {
             <EyeOff size={20} color="#a16207"/>
           </div>
           <div>
-            <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#0f172a" }}>Unpublish Property</h3>
+            <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#000000" }}>Unpublish Property</h3>
             <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>{property?.title}</p>
           </div>
         </div>
         <div style={{ padding:"16px 20px" }}>
           <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#374151", marginBottom:8 }}>Reason (optional)</label>
           <textarea value={reason} onChange={(e)=>setReason(e.target.value)} placeholder="Reason for unpublishing..." rows={3}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:9, border:"1px solid #e2e8f0", fontSize:13, color:"#0f172a", resize:"vertical", outline:"none", boxSizing:"border-box", fontFamily:"system-ui,sans-serif" }}
-            onFocus={(e)=>(e.target.style.borderColor="#22225E")}
+            style={{ width:"100%", padding:"10px 12px", borderRadius:9, border:"1px solid #e2e8f0", fontSize:13, color:"#000000", resize:"vertical", outline:"none", boxSizing:"border-box", fontFamily:"system-ui,sans-serif" }}
+            onFocus={(e)=>(e.target.style.borderColor="#2D368E")}
             onBlur={(e)=>(e.target.style.borderColor="#e2e8f0")} />
         </div>
         <div style={{ padding:"12px 20px", borderTop:"1px solid #f1f5f9", display:"flex", justifyContent:"flex-end", gap:10 }}>
@@ -174,8 +174,8 @@ function DetailsTab({ property }) {
         {[{label:"Type",value:property.type??"-"},{label:"Category",value:property.category??"-"},{label:"Intent",value:property.intent??"-"},{label:"Visibility",value:property.visibility??"Public"}]
           .map(({label,value})=>(
             <div key={label}>
-              <p style={{ margin:"0 0 5px", fontSize:11, color:"#94a3b8", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.04em" }}>{label}</p>
-              <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#1e293b" }}>{value}</p>
+              <p style={{ margin:"0 0 5px", fontSize:11, color:"#00000", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.04em" }}>{label}</p>
+              <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#000000" }}>{value}</p>
             </div>
           ))}
       </div>
@@ -205,11 +205,11 @@ function DetailsTab({ property }) {
 function DescriptionTab({ property }) {
   return property.description
     ? <p style={{ margin:0, fontSize:14, color:"#374151", lineHeight:1.75 }}>{property.description}</p>
-    : <p style={{ margin:0, fontSize:13, color:"#94a3b8", textAlign:"center", padding:"32px 0" }}>No description available</p>;
+    : <p style={{ margin:0, fontSize:13, color:"#00000", textAlign:"center", padding:"32px 0" }}>No description available</p>;
 }
 function DocumentsTab({ property }) {
   const docs=property.documents??[];
-  if(!docs.length) return <p style={{ margin:0, fontSize:13, color:"#94a3b8", textAlign:"center", padding:"32px 0" }}>No documents attached</p>;
+  if(!docs.length) return <p style={{ margin:0, fontSize:13, color:"#00000", textAlign:"center", padding:"32px 0" }}>No documents attached</p>;
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
       {docs.map((doc,i)=>(
@@ -254,7 +254,7 @@ function EmptyView({ onBack }) {
       <button onClick={onBack} style={{ marginBottom:20, padding:"7px 9px", border:"1px solid #e2e8f0", borderRadius:9, background:"#fff", cursor:"pointer", color:"#64748b", display:"flex", alignItems:"center" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </button>
-      <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12, padding:20, textAlign:"center", color:"#64748b", fontSize:14 }}>Property details unavailable.</div>
+      <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12, padding:20, textAlign:"center", color:"#00000", fontSize:14 }}>Property details unavailable.</div>
     </div>
   );
 }
@@ -288,7 +288,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
   return (
     <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"16px 20px", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
       <div>
-        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#0f172a" }}>Admin Actions</p>
+        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>Admin Actions</p>
         <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>
           {isPending  && "This property is awaiting your approval"}
           {isActive   && "This property is currently live and visible to users"}
@@ -304,7 +304,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
               <XCircle size={15}/> Reject
             </button>
             <button type="button" onClick={onApprove} disabled={isLoading}
-              style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"none", background:"#22225E", color:"#fff", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
+              style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"none", background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
               <CheckCircle size={15}/> Approve & Publish
             </button>
           </>
@@ -317,7 +317,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
         )}
         {(isInactive||isRejected) && (
           <button type="button" onClick={onRepublish} disabled={isLoading}
-            style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"none", background:"#22225E", color:"#fff", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
+            style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"none", background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
             <Eye size={15}/> Republish
           </button>
         )}
@@ -327,7 +327,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function PropertyDetailPage({ propertyId, property: initialProperty, onBack, onEditProperty }) {
+export default function PropertyDetailPage({ propertyId, property: initialProperty, onBack, onEditProperty, onAssignAgent }) {
   const [activeTab,         setActiveTab]         = useState("Details");
   const [showDeleteModal,   setShowDeleteModal]   = useState(false);
   const [showRejectModal,   setShowRejectModal]   = useState(false);
@@ -393,7 +393,7 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
           </button>
           <div>
             <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", marginBottom:6 }}>
-              <h1 style={{ margin:0, fontSize:20, fontWeight:800, color:"#0f172a" }}>{property.title??"Property Details"}</h1>
+              <h1 style={{ margin:0, fontSize:20, fontWeight:800, color:"#000000" }}>{property.title??"Property Details"}</h1>
               <span style={{ fontSize:11, fontWeight:700, padding:"3px 11px", borderRadius:99, background:status.bg, color:status.color }}>{status.label}</span>
               {property.featured&&<span style={{ fontSize:11, fontWeight:700, padding:"3px 11px", borderRadius:99, background:"#fef9c3", color:"#854d0e" }}>Featured</span>}
             </div>
@@ -403,8 +403,8 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
             </p>
           </div>
         </div>
-        {onEditProperty
-          ? <PropertyActionsMenu property={property} onEditProperty={onEditProperty} onDeleteProperty={()=>setShowDeleteModal(true)}/>
+        {(onEditProperty || onAssignAgent)
+          ? <PropertyActionsMenu property={property} onEditProperty={onEditProperty} onDeleteProperty={()=>setShowDeleteModal(true)} onAssignAgent={onAssignAgent}/>
           : <button style={{ padding:"7px 9px", border:"1px solid #e2e8f0", borderRadius:9, background:"#fff", cursor:"pointer", color:"#64748b", display:"flex", alignItems:"center" }}><MoreHorizontal size={18}/></button>
         }
       </div>
@@ -435,7 +435,7 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", overflow:"hidden" }}>
             <div style={{ display:"flex", borderBottom:"1px solid #f1f5f9", padding:"0 8px", background:"#fafafa" }}>
               {TABS.map(tab=>(
-                <button key={tab} onClick={()=>setActiveTab(tab)} style={{ padding:"13px 18px", background:"transparent", border:"none", cursor:"pointer", fontSize:13, fontWeight:activeTab===tab?700:500, color:activeTab===tab?"#0f172a":"#94a3b8", borderBottom:activeTab===tab?"2px solid #22225E":"2px solid transparent", marginBottom:-1, transition:"all 0.15s" }}>{tab}</button>
+                <button key={tab} onClick={()=>setActiveTab(tab)} style={{ padding:"13px 18px", background:"transparent", border:"none", cursor:"pointer", fontSize:13, fontWeight:activeTab===tab?700:500, color:activeTab===tab?"#000000":"#94a3b8", borderBottom:activeTab===tab?"2px solid #2D368E":"2px solid transparent", marginBottom:-1, transition:"all 0.15s" }}>{tab}</button>
               ))}
             </div>
             <div style={{ padding:24 }}>
@@ -448,21 +448,32 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
 
         <div style={{ width:300, flexShrink:0, display:"flex", flexDirection:"column", gap:14 }}>
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:24 }}>
-            <p style={{ margin:"0 0 4px", fontSize:28, fontWeight:900, color:"#0f172a", letterSpacing:"-0.5px" }}>{fmtPrice(property.price,property.currency)}</p>
+            <p style={{ margin:"0 0 4px", fontSize:28, fontWeight:900, color:"#000000", letterSpacing:"-0.5px" }}>{fmtPrice(property.price,property.currency)}</p>
             <p style={{ margin:0, fontSize:12, color:"#94a3b8" }}>{property.intent??"For Sale"}</p>
           </div>
 
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
             <p style={{ margin:"0 0 16px", fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:7 }}><Home size={14} color="#64748b"/> Property Info</p>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid #f8fafc" }}>
+              <span style={{ fontSize:12, color:"#94a3b8", display:"flex", alignItems:"center", gap:6 }}><User size={13} color="#94a3b8"/> Assigned Agent</span>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:"#00000", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{property.assignedAgent??property.assignedTo??"-"}</span>
+                {onAssignAgent && (
+                  <button type="button" onClick={()=>onAssignAgent(property)}
+                    style={{ fontSize:11, fontWeight:600, color:"#000000", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:6, padding:"2px 8px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                    {(property.assignedAgent??property.assignedTo) ? "Reassign" : "Assign"}
+                  </button>
+                )}
+              </div>
+            </div>
             {[
-              {icon:<User size={13} color="#94a3b8"/>,    label:"Assigned Agent", value:property.assignedAgent??property.assignedTo??"-"},
               {icon:<User size={13} color="#94a3b8"/>,    label:"Created By",     value:property.createdBy??"Admin User"},
               {icon:<Calendar size={13} color="#94a3b8"/>,label:"Created",        value:fmtDate(property.createdAt)},
               {icon:<Clock size={13} color="#94a3b8"/>,   label:"Last Updated",   value:fmtDate(property.updatedAt)},
             ].map(({icon,label,value})=>(
               <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid #f8fafc" }}>
                 <span style={{ fontSize:12, color:"#94a3b8", display:"flex", alignItems:"center", gap:6 }}>{icon} {label}</span>
-                <span style={{ fontSize:12, fontWeight:700, color:"#1e293b", textAlign:"right", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{value}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:"#00000", textAlign:"right", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{value}</span>
               </div>
             ))}
           </div>
@@ -470,10 +481,10 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
             <p style={{ margin:"0 0 16px", fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:7 }}><Activity size={14} color="#64748b"/> Activity</p>
             {activity.length===0
-              ? <p style={{ fontSize:12, color:"#94a3b8", textAlign:"center", margin:0, padding:"12px 0" }}>No activity yet</p>
+              ? <p style={{ fontSize:12, color:"#00000", textAlign:"center", margin:0, padding:"12px 0" }}>No activity yet</p>
               : activity.map((item,i)=>(
                   <div key={i} style={{ display:"flex", gap:10, marginBottom:i<activity.length-1?14:0 }}>
-                    <div style={{ width:8, height:8, borderRadius:"50%", background:"#22225E", marginTop:5, flexShrink:0 }}/>
+                    <div style={{ width:8, height:8, borderRadius:"50%", background:"#2D368E", marginTop:5, flexShrink:0 }}/>
                     <div>
                       <p style={{ margin:"0 0 2px", fontSize:13, color:"#374151" }}><strong>{item.user}</strong> {item.action}</p>
                       <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>{item.date}</p>

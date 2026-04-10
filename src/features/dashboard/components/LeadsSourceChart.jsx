@@ -9,7 +9,7 @@ import DashboardChartCard from "./DashboardChartCard";
 
 
 const SOURCES = [
-  { key: "App",      color: "#334155", gradId: "src-app"  },
+  { key: "App",      color: "#000000", gradId: "src-app"  },
   { key: "Website",  color: "#f97316", gradId: "src-web"  },
   { key: "Call",     color: "#38bdf8", gradId: "src-call" },
   { key: "Whatsapp", color: "#22c55e", gradId: "src-wa"   },
@@ -65,7 +65,7 @@ export default function LeadsSourceChart({ data = [] }) {
 }
 
 const tooltipStyle = {
-  background: "#1e293b",
+  background: "#2D368E",
   border: "none",
   borderRadius: 8,
   fontSize: 12,

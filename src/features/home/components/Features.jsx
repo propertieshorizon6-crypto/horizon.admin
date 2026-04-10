@@ -9,7 +9,7 @@ const features = [
     title: "Lead Command Center",
     description: "Lead intake, assignment, and SLA tracking",
     icon: Users,
-    gradient: "from-[#1A2B4B] to-[#1A2B4B]/70",
+    gradient: "from-[#2D368E] to-[#2D368E]/70",
     iconColor: "text-white",
     details: [
       "Multi-source lead capture (app, website, call, WhatsApp)",
@@ -63,7 +63,7 @@ const Features = () => {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-[#2D368E] mb-4">
             Powerful Features
           </h2>
           <p className="text-[#64748B] max-w-2xl mx-auto text-base">
@@ -84,7 +84,7 @@ const Features = () => {
               }}
             >
               <motion.div
-                className="rounded-lg border border-[#E2E8F0]/50 bg-white text-[#0F172A] shadow-sm group cursor-pointer h-full transition-colors duration-300"
+                className="rounded-lg border border-[#E2E8F0]/50 bg-white text-[#2D368E] shadow-sm group cursor-pointer h-full transition-colors duration-300"
                 whileHover={{
                   y: -8,
                   boxShadow:
@@ -113,7 +113,7 @@ const Features = () => {
                 <div className="p-6 pt-0">
                   <button
                     onClick={() => setSelectedFeature(index)}
-                    className="text-sm text-[#1A2B4B] font-medium flex items-center gap-1"
+                    className="text-sm text-[#2D368E] font-medium flex items-center gap-1"
                   >
                     View Details
                     <ArrowRight className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-1" />
@@ -153,7 +153,7 @@ const Features = () => {
               >
                 <button
                   onClick={() => setSelectedFeature(null)}
-                  className="absolute top-4 right-4 text-[#94A3B8] hover:text-[#0F172A] transition-colors"
+                  className="absolute top-4 right-4 text-[#94A3B8] hover:text-[#2D368E] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -167,7 +167,7 @@ const Features = () => {
                       >
                         <feature.icon className={`w-7 h-7 ${feature.iconColor}`} />
                       </div>
-                      <h3 className="text-xl font-bold text-[#0F172A] mb-1">
+                      <h3 className="text-xl font-bold text-[#2D368E] mb-1">
                         {feature.title}
                       </h3>
                       <p className="text-sm text-[#64748B] mb-6 pb-4 border-b border-[#E2E8F0]">
@@ -183,7 +183,7 @@ const Features = () => {
                             transition={{ delay: 0.05 * i + 0.1 }}
                           >
                             <CheckCircle2 className="w-5 h-5 text-[#22C55E] shrink-0 mt-0.5" />
-                            <span className="text-sm text-[#334155]">{detail}</span>
+                            <span className="text-sm text-[#2D368E]">{detail}</span>
                           </motion.div>
                         ))}
                       </div>

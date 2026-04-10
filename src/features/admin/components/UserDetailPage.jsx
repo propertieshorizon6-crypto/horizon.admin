@@ -103,7 +103,7 @@ function StatCard({ icon, value, label, iconBg = "#f8fafc" }) {
         {icon}
       </div>
       <div>
-        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{value ?? 0}</p>
+        <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#000000", lineHeight: 1 }}>{value ?? 0}</p>
         <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>{label}</p>
       </div>
     </div>
@@ -119,28 +119,28 @@ function OverviewTab({ user, onViewAssignedProperties }) {
 
       {/* Contact Details */}
       <div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Contact Details</p>
+        <p style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: "#000000" }}>Contact Details</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {/* Email */}
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "16px 18px" }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
               <Mail size={11} /> Email
             </p>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{user.email ?? "—"}</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#000000" }}>{user.email ?? "—"}</p>
           </div>
           {/* Phone */}
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "16px 18px" }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
               <Phone size={11} /> Phone
             </p>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{user.phone ?? "—"}</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#000000" }}>{user.phone ?? "—"}</p>
           </div>
         </div>
       </div>
 
       {/* Assigned Territories */}
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Assigned Territories</p>
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#000000" }}>Assigned Territories</p>
         {user.territories?.length > 0 ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {user.territories.map((t) => (
@@ -156,14 +156,14 @@ function OverviewTab({ user, onViewAssignedProperties }) {
 
       {/* Reports To */}
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Reports To</p>
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#000000" }}>Reports To</p>
         {user.manager ? (
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e2e8f0", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
               {getInitials(user.manager)}
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{user.manager}</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{user.manager}</p>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{user.managerRole ?? "Manager"}</p>
             </div>
           </div>
@@ -174,7 +174,7 @@ function OverviewTab({ user, onViewAssignedProperties }) {
 
       {/* Assigned Properties */}
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Assigned Properties</p>
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#000000" }}>Assigned Properties</p>
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, color: "#374151" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8">
@@ -185,7 +185,7 @@ function OverviewTab({ user, onViewAssignedProperties }) {
           <button
             type="button"
             onClick={onViewAssignedProperties}
-            style={{ fontSize: 12, fontWeight: 600, color: "#22225E", background: "transparent", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+            style={{ fontSize: 12, fontWeight: 600, color: "#000000", background: "transparent", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
@@ -221,7 +221,7 @@ function ActivityTab({ user }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {activities.map((a, i) => (
         <div key={i} style={{ display: "flex", gap: 14, padding: "14px 0", borderBottom: i < activities.length - 1 ? "1px solid #f8fafc" : "none", alignItems: "flex-start" }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22225E", marginTop: 5, flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2D368E", marginTop: 5, flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#374151" }}>{a.action}</p>
             {a.detail && <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{a.detail}</p>}
@@ -278,7 +278,7 @@ function AssignedPropertiesModal({
           }}
         >
           <div>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#000000" }}>
               Assigned Properties
             </p>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
@@ -339,7 +339,7 @@ function AssignedPropertiesModal({
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {property.title}
                     </p>
                     <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -532,7 +532,7 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
           {/* Name + badges + contact */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{user.name}</h1>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>{user.name}</h1>
               <RoleBadge   role={user.role} />
               <StatusBadge status={user.status} />
             </div>
@@ -604,8 +604,8 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
                       cursor: "pointer",
                       fontSize: 13,
                       fontWeight: activeTab === tab ? 700 : 500,
-                      color: activeTab === tab ? "#0f172a" : "#94a3b8",
-                      borderBottom: activeTab === tab ? "2px solid #22225E" : "2px solid transparent",
+                      color: activeTab === tab ? "#000000" : "#94a3b8",
+                      borderBottom: activeTab === tab ? "2px solid #2D368E" : "2px solid transparent",
                       marginBottom: -1,
                       display: "flex",
                       alignItems: "center",
@@ -615,7 +615,7 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
                   >
                     {label}
                     {badge !== null && (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: activeTab === tab ? "#1e293b" : "#e2e8f0", color: activeTab === tab ? "#fff" : "#64748b" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: activeTab === tab ? "#2D368E" : "#e2e8f0", color: activeTab === tab ? "#fff" : "#64748b" }}>
                         {badge}
                       </span>
                     )}
@@ -659,7 +659,7 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
               <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 7 }}>
                 <Clock size={13} color="#94a3b8" /> Last Login
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#000000" }}>
                 {user.lastLoginRaw ? timeAgoStr(user.lastLoginRaw) : (user.lastLogin ?? "—")}
               </span>
             </div>
@@ -669,7 +669,7 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
               <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 7 }}>
                 <Calendar size={13} color="#94a3b8" /> Member Since
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#000000" }}>
                 {fmtDate(user.createdAt) !== "—" ? fmtDate(user.createdAt) : (user.memberSince ?? "—")}
               </span>
             </div>

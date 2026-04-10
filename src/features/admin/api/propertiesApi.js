@@ -9,8 +9,10 @@ export const MOCK_PROPERTIES = [];
 const toTitle = (value = "") =>
   value ? `${value[0].toUpperCase()}${value.slice(1).toLowerCase()}` : "";
 
-const formatName = (user = {}) =>
-  `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
+const formatName = (user) => {
+  if (!user) return null;
+  return `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
+};
 
 const resolveEntityId = (user = {}) => user?._id || user?.id || null;
 

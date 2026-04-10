@@ -32,7 +32,7 @@ export default function LiveAlerts({ alerts = [] }) {
       <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-50">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Live Alerts</h3>
+            <h3 className="text-sm font-bold text-[#2D368E]">Live Alerts</h3>
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"/>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"/>
@@ -64,7 +64,7 @@ export default function LiveAlerts({ alerts = [] }) {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-slate-800">{alert.action}</span>
+                    <span className="text-sm font-semibold text-[#2D368E]">{alert.action}</span>
                     <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${src.bg} ${src.text}`}>
                       <span className="text-xs">{src.icon}</span>{src.label}
                     </span>

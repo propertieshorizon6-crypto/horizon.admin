@@ -112,7 +112,7 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
         }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#000000" }}>
                 {inquiry.id}
               </h3>
               <span style={{
@@ -165,7 +165,7 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
             <Building2 size={16} color="#64748b" />
             <div>
               <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Property</p>
-              <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{inquiry.property}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 700, color: "#000000" }}>{inquiry.property}</p>
             </div>
           </div>
 
@@ -175,14 +175,14 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 14px" }}>
                 <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Name</p>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{inquiry.customer.name}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{inquiry.customer.name}</p>
               </div>
               {inquiry.customer.email && (
                 <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
                   <Mail size={13} color="#94a3b8" />
                   <div>
                     <p style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Email</p>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{inquiry.customer.email}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#000000" }}>{inquiry.customer.email}</p>
                   </div>
                 </div>
               )}
@@ -191,13 +191,13 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
                   <Phone size={13} color="#94a3b8" />
                   <div>
                     <p style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Phone</p>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{inquiry.customer.phone}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#000000" }}>{inquiry.customer.phone}</p>
                   </div>
                 </div>
               )}
               <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 14px" }}>
                 <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Agent</p>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: inquiry.agent ? "#0f172a" : "#94a3b8", fontStyle: inquiry.agent ? "normal" : "italic" }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: inquiry.agent ? "#000000" : "#94a3b8", fontStyle: inquiry.agent ? "normal" : "italic" }}>
                   {inquiry.agent ?? "Unassigned"}
                 </p>
               </div>
@@ -282,7 +282,7 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
             style={{
               padding: "9px 20px", borderRadius: 9,
               border: "1px solid #e2e8f0", background: "#fff",
-              color: "#334155", fontSize: 13, fontWeight: 600,
+              color: "#000000", fontSize: 13, fontWeight: 600,
               cursor: "pointer",
             }}
           >

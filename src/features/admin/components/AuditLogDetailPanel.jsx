@@ -45,7 +45,7 @@ const resolveActionColor = (action = "") => {
 };
 
 const ACTION_BADGE_STYLES = {
-  dark: { background: "#1e293b", color: "#fff", border: "none" },
+  dark: { background: "#2D368E", color: "#fff", border: "none" },
   outline: { background: "transparent", color: "#475569", border: "1px solid #cbd5e1" },
   red: { background: "#ef4444", color: "#fff", border: "none" },
 };
@@ -98,7 +98,7 @@ function JsonBlock({ data, label, labelColor }) {
           border: "1px solid #e2e8f0",
           borderRadius: 8,
           fontSize: 12,
-          color: "#334155",
+          color: "#000000",
           fontFamily: "monospace",
           whiteSpace: "pre-wrap",
           wordBreak: "break-all",
@@ -237,7 +237,7 @@ export default function AuditLogDetailPanel({ id, onClose }) {
           }}
         >
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#000000" }}>
               Audit Log Details
             </h2>
             {!isLoading && (
@@ -307,7 +307,7 @@ export default function AuditLogDetailPanel({ id, onClose }) {
                   marginBottom: 0,
                 }}
               >
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#000000" }}>
                   {actorName}
                 </p>
                 <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
@@ -327,7 +327,7 @@ export default function AuditLogDetailPanel({ id, onClose }) {
                   <SectionLabel>Entity</SectionLabel>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#000000" }}>
                         {entityLabel || "—"}
                       </p>
                       {entityId && (
@@ -387,7 +387,7 @@ export default function AuditLogDetailPanel({ id, onClose }) {
                     style={{
                       margin: 0,
                       padding: "12px 14px",
-                      background: "#1e293b",
+                      background: "#1a2060",
                       borderRadius: 8,
                       fontSize: 12,
                       color: "#94a3b8",

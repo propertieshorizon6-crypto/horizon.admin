@@ -47,7 +47,7 @@ export default function Sidebar({ isOpen, onClose }) {
         isOpen ? "translate-x-0" : "-translate-x-full",
       ].join(" ")}
       style={{
-        background: "#0d1828",
+        background: "#1a2060",
         display: "flex", flexDirection: "column",
       }}
     >
@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <div style={{
             width: 38, height: 38, borderRadius: "50%",
-            background: "#22225E",
+            background: "#2D368E",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0,
             border: "2px solid rgba(202,84,40,0.5)",

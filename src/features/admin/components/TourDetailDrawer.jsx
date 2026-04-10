@@ -64,7 +64,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
       <div style={{ background:"#fff", borderRadius:16, padding:24, width:380, boxShadow:"0 20px 60px rgba(0,0,0,0.15)" }}
         onClick={(e)=>e.stopPropagation()}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-          <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#0f172a" }}>Propose Schedule</h3>
+          <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#000000" }}>Propose Schedule</h3>
           <button onClick={onClose} style={{ border:"none", background:"none", cursor:"pointer", color:"#94a3b8", padding:4 }}><X size={16}/></button>
         </div>
         <p style={{ margin:"0 0 16px", fontSize:12, color:"#64748b" }}>Suggest up to 3 available time slots</p>
@@ -77,7 +77,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
             <div style={{ position:"relative" }}>
               <Calendar size={14} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:"#94a3b8", pointerEvents:"none" }}/>
               <input type="datetime-local" value={slot} min={today} onChange={(e) => updateSlot(idx, e.target.value)}
-                style={{ width:"100%", paddingLeft:32, paddingRight:12, paddingTop:9, paddingBottom:9, border:`1.5px solid ${slot?"#1e293b":"#e2e8f0"}`, borderRadius:9, fontSize:13, color:"#334155", outline:"none", boxSizing:"border-box" }}/>
+                style={{ width:"100%", paddingLeft:32, paddingRight:12, paddingTop:9, paddingBottom:9, border:`1.5px solid ${slot?"#2D368E":"#e2e8f0"}`, borderRadius:9, fontSize:13, color:"#000000", outline:"none", boxSizing:"border-box" }}/>
             </div>
           </div>
         ))}
@@ -85,7 +85,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
         <div style={{ display:"flex", gap:8, marginTop:20 }}>
           <button onClick={onClose} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:10, fontSize:13, fontWeight:600, color:"#475569", background:"#fff", cursor:"pointer" }}>Cancel</button>
           <button onClick={() => onConfirm(slots.filter(Boolean))} disabled={!slots[0]}
-            style={{ flex:1, padding:"10px", border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", background:slots[0]?"#1e293b":"#e2e8f0", cursor:slots[0]?"pointer":"not-allowed" }}>
+            style={{ flex:1, padding:"10px", border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", background:slots[0]?"#2D368E":"#e2e8f0", cursor:slots[0]?"pointer":"not-allowed" }}>
             Send Proposal
           </button>
         </div>
@@ -104,7 +104,7 @@ function CancelConfirmModal({ tourId, onConfirm, onClose }) {
         <div style={{ width:48, height:48, borderRadius:"50%", background:"#fee2e2", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
           <XCircle size={24} color="#dc2626"/>
         </div>
-        <h3 style={{ margin:"0 0 8px", fontSize:15, fontWeight:800, color:"#0f172a", textAlign:"center" }}>Cancel Tour?</h3>
+        <h3 style={{ margin:"0 0 8px", fontSize:15, fontWeight:800, color:"#000000", textAlign:"center" }}>Cancel Tour?</h3>
         <p style={{ margin:"0 0 20px", fontSize:13, color:"#64748b", textAlign:"center" }}>
           This action cannot be undone.
         </p>
@@ -206,7 +206,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
             <div style={{ padding:"16px 20px", borderBottom:"1px solid #f1f5f9", flexShrink:0 }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:13, fontWeight:800, color:"#0f172a", fontFamily:"monospace" }}>{tour.id}</span>
+                  <span style={{ fontSize:13, fontWeight:800, color:"#000000", fontFamily:"monospace" }}>{tour.id}</span>
                   <StatusBadge status={tour.status} />
                 </div>
                 <button onClick={onClose} style={{ padding:6, border:"none", background:"none", cursor:"pointer", color:"#94a3b8", borderRadius:7, display:"flex", alignItems:"center" }}
@@ -239,7 +239,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
               <div style={{ marginBottom:20 }}>
                 <SectionTitle title="Property"/>
                 <div style={{ padding:"12px 14px", background:"#fafafa", borderRadius:12, border:"1px solid #f1f5f9" }}>
-                  <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:700, color:"#0f172a" }}>{tour.property.name}</p>
+                  <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:700, color:"#000000" }}>{tour.property.name}</p>
                   <p style={{ margin:0, fontSize:11, color:"#94a3b8", display:"flex", alignItems:"center", gap:4 }}>
                     <MapPin size={10}/> {tour.property.location}
                   </p>
@@ -254,7 +254,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                     <div style={{ width:30, height:30, borderRadius:"50%", background:"#e2e8f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <User size={14} color="#64748b"/>
                     </div>
-                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#0f172a" }}>{tour.customer.name}</p>
+                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>{tour.customer.name}</p>
                   </div>
                   <p style={{ margin:"0 0 4px", fontSize:12, color:"#64748b", display:"flex", alignItems:"center", gap:6 }}>
                     <Phone size={11} color="#94a3b8"/> {tour.customer.phone}
@@ -316,8 +316,8 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
 
               {/* Propose Schedule */}
               <button onClick={() => setShowSchedule(true)} disabled={isSubmitting}
-                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"11px", border:"1.5px solid #e2e8f0", borderRadius:11, fontSize:13, fontWeight:700, color:"#334155", background:"#fff", cursor:isSubmitting?"not-allowed":"pointer", opacity:isSubmitting?0.6:1 }}
-                onMouseEnter={(e)=>{ e.currentTarget.style.background="#f8fafc"; e.currentTarget.style.borderColor="#1e293b"; }}
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"11px", border:"1.5px solid #e2e8f0", borderRadius:11, fontSize:13, fontWeight:700, color:"#000000", background:"#fff", cursor:isSubmitting?"not-allowed":"pointer", opacity:isSubmitting?0.6:1 }}
+                onMouseEnter={(e)=>{ e.currentTarget.style.background="#f8fafc"; e.currentTarget.style.borderColor="#2D368E"; }}
                 onMouseLeave={(e)=>{ e.currentTarget.style.background="#fff"; e.currentTarget.style.borderColor="#e2e8f0"; }}>
                 <Calendar size={15}/> Propose Schedule
               </button>
@@ -325,7 +325,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
               {/* Mark Confirmed */}
               <button onClick={handleConfirm}
                 disabled={isSubmitting || ["Confirmed","Completed","Cancelled"].includes(tour.status)}
-                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"11px", border:"none", borderRadius:11, fontSize:13, fontWeight:700, color:"#fff", background:isSubmitting||["Confirmed","Completed","Cancelled"].includes(tour.status)?"#94a3b8":"#1e3a5f", cursor:isSubmitting||["Confirmed","Completed","Cancelled"].includes(tour.status)?"not-allowed":"pointer" }}>
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"11px", border:"none", borderRadius:11, fontSize:13, fontWeight:700, color:"#fff", background:isSubmitting||["Confirmed","Completed","Cancelled"].includes(tour.status)?"#94a3b8":"#2D368E", cursor:isSubmitting||["Confirmed","Completed","Cancelled"].includes(tour.status)?"not-allowed":"pointer" }}>
                 <CheckCircle size={15}/> Mark Confirmed
               </button>
 

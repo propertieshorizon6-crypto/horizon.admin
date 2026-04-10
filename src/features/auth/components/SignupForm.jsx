@@ -22,7 +22,7 @@ export default function SignupForm() {
 
       {/* Full Name */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-[#0F172A]">
+        <label className="text-sm font-medium text-[#2D368E]">
           Full Name
         </label>
         <input
@@ -36,7 +36,7 @@ export default function SignupForm() {
 
       {/* Email */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-[#0F172A]">
+        <label className="text-sm font-medium text-[#2D368E]">
           Email
         </label>
         <input
@@ -50,7 +50,7 @@ export default function SignupForm() {
 
       {/* Password */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-[#0F172A]">
+        <label className="text-sm font-medium text-[#2D368E]">
           Password
         </label>
 

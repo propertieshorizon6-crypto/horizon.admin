@@ -19,9 +19,9 @@ export default function ForgotPasswordForm() {
           <CheckCircle2 className="w-7 h-7 text-green-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Check your inbox</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Check your inbox</h4>
           <p className="text-sm text-[#64748B]">
-            We sent a password reset link to <span className="font-medium text-[#0F172A]">{email}</span>.
+            We sent a password reset link to <span className="font-medium text-[#2D368E]">{email}</span>.
             It may take a few minutes to arrive.
           </p>
         </div>
@@ -43,7 +43,7 @@ export default function ForgotPasswordForm() {
       </p>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#0F172A]">Email</label>
+        <label className="text-sm font-medium text-[#2D368E]">Email</label>
         <div className="relative">
           <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input

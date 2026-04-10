@@ -49,7 +49,7 @@ export default function LoginForm() {
 
       {/* Email */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#0F172A]">Email</label>
+        <label className="text-sm font-medium text-[#2D368E]">Email</label>
         <input
           type="email"
           value={email}
@@ -62,7 +62,7 @@ export default function LoginForm() {
           className={`h-11 w-full rounded-lg border bg-[#F8FAFC] px-4 text-sm outline-none transition focus:ring-2 ${
             fieldErrors.email
               ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-              : "border-[#E2E8F0] focus:border-[#1A2744] focus:ring-[#1A2744]/20"
+              : "border-[#E2E8F0] focus:border-[#2D368E] focus:ring-[#2D368E]/20"
           }`}
         />
         {fieldErrors.email && (
@@ -73,8 +73,8 @@ export default function LoginForm() {
       {/* Password */}
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
-          <label className="text-sm font-medium text-[#0F172A]">Password</label>
-          <Link to="/auth/forgot-password" className="text-xs text-[#1A2744] hover:underline">
+          <label className="text-sm font-medium text-[#2D368E]">Password</label>
+          <Link to="/auth/forgot-password" className="text-xs text-[#2D368E] hover:underline">
             Forgot password?
           </Link>
         </div>
@@ -92,7 +92,7 @@ export default function LoginForm() {
             className={`h-11 w-full rounded-lg border bg-[#F8FAFC] px-4 pr-12 text-sm outline-none transition focus:ring-2 ${
               fieldErrors.password
                 ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                : "border-[#E2E8F0] focus:border-[#1A2744] focus:ring-[#1A2744]/20"
+                : "border-[#E2E8F0] focus:border-[#2D368E] focus:ring-[#2D368E]/20"
             }`}
           />
           <button
@@ -120,7 +120,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={loginMutation.isPending}
-        className="w-full h-11 bg-[#1A2744] text-white rounded-lg text-sm font-semibold hover:bg-[#1A2744]/90 active:scale-[0.98] transition-all"
+        className="w-full h-11 bg-[#2D368E] text-white rounded-lg text-sm font-semibold hover:bg-[#2D368E]/90 active:scale-[0.98] transition-all"
       >
         {loginMutation.isPending ? "Signing In..." : "Sign In"}
       </button>

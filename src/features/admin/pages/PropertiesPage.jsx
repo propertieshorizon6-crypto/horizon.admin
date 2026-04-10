@@ -7,11 +7,13 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, ChevronDown, Plus } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
+import { assignPropertyAgent } from "../api/propertiesApi";
+import { fetchUsers, MOCK_MODE as USERS_MOCK_MODE, MOCK_USERS } from "../api/usersApi";
 import AddPropertyPage from "./AddPropertyPage";
 import EditPropertyModal from "../components/EditPropertyModal";
 
@@ -151,6 +153,89 @@ export default function PropertiesPage() {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showAddPage, setShowAddPage] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
+  const [assigningProperty, setAssigningProperty] = useState(null);
+  const [selectedAgentId,   setSelectedAgentId]   = useState("");
+  const [assignError,       setAssignError]        = useState("");
+  const [agentsEnabled,     setAgentsEnabled]      = useState(false);
+
+  // ── Agents query — lazy: only fires after the user first opens the modal ───
+  const {
+    data: agentUsers = [],
+    isLoading: isAgentsLoading,
+    isError: isAgentsError,
+    error: agentsQueryError,
+  } = useQuery({
+    queryKey: ["users", "agents", "active"],
+    enabled: agentsEnabled,
+    queryFn: USERS_MOCK_MODE
+      ? () => Promise.resolve(
+          (MOCK_USERS || []).filter(
+            (u) =>
+              String(u?.roleKey || u?.role || "").toLowerCase() === "agent" &&
+              String(u?.statusKey || u?.status || "").toLowerCase() === "active",
+          ),
+        )
+      : async () => {
+          let primaryError = null;
+          try {
+            const strict = await fetchUsers({ role: "agent", status: "active", page: 1, limit: 100 });
+            if (Array.isArray(strict) && strict.length > 0) return strict;
+          } catch (e) { primaryError = e; }
+          try {
+            const fallback = await fetchUsers({ role: "agent", page: 1, limit: 100 });
+            return (fallback || []).filter(
+              (u) => String(u?.statusKey || u?.status || "").toLowerCase() === "active",
+            );
+          } catch (e2) { throw primaryError || e2; }
+        },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const agents = useMemo(
+    () =>
+      (agentUsers || [])
+        .map((u) => ({ id: u?.id, name: u?.name }))
+        .filter((u) => u.id && u.name)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [agentUsers],
+  );
+
+  // ── Assign property mutation ────────────────────────────────────────────────
+  const assignPropertyMutation = useMutation({
+    mutationFn: ({ propertyId, agentId }) => assignPropertyAgent(propertyId, agentId || null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      setAssigningProperty(null);
+      setSelectedAgentId("");
+      setAssignError("");
+    },
+    onError: (err) => {
+      setAssignError(err?.response?.data?.message || "Could not update agent assignment.");
+    },
+  });
+
+  const openAssignModal  = (prop) => {
+    setAgentsEnabled(true);
+    setAssigningProperty(prop);
+    setSelectedAgentId(prop?.assignedAgentId || "");
+    setAssignError("");
+  };
+
+  const closeAssignModal = () => {
+    if (assignPropertyMutation.isPending) return;
+    setAssigningProperty(null);
+    setSelectedAgentId("");
+    setAssignError("");
+  };
+
+  const submitAssignModal = () => {
+    if (!assigningProperty?.id) return;
+    assignPropertyMutation.mutate({ propertyId: assigningProperty.id, agentId: selectedAgentId || null });
+  };
+
+  const agentsErrorMessage = isAgentsError
+    ? agentsQueryError?.response?.data?.message || agentsQueryError?.message || "Could not load agents list."
+    : "";
 
   const tabCounts = useMemo(
     () =>
@@ -222,7 +307,7 @@ export default function PropertiesPage() {
                   margin: 0,
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#0f172a",
+                  color: "#000000",
                 }}
               >
                 {property.title}
@@ -246,7 +331,7 @@ export default function PropertiesPage() {
       columnHelper.accessor("price", {
         header: "Price",
         cell: (info) => (
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#000000" }}>
             {info.getValue()}
           </span>
         ),
@@ -314,7 +399,34 @@ export default function PropertiesPage() {
         header: "Compliance",
         cell: (info) => <ComplianceBadge value={info.getValue()} />,
       }),
+      columnHelper.accessor("assignedTo", {
+        header: "Agent",
+        cell: (info) => {
+          const name = info.getValue();
+          return name
+            ? <span style={{ fontSize: 12, fontWeight: 600, color: "#000000" }}>{name}</span>
+            : <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>;
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        cell: (info) => {
+          const prop = info.row.original;
+          return (
+            <PropertyActionsMenu
+              property={prop}
+              onDeleteProperty={prop.assignedAgentId
+                ? (p) => assignPropertyMutation.mutate({ propertyId: p.id, agentId: null })
+                : undefined}
+              deleteTitle="Remove Agent"
+              onAssignAgent={openAssignModal}
+            />
+          );
+        },
+      }),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -335,12 +447,61 @@ export default function PropertiesPage() {
           property={selectedProperty}
           onBack={() => setSelectedProperty(null)}
           onEditProperty={setEditingProperty}
+          onAssignAgent={openAssignModal}
         />
         {editingProperty && (
           <EditPropertyModal
             property={editingProperty}
             onClose={() => setEditingProperty(null)}
           />
+        )}
+        {assigningProperty && (
+          <div
+            onClick={assignPropertyMutation.isPending ? undefined : closeAssignModal}
+            style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: "100%", maxWidth: 520, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#000000" }}>Assign Agent</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{assigningProperty.title}</p>
+                </div>
+                <button type="button" onClick={closeAssignModal} disabled={assignPropertyMutation.isPending}
+                  style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, color: "#475569", padding: "6px 10px", fontSize: 12, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: assignPropertyMutation.isPending ? 0.6 : 1 }}>
+                  Close
+                </button>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b", fontWeight: 600 }}>Assigned Agent</p>
+                  <select value={selectedAgentId} onChange={(e) => setSelectedAgentId(e.target.value)}
+                    disabled={assignPropertyMutation.isPending || isAgentsLoading}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", fontSize: 13, color: "#000000", background: "#fff", outline: "none" }}>
+                    <option value="">Unassigned</option>
+                    {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                {isAgentsLoading && <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>Loading active agents...</div>}
+                {agentsErrorMessage && <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>{agentsErrorMessage}</div>}
+                {!isAgentsLoading && !agentsErrorMessage && agents.length === 0 && <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>No active agents available.</div>}
+                {assignError && <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>{assignError}</div>}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  <button type="button" onClick={closeAssignModal} disabled={assignPropertyMutation.isPending}
+                    style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#000000", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: assignPropertyMutation.isPending ? 0.6 : 1 }}>
+                    Cancel
+                  </button>
+                  <button type="button" onClick={submitAssignModal}
+                    disabled={assignPropertyMutation.isPending || (selectedAgentId || "") === (assigningProperty?.assignedAgentId || "")}
+                    style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: (assignPropertyMutation.isPending || (selectedAgentId || "") === (assigningProperty?.assignedAgentId || "")) ? 0.5 : 1 }}>
+                    {assignPropertyMutation.isPending ? "Saving..." : selectedAgentId ? "Save Assignment" : "Unassign Agent"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </>
     );
@@ -368,8 +529,6 @@ export default function PropertiesPage() {
     );
   }
 
-  const agentsErrorMessage = "";
-
   return (
     <div
       className="p-4 md:p-6 min-h-full"
@@ -380,7 +539,7 @@ export default function PropertiesPage() {
     >
       <div style={{ marginBottom: 20, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>
             Properties
           </h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
@@ -391,8 +550,8 @@ export default function PropertiesPage() {
           onClick={() => setShowAddPage(true)}
           style={{
             display:"flex", alignItems:"center", gap:7,
-            padding:"9px 18px", borderRadius:9, border:"1px solid #1e293b",
-            background:"#1e293b", color:"#fff", fontSize:13, fontWeight:700,
+            padding:"9px 18px", borderRadius:9, border:"1px solid #2D368E",
+            background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700,
             cursor:"pointer",
           }}
         >
@@ -436,7 +595,7 @@ export default function PropertiesPage() {
               border: "1px solid #e2e8f0",
               borderRadius: 9,
               fontSize: 13,
-              color: "#334155",
+              color: "#000000",
               outline: "none",
               boxSizing: "border-box",
               background: "#fafafa",
@@ -471,7 +630,7 @@ export default function PropertiesPage() {
                 border: "1px solid #e2e8f0",
                 borderRadius: 9,
                 fontSize: 13,
-                color: value ? "#1e293b" : "#64748b",
+                color: value ? "#000000" : "#64748b",
                 background: "#fff",
                 cursor: "pointer",
                 outline: "none",
@@ -532,7 +691,7 @@ export default function PropertiesPage() {
                   borderRadius: 8,
                   border: "none",
                   background: isActive ? "#f1f5f9" : "transparent",
-                  color: isActive ? "#0f172a" : "#64748b",
+                  color: isActive ? "#000000" : "#64748b",
                   fontSize: 13,
                   fontWeight: isActive ? 700 : 500,
                   cursor: "pointer",
@@ -547,7 +706,7 @@ export default function PropertiesPage() {
                       fontWeight: 700,
                       padding: "1px 7px",
                       borderRadius: 99,
-                      background: isActive ? "#1e293b" : "#e2e8f0",
+                      background: isActive ? "#2D368E" : "#e2e8f0",
                       color: isActive ? "#fff" : "#64748b",
                     }}
                   >
@@ -571,7 +730,7 @@ export default function PropertiesPage() {
                       textAlign: "left",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "#94a3b8",
+                      color: "#00000",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
                       whiteSpace: "nowrap",
@@ -594,7 +753,7 @@ export default function PropertiesPage() {
                   style={{
                     padding: "48px 0",
                     textAlign: "center",
-                    color: "#94a3b8",
+                    color: "#00000",
                     fontSize: 13,
                   }}
                 >
@@ -682,7 +841,7 @@ export default function PropertiesPage() {
                 fontSize: 12,
                 fontWeight: 600,
                 color: "#fff",
-                background: "#1e293b",
+                background: "#2D368E",
                 cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
                 opacity: table.getCanNextPage() ? 1 : 0.4,
               }}
@@ -692,6 +851,56 @@ export default function PropertiesPage() {
           </div>
         </div>
       </div>
+
+      {/* Assign Agent Modal */}
+      {assigningProperty && (
+        <div
+          onClick={assignPropertyMutation.isPending ? undefined : closeAssignModal}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 520, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #f1f5f9" }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#000000" }}>Assign Agent</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{assigningProperty.title}</p>
+              </div>
+              <button type="button" onClick={closeAssignModal} disabled={assignPropertyMutation.isPending}
+                style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, color: "#475569", padding: "6px 10px", fontSize: 12, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: assignPropertyMutation.isPending ? 0.6 : 1 }}>
+                Close
+              </button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b", fontWeight: 600 }}>Assigned Agent</p>
+                <select value={selectedAgentId} onChange={(e) => setSelectedAgentId(e.target.value)}
+                  disabled={assignPropertyMutation.isPending || isAgentsLoading}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", fontSize: 13, color: "#000000", background: "#fff", outline: "none" }}>
+                  <option value="">Unassigned</option>
+                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              {isAgentsLoading && <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>Loading active agents...</div>}
+              {agentsErrorMessage && <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>{agentsErrorMessage}</div>}
+              {!isAgentsLoading && !agentsErrorMessage && agents.length === 0 && <div style={{ marginBottom: 12, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", borderRadius: 10, padding: 10, fontSize: 12 }}>No active agents available.</div>}
+              {assignError && <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, padding: 10, fontSize: 12 }}>{assignError}</div>}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button type="button" onClick={closeAssignModal} disabled={assignPropertyMutation.isPending}
+                  style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#000000", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: assignPropertyMutation.isPending ? 0.6 : 1 }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={submitAssignModal}
+                  disabled={assignPropertyMutation.isPending || (selectedAgentId || "") === (assigningProperty?.assignedAgentId || "")}
+                  style={{ border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: assignPropertyMutation.isPending ? "not-allowed" : "pointer", opacity: (assignPropertyMutation.isPending || (selectedAgentId || "") === (assigningProperty?.assignedAgentId || "")) ? 0.5 : 1 }}>
+                  {assignPropertyMutation.isPending ? "Saving..." : selectedAgentId ? "Save Assignment" : "Unassign Agent"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

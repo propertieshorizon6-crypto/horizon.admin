@@ -42,7 +42,7 @@ export default function AuthCard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
         >
-          <h3 className="text-2xl font-bold text-[#0F172A] mb-1 tracking-tight">
+          <h3 className="text-2xl font-bold text-[#2D368E] mb-1 tracking-tight">
             {title}
           </h3>
           <p className="text-sm text-[#64748B]">

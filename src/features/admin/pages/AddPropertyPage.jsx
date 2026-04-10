@@ -16,8 +16,8 @@ const formatAmenity = (a) =>
    .replace(/\b\w/g, c => c.toUpperCase());
 
 const labelStyle  = { display:"block", fontSize:12, fontWeight:700, color:"#475569", marginBottom:5 };
-const inputStyle  = { width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, color:"#0f172a", background:"#fff", outline:"none", boxSizing:"border-box" };
-const sectionTitle= { fontSize:14, fontWeight:800, color:"#0f172a", margin:"20px 0 10px" };
+const inputStyle  = { width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, color:"#000000", background:"#fff", outline:"none", boxSizing:"border-box" };
+const sectionTitle= { fontSize:14, fontWeight:800, color:"#000000", margin:"20px 0 10px" };
 const grid2       = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 };
 const grid3       = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 };
 
@@ -187,7 +187,7 @@ export default function AddPropertyPage({ onBack }) {
           <ArrowLeft size={15} /> Back
         </button>
         <div>
-          <h1 style={{ margin:0, fontSize:20, fontWeight:800, color:"#0f172a" }}>Add Property</h1>
+          <h1 style={{ margin:0, fontSize:20, fontWeight:800, color:"#000000" }}>Add Property</h1>
           <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>Fill in the details to list a new property</p>
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function AddPropertyPage({ onBack }) {
                 const active = form.amenities.includes(a);
                 return (
                   <button key={a} type="button" onClick={() => toggleAmenity(a)}
-                    style={{ padding:"6px 14px", borderRadius:99, fontSize:12, fontWeight:600, cursor:"pointer", border:active?"1px solid #1e293b":"1px solid #e2e8f0", background:active?"#1e293b":"#f8fafc", color:active?"#fff":"#475569", transition:"all 0.15s" }}>
+                    style={{ padding:"6px 14px", borderRadius:99, fontSize:12, fontWeight:600, cursor:"pointer", border:active?"1px solid #2D368E":"1px solid #e2e8f0", background:active?"#2D368E":"#f8fafc", color:active?"#fff":"#475569", transition:"all 0.15s" }}>
                     {formatAmenity(a)}
                   </button>
                 );
@@ -344,7 +344,7 @@ export default function AddPropertyPage({ onBack }) {
                   style={{ width:"100%", maxWidth:400, maxHeight:240, objectFit:"cover", borderRadius:10, border:"1px solid #e2e8f0" }} />
                 <button type="button"
                   onClick={() => { setFeaturedFile(null); setFeaturedPreview(null); }}
-                  style={{ position:"absolute", top:8, right:8, background:"#1e293b", border:"none", color:"#fff", borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  style={{ position:"absolute", top:8, right:8, background:"#2D368E", border:"none", color:"#fff", borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <X size={13} />
                 </button>
               </div>
@@ -364,7 +364,7 @@ export default function AddPropertyPage({ onBack }) {
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <Images size={16} strokeWidth={2} style={{ color:"#475569", flexShrink:0 }} />
-                <span style={{ fontSize:14, fontWeight:800, color:"#0f172a" }}>Gallery Images</span>
+                <span style={{ fontSize:14, fontWeight:800, color:"#000000" }}>Gallery Images</span>
                 <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", background:"#f1f5f9", borderRadius:99, padding:"2px 8px" }}>optional</span>
               </div>
               <span style={{ fontSize:12, color: galleryFiles.length >= 10 ? "#dc2626" : "#94a3b8", fontWeight:600 }}>
@@ -395,7 +395,7 @@ export default function AddPropertyPage({ onBack }) {
                 {galleryFiles.length < 10 && (
                   <div onClick={() => galleryRef.current?.click()}
                     style={{ aspectRatio:"1", borderRadius:10, border:"2px dashed #e2e8f0", background:"#f8fafc", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", gap:6 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#22225E")}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2D368E")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}>
                     <Plus size={20} color="#94a3b8" />
                     <span style={{ fontSize:10, color:"#94a3b8", fontWeight:600 }}>Add More</span>
@@ -408,7 +408,7 @@ export default function AddPropertyPage({ onBack }) {
             {galleryFiles.length === 0 && (
               <div onClick={() => galleryRef.current?.click()}
                 style={{ border:"2px dashed #e2e8f0", borderRadius:10, padding:"32px 20px", textAlign:"center", cursor:"pointer", background:"#f8fafc" }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#22225E")}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2D368E")}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}>
                 <Images size={28} strokeWidth={1.5} style={{ marginBottom:8, color:"#94a3b8" }} />
                 <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:"#475569" }}>Click to upload gallery images</p>
@@ -433,11 +433,11 @@ export default function AddPropertyPage({ onBack }) {
           {/* Actions */}
           <div style={{ display:"flex", justifyContent:"flex-end", gap:10, paddingBottom:32 }}>
             <button type="button" onClick={onBack}
-              style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#334155", borderRadius:9, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#000000", borderRadius:9, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              style={{ border:"1px solid #1e293b", background:"#1e293b", color:"#fff", borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:mutation.isPending?"not-allowed":"pointer", opacity:mutation.isPending?0.7:1, display:"flex", alignItems:"center", gap:8 }}>
+              style={{ border:"1px solid #2D368E", background:"#2D368E", color:"#fff", borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:mutation.isPending?"not-allowed":"pointer", opacity:mutation.isPending?0.7:1, display:"flex", alignItems:"center", gap:8 }}>
               <Plus size={15} />
               {mutation.isPending ? "Creating..." : "Create Property"}
             </button>

@@ -20,7 +20,7 @@ export default function VerifyEmailForm() {
           <AlertTriangle className="w-7 h-7 text-amber-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Invalid verification link</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Invalid verification link</h4>
           <p className="text-sm text-[#64748B]">
             This verification link is missing or invalid.
           </p>
@@ -45,7 +45,7 @@ export default function VerifyEmailForm() {
           <CheckCircle2 className="w-7 h-7 text-green-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Email verified!</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Email verified!</h4>
           <p className="text-sm text-[#64748B]">
             Your email has been verified successfully.
           </p>
@@ -67,7 +67,7 @@ export default function VerifyEmailForm() {
           <AlertTriangle className="w-7 h-7 text-red-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#0F172A] mb-1">Verification failed</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Verification failed</h4>
           <p className="text-sm text-[#64748B]">
             {mutation.error?.response?.data?.message || "This link may have expired or already been used."}
           </p>

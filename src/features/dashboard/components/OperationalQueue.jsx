@@ -40,7 +40,7 @@ export default function OperationalQueue({ queue = [] }) {
         return (
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-slate-900">{row.name}</span>
+              <span className="text-sm font-bold text-[#2D368E]">{row.name}</span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.bg} ${p.text}`}>{p.label}</span>
               {row.itemType==="tour"    && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">Tour</span>}
               {row.itemType==="enquiry" && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Enquiry</span>}
@@ -87,7 +87,7 @@ export default function OperationalQueue({ queue = [] }) {
       )}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 pt-5 pb-4 border-b border-slate-50">
-          <h3 className="text-sm font-bold text-slate-900">Operational Queues</h3>
+          <h3 className="text-sm font-bold text-[#2D368E]">Operational Queues</h3>
           <p className="text-xs text-slate-400 mt-0.5">Leads requiring attention</p>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-100">
@@ -95,10 +95,10 @@ export default function OperationalQueue({ queue = [] }) {
             const isActive=activeTab===tab;
             return (
               <button key={tab} onClick={()=>setActiveTab(tab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${isActive?"bg-slate-900 text-white":"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${isActive?"bg-[#2D368E] text-white":"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                 <span>{TAB_ICON[tab]}</span>
                 {tab.charAt(0).toUpperCase()+tab.slice(1)}
-                <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold min-w-[18px] text-center ${isActive?"bg-white text-slate-900":"bg-slate-200 text-slate-600"}`}>
+                <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold min-w-[18px] text-center ${isActive?"bg-white text-[#2D368E]":"bg-slate-200 text-slate-600"}`}>
                   {counts[tab]??0}
                 </span>
               </button>

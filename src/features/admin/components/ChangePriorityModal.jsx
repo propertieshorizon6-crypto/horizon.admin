@@ -15,7 +15,7 @@ export default function ChangePriorityModal({ lead, onClose, onSave }) {
         style={{ background: "#fff", borderRadius: 14, padding: 28, minWidth: 320, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 16, color: "#1e293b" }}>Change Priority</p>
+        <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 16, color: "#000000" }}>Change Priority</p>
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8" }}>{lead?.name}</p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
@@ -32,7 +32,7 @@ export default function ChangePriorityModal({ lead, onClose, onSave }) {
                   onChange={() => setPriority(opt)}
                   style={{ accentColor: color }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: priority === opt ? color : "#334155" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: priority === opt ? color : "#000000" }}>
                   {opt}
                 </span>
               </label>
@@ -46,7 +46,7 @@ export default function ChangePriorityModal({ lead, onClose, onSave }) {
           </button>
           <button
             onClick={() => { onSave(priority); onClose(); }}
-            style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#22225E", cursor: "pointer", fontSize: 13, color: "#fff", fontWeight: 600 }}
+            style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#2D368E", cursor: "pointer", fontSize: 13, color: "#fff", fontWeight: 600 }}
           >
             Save
           </button>

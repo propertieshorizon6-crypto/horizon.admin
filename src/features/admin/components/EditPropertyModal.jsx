@@ -17,7 +17,7 @@ const formatAmenity = (a) =>
 const labelStyle = { display:"block", fontSize:12, fontWeight:700, color:"#475569", marginBottom:5 };
 const inputStyle = {
   width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid #e2e8f0",
-  fontSize:13, color:"#0f172a", background:"#fff", outline:"none", boxSizing:"border-box",
+  fontSize:13, color:"#000000", background:"#fff", outline:"none", boxSizing:"border-box",
 };
 const grid2 = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 };
 const sectionLabel = { fontSize:11, fontWeight:800, color:"#94a3b8", textTransform:"uppercase",
@@ -133,7 +133,7 @@ export default function EditPropertyModal({ property, onClose }) {
           display:"flex", justifyContent:"space-between", alignItems:"center",
           padding:"16px 20px", borderBottom:"1px solid #f1f5f9" }}>
           <div>
-            <p style={{ margin:0, fontSize:16, fontWeight:800, color:"#0f172a" }}>Edit Property</p>
+            <p style={{ margin:0, fontSize:16, fontWeight:800, color:"#000000" }}>Edit Property</p>
             <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>{property?.title}</p>
           </div>
           <button type="button" onClick={onClose} disabled={mutation.isPending}
@@ -261,8 +261,8 @@ export default function EditPropertyModal({ property, onClose }) {
                   <button key={a} type="button" onClick={() => toggleAmenity(a)}
                     style={{
                       padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:600, cursor:"pointer",
-                      border: active ? "1px solid #1e293b" : "1px solid #e2e8f0",
-                      background: active ? "#1e293b" : "#f8fafc",
+                      border: active ? "1px solid #2D368E" : "1px solid #e2e8f0",
+                      background: active ? "#2D368E" : "#f8fafc",
                       color: active ? "#fff" : "#475569",
                       transition:"all 0.15s",
                     }}>
@@ -283,14 +283,14 @@ export default function EditPropertyModal({ property, onClose }) {
             {/* Footer Buttons */}
             <div style={{ display:"flex", justifyContent:"flex-end", gap:10, paddingTop:4 }}>
               <button type="button" onClick={onClose} disabled={mutation.isPending}
-                style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#334155",
+                style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#000000",
                   borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600,
                   cursor: mutation.isPending ? "not-allowed" : "pointer",
                   opacity: mutation.isPending ? 0.6 : 1 }}>
                 Cancel
               </button>
               <button type="submit" disabled={mutation.isPending}
-                style={{ border:"1px solid #1e293b", background:"#1e293b", color:"#fff",
+                style={{ border:"1px solid #2D368E", background:"#2D368E", color:"#fff",
                   borderRadius:8, padding:"9px 24px", fontSize:13, fontWeight:700,
                   cursor: mutation.isPending ? "not-allowed" : "pointer",
                   opacity: mutation.isPending ? 0.7 : 1 }}>

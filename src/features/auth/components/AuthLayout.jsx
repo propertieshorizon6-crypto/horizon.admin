@@ -4,7 +4,7 @@ import React from "react";
 import logo from "../../../assets/horizon-logo.png";
 const LOGO_SRC = logo;
 const BRAND_ORANGE = "#CA5428";
-const BRAND_NAVY   = "#22225E";
+const BRAND_NAVY   = "#2D368E";
 
 export default function AuthLayout({ children }) {
   return (
@@ -13,7 +13,7 @@ export default function AuthLayout({ children }) {
       {/* ── Left Panel ── */}
       <div
         className="hidden lg:flex lg:w-1/2 p-12 flex-col justify-between relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${BRAND_NAVY} 0%, #1a1a4e 60%, #1E293B 100%)` }}
+        style={{ background: `linear-gradient(135deg, ${BRAND_NAVY} 0%, #232d78 60%, #3d4fad 100%)` }}
       >
         {/* Glow circles */}
         <motion.div

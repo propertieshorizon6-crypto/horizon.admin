@@ -12,7 +12,7 @@ export default function KanbanColumn({ col, leads }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "0 2px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: col.color, display: "inline-block" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#000000", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             {col.label}
           </span>
         </div>

@@ -91,7 +91,7 @@ const getErrorMessage = (error, fallback) =>
 
 function ActionBadge({ label, color }) {
   const styles = {
-    dark: { background: "#1e293b", color: "#fff", border: "none" },
+    dark: { background: "#2D368E", color: "#fff", border: "none" },
     outline: {
       background: "transparent",
       color: "#475569",
@@ -135,7 +135,7 @@ function FilterSelect({ label, options, value, onChange, minWidth = 140 }) {
           border: "1px solid #e2e8f0",
           borderRadius: 10,
           fontSize: 13,
-          color: value ? "#1e293b" : "#64748b",
+          color: value ? "#000000" : "#64748b",
           background: "#fff",
           cursor: "pointer",
           outline: "none",
@@ -240,7 +240,7 @@ export default function AuditLogsPage() {
         }}
       >
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>
             Audit Logs
           </h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
@@ -286,7 +286,7 @@ export default function AuditLogsPage() {
               border: "1px solid #e2e8f0",
               borderRadius: 10,
               fontSize: 13,
-              color: "#334155",
+              color: "#000000",
               outline: "none",
               boxSizing: "border-box",
               background: "#fafafa",
@@ -329,7 +329,7 @@ export default function AuditLogsPage() {
               border: "1px solid #e2e8f0",
               borderRadius: 10,
               fontSize: 13,
-              color: dateFrom || dateTo ? "#1e293b" : "#64748b",
+              color: dateFrom || dateTo ? "#000000" : "#64748b",
               background: "#fff",
               cursor: "pointer",
               outline: "none",
@@ -381,7 +381,7 @@ export default function AuditLogsPage() {
                     padding: "6px 10px",
                     fontSize: 13,
                     outline: "none",
-                    color: "#334155",
+                    color: "#000000",
                   }}
                 />
               </div>
@@ -410,7 +410,7 @@ export default function AuditLogsPage() {
                     padding: "6px 10px",
                     fontSize: 13,
                     outline: "none",
-                    color: "#334155",
+                    color: "#000000",
                   }}
                 />
               </div>
@@ -443,7 +443,7 @@ export default function AuditLogsPage() {
                   padding: "6px 12px",
                   border: "none",
                   borderRadius: 7,
-                  background: "#1e293b",
+                  background: "#2D368E",
                   fontSize: 12,
                   color: "#fff",
                   cursor: "pointer",
@@ -471,7 +471,7 @@ export default function AuditLogsPage() {
         }}
       >
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#000000" }}>
             {countLabel} Log {filteredLogs.length === 1 ? "Entry" : "Entries"}
           </h2>
         </div>
@@ -564,7 +564,7 @@ export default function AuditLogsPage() {
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#0f172a",
+                        color: "#000000",
                       }}
                     >
                       {log.actor || "-"}
@@ -584,7 +584,7 @@ export default function AuditLogsPage() {
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 600,
-                        color: "#0f172a",
+                        color: "#000000",
                       }}
                     >
                       {log.entity || "-"}

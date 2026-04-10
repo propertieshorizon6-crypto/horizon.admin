@@ -173,7 +173,7 @@ export default function TourRequestsPage() {
         const p = i.getValue();
         return (
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{p.name}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#000000", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{p.name}</p>
             <p style={{ fontSize: 10, color: "#94a3b8", margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>📍 {p.location}</p>
           </div>
         );
@@ -185,7 +185,7 @@ export default function TourRequestsPage() {
         const c = i.getValue();
         return (
           <div>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", margin: 0 }}>{c.name}</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#000000", margin: 0 }}>{c.name}</p>
             <p style={{ fontSize: 10, color: "#94a3b8", margin: "1px 0 0" }}>{c.phone}</p>
           </div>
         );
@@ -269,7 +269,7 @@ export default function TourRequestsPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Tour Requests</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>Tour Requests</h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>Manage property viewing requests and schedules</p>
         </div>
         
@@ -277,7 +277,7 @@ export default function TourRequestsPage() {
 
       {/* Stats */}
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, color: "#475569" }}>Total <strong style={{ color: "#0f172a" }}>{stats.total}</strong></span>
+        <span style={{ fontSize: 13, color: "#475569" }}>Total <strong style={{ color: "#000000" }}>{stats.total}</strong></span>
         <span style={{ width: 1, height: 14, background: "#e2e8f0" }} />
         <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 600 }}>Requested <strong>{stats.requested}</strong></span>
         <span style={{ width: 1, height: 14, background: "#e2e8f0" }} />
@@ -300,7 +300,7 @@ export default function TourRequestsPage() {
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Search by ID, name, phone, property..."
-            style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#334155", background: "#fff", outline: "none", boxSizing: "border-box" }}
+            style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#000000", background: "#fff", outline: "none", boxSizing: "border-box" }}
           />
         </div>
         {[
@@ -390,7 +390,7 @@ export default function TourRequestsPage() {
               <ChevronLeft size={13} /> Previous
             </button>
             {Array.from({ length: table.getPageCount() }).map((_, i) => (
-              <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: pageIndex === i ? "none" : "1px solid #e2e8f0", background: pageIndex === i ? "#1e293b" : "#fff", color: pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>
+              <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: pageIndex === i ? "none" : "1px solid #e2e8f0", background: pageIndex === i ? "#2D368E" : "#fff", color: pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>
                 {i + 1}
               </button>
             ))}

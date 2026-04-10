@@ -17,7 +17,7 @@ const steps = [
     id: 1,
     title: "Receive Lead",
     description: "Leads flow in from app, website, call, or WhatsApp",
-    icon: <Phone className="w-5 h-5 text-[#1A2B4B]" />,
+    icon: <Phone className="w-5 h-5 text-[#2D368E]" />,
     subIcons: [
       <Globe key="globe" className="w-4 h-4 text-[#64748B]" />,
       <Phone key="phone" className="w-4 h-4 text-[#64748B]" />,
@@ -28,14 +28,14 @@ const steps = [
     id: 2,
     title: "Assign Agent",
     description: "Smart assignment based on territory and workload",
-    icon: <Users className="w-5 h-5 text-[#1A2B4B]" />,
+    icon: <Users className="w-5 h-5 text-[#2D368E]" />,
     subIcons: [<Users key="users" className="w-4 h-4 text-[#64748B]" />],
   },
   {
     id: 3,
     title: "Track Outcomes",
     description: "Monitor tours, inquiries, and conversation progress",
-    icon: <ClipboardCheck className="w-5 h-5 text-[#1A2B4B]" />,
+    icon: <ClipboardCheck className="w-5 h-5 text-[#2D368E]" />,
     subIcons: [
       <Calendar key="cal" className="w-4 h-4 text-[#64748B]" />,
       <ClipboardCheck key="clip" className="w-4 h-4 text-[#64748B]" />,
@@ -45,7 +45,7 @@ const steps = [
     id: 4,
     title: "Export & Audit",
     description: "Generate reports and maintain compliance",
-    icon: <FileText className="w-5 h-5 text-[#1A2B4B]" />,
+    icon: <FileText className="w-5 h-5 text-[#2D368E]" />,
     subIcons: [
       <FileText key="file" className="w-4 h-4 text-[#64748B]" />,
       <Lock key="lock" className="w-4 h-4 text-[#64748B]" />,
@@ -66,7 +66,7 @@ const HowItWorks = () => {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-[#1A2B4B] mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-[#2D368E] mb-4">
             How It Works
           </h2>
           <p className="text-[#64748B] max-w-2xl mx-auto font-sans">
@@ -84,7 +84,7 @@ const HowItWorks = () => {
             className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 md:-translate-x-1/2 origin-top"
             style={{
               background:
-                "linear-gradient(to bottom, #f59e0b, #1a2b4b, #22c55e)",
+                "linear-gradient(to bottom, #f59e0b, #2D368E, #22c55e)",
             }}
             initial={{ scaleY: 0 }}
             animate={inView ? { scaleY: 1 } : {}}
@@ -144,7 +144,7 @@ const HowItWorks = () => {
                     }`}
                   >
                     <motion.div
-                      className="rounded-lg border border-[#E2E8F0] bg-white text-[#0F172A] shadow-sm"
+                      className="rounded-lg border border-[#E2E8F0] bg-white text-[#2D368E] shadow-sm"
                       whileHover={{
                         y: -4,
                         boxShadow:

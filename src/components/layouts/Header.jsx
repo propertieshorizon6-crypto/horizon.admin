@@ -43,7 +43,7 @@ export default function Header({ onMenuToggle }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads, properties, agents..."
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-orange-400 transition-colors"
+            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-[#2D368E] transition-colors"
           />
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function Header({ onMenuToggle }) {
         >
           {/* Text — hidden on very small screens */}
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-800 leading-tight">
+            <p className="text-sm font-bold text-[#2D368E] leading-tight">
               {user?.name ?? "User"}
             </p>
             <p className="text-xs text-slate-400 capitalize leading-tight">

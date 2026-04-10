@@ -34,7 +34,7 @@ export default function KanbanCard({ lead }) {
       onMouseLeave={(e) => { if (!isDragging) e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{lead.name}</p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{lead.name}</p>
         <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: pri.bg, color: pri.color, border: `1px solid ${pri.border}`, whiteSpace: "nowrap", marginLeft: 6 }}>
           {lead.priority}
         </span>
