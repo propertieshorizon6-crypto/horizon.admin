@@ -569,6 +569,33 @@ export default function UsersAgentsPage() {
             )}
           </tbody>
         </table>
+        {table.getPageCount() > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderTop: "1px solid #f1f5f9" }}>
+            <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
+              Showing <strong style={{ color: "#475569" }}>{table.getRowModel().rows.length}</strong> of{" "}
+              <strong style={{ color: "#475569" }}>{filteredData.length}</strong> users
+            </p>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed", opacity: table.getCanPreviousPage() ? 1 : 0.4 }}
+              >Previous</button>
+              {Array.from({ length: table.getPageCount() }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => table.setPageIndex(i)}
+                  style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: table.getState().pagination.pageIndex === i ? "none" : "1px solid #e2e8f0", background: table.getState().pagination.pageIndex === i ? "#2D368E" : "#fff", color: table.getState().pagination.pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}
+                >{i + 1}</button>
+              ))}
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanNextPage() ? "pointer" : "not-allowed", opacity: table.getCanNextPage() ? 1 : 0.4 }}
+              >Next</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {modal.type === "create" && (
