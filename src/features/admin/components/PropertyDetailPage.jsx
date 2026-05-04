@@ -1,9 +1,9 @@
 // 📁 src/features/admin/components/PropertyDetailPage.jsx
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Home, User, Calendar, Clock, Activity, Trash2, AlertTriangle, CheckCircle, XCircle, EyeOff, Eye } from "lucide-react";
-import { MOCK_MODE, fetchPropertyDetail, deleteProperty, approveProperty, rejectProperty, unpublishProperty, republishProperty } from "../api/propertiesApi";
+import { MoreHorizontal, Home, User, Calendar, Clock, Activity, Trash2, AlertTriangle, CheckCircle, XCircle, EyeOff, Eye, Video, Play, Upload } from "lucide-react";
+import { MOCK_MODE, fetchPropertyDetail, deleteProperty, approveProperty, rejectProperty, unpublishProperty, republishProperty, uploadPropertyVideo, deletePropertyVideo } from "../api/propertiesApi";
 import PropertyActionsMenu from "./PropertyActionsMenu";
 
 const STATUS_STYLE = {
@@ -16,7 +16,7 @@ const STATUS_STYLE = {
   "pending approval": { bg: "#fef9c3", color: "#854d0e", label: "Pending"    },
   rejected:           { bg: "#fee2e2", color: "#dc2626", label: "Rejected"   },
 };
-const TABS = ["Details", "Description", "Documents"];
+const TABS = ["Details", "Description", "Documents", "Videos"];
 
 function fmtDate(val) {
   if (!val) return "-";
@@ -238,6 +238,155 @@ function renderImageCell(src,radius,placeholderSize) {
     </div>
   );
 }
+function VideosTab({ propertyId, videos = [], onUploadSuccess, onDeleteSuccess, onError }) {
+  const videoRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [caption,      setCaption]      = useState("");
+  const [fileError,    setFileError]    = useState("");
+  const [deletingId,   setDeletingId]   = useState(null);
+
+  const onFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) { setFileError("Video must be under 100 MB"); return; }
+    setSelectedFile(file);
+    setFileError("");
+    e.target.value = "";
+  };
+
+  const uploadMutation = useMutation({
+    mutationFn: () => {
+      const fd = new FormData();
+      fd.append("video", selectedFile);
+      if (caption.trim()) fd.append("caption", caption.trim());
+      return uploadPropertyVideo(propertyId, fd);
+    },
+    onSuccess: () => { setSelectedFile(null); setCaption(""); onUploadSuccess(); },
+    onError: (e) => onError(e?.response?.data?.message || "Video upload failed"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (videoId) => deletePropertyVideo(propertyId, videoId),
+    onSuccess: () => { setDeletingId(null); onDeleteSuccess(); },
+    onError: (e) => { setDeletingId(null); onError(e?.response?.data?.error?.message || "Could not delete video"); },
+  });
+
+  const fmtSize = (b) => b < 1024*1024 ? `${(b/1024).toFixed(0)} KB` : `${(b/(1024*1024)).toFixed(1)} MB`;
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <span style={{ fontSize:13, fontWeight:700, color:"#374151" }}>
+          Videos{videos.length > 0 ? ` (${videos.length})` : ""}
+        </span>
+        <button type="button" onClick={() => videoRef.current?.click()}
+          disabled={uploadMutation.isPending}
+          style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:9, border:"none", background:"#2D368E", color:"#fff", fontSize:12, fontWeight:700, cursor:uploadMutation.isPending?"not-allowed":"pointer", opacity:uploadMutation.isPending?0.6:1 }}>
+          <Upload size={13} /> Upload Video
+        </button>
+        <input ref={videoRef} type="file"
+          accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+          style={{ display:"none" }} onChange={onFileChange} />
+      </div>
+
+      {/* Selected file — preview before upload */}
+      {selectedFile && (
+        <div style={{ marginBottom:16, padding:"14px 16px", background:"#f8fafc", borderRadius:12, border:"1px solid #e2e8f0" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+            <div style={{ width:38, height:38, borderRadius:8, background:"#eef0fb", border:"1px solid #c7cdf4", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Video size={18} color="#2D368E" />
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#000000", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{selectedFile.name}</p>
+              <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8" }}>{fmtSize(selectedFile.size)}</p>
+            </div>
+            <button type="button" onClick={() => { setSelectedFile(null); setCaption(""); setFileError(""); }}
+              style={{ background:"#fee2e2", border:"none", color:"#dc2626", borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <XCircle size={13} />
+            </button>
+          </div>
+          <div style={{ marginBottom:10 }}>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#475569", marginBottom:4 }}>Caption (optional)</label>
+            <input value={caption} onChange={(e) => setCaption(e.target.value)}
+              placeholder="e.g. Virtual walkthrough"
+              maxLength={200}
+              style={{ width:"100%", padding:"8px 10px", borderRadius:7, border:"1px solid #e2e8f0", fontSize:12, color:"#000", outline:"none", boxSizing:"border-box" }} />
+          </div>
+          <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+            <button type="button" onClick={() => { setSelectedFile(null); setCaption(""); }}
+              style={{ padding:"7px 14px", borderRadius:8, border:"1px solid #e2e8f0", background:"#fff", color:"#374151", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              Cancel
+            </button>
+            <button type="button" onClick={() => uploadMutation.mutate()} disabled={uploadMutation.isPending}
+              style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 16px", borderRadius:8, border:"none", background:"#2D368E", color:"#fff", fontSize:12, fontWeight:700, cursor:uploadMutation.isPending?"not-allowed":"pointer", opacity:uploadMutation.isPending?0.6:1 }}>
+              <Upload size={12} />{uploadMutation.isPending ? "Uploading…" : "Upload"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fileError && (
+        <p style={{ fontSize:11, color:"#b91c1c", marginBottom:12 }}>{fileError}</p>
+      )}
+
+      {/* Uploading banner */}
+      {uploadMutation.isPending && (
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:10, marginBottom:14, fontSize:13, color:"#2D368E", fontWeight:600 }}>
+          <div style={{ width:16, height:16, border:"2px solid #2D368E", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+          Uploading video to Cloudinary…
+        </div>
+      )}
+
+      {/* Videos grid */}
+      {videos.length > 0 ? (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12 }}>
+          {videos.map((v, i) => (
+            <div key={v._id || v.publicId || i} style={{ borderRadius:10, overflow:"hidden", border:"1px solid #e2e8f0", background:"#f8fafc" }}>
+              <div style={{ position:"relative", aspectRatio:"16/9", background:"#e2e8f0", overflow:"hidden" }}>
+                {v.thumbnail
+                  ? <img src={v.thumbnail} alt="video thumbnail" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  : (
+                    <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", background:"#dde1f0" }}>
+                      <Video size={28} color="#94a3b8" strokeWidth={1.5} />
+                    </div>
+                  )
+                }
+                <a href={v.url} target="_blank" rel="noreferrer"
+                  style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.22)", textDecoration:"none" }}>
+                  <div style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.92)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.18)" }}>
+                    <Play size={16} color="#2D368E" fill="#2D368E" />
+                  </div>
+                </a>
+                {/* Delete button */}
+                {v._id && (
+                  <button type="button"
+                    disabled={deleteMutation.isPending}
+                    onClick={(e) => { e.preventDefault(); setDeletingId(v._id); deleteMutation.mutate(v._id); }}
+                    style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:"50%",
+                      border:"none", background: deletingId===v._id ? "rgba(185,28,28,0.9)" : "rgba(0,0,0,0.55)",
+                      color:"#fff", cursor: deleteMutation.isPending?"not-allowed":"pointer",
+                      display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, lineHeight:1 }}>
+                    {deletingId===v._id && deleteMutation.isPending ? "…" : "×"}
+                  </button>
+                )}
+              </div>
+              {v.caption && (
+                <p style={{ margin:"8px 10px", fontSize:11, color:"#475569", fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.caption}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : !selectedFile && (
+        <div style={{ textAlign:"center", padding:"40px 0" }}>
+          <Video size={32} strokeWidth={1.2} style={{ color:"#cbd5e1", marginBottom:10 }} />
+          <p style={{ margin:0, fontSize:13, color:"#94a3b8" }}>No videos yet — click <strong>Upload Video</strong> to add one</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LoadingView({ onBack }) {
   return (
     <div style={{ padding:"24px 28px", minHeight:"100%", background:"#f8fafc", fontFamily:"system-ui,sans-serif" }}>
@@ -442,6 +591,15 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
               {activeTab==="Details"     && <DetailsTab     property={property}/>}
               {activeTab==="Description" && <DescriptionTab property={property}/>}
               {activeTab==="Documents"   && <DocumentsTab   property={property}/>}
+              {activeTab==="Videos"      && (
+                <VideosTab
+                  propertyId={propertyId}
+                  videos={property.videos ?? []}
+                  onUploadSuccess={() => { invalidate(); showToast("success", "Video uploaded successfully!"); }}
+                  onDeleteSuccess={() => { invalidate(); showToast("success", "Video deleted"); }}
+                  onError={(msg) => showToast("error", msg)}
+                />
+              )}
             </div>
           </div>
         </div>
