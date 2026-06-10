@@ -1,8 +1,8 @@
 // 📁 src/features/admin/pages/AddPropertyPage.jsx
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Upload, X, Plus, Images } from "lucide-react";
-import { createProperty } from "../api/propertiesApi";
+import { ArrowLeft, Upload, X, Plus, Images, Video } from "lucide-react";
+import { createProperty, uploadPropertyVideo } from "../api/propertiesApi";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
 const AMENITIES_LIST = [
@@ -25,6 +25,7 @@ export default function AddPropertyPage({ onBack }) {
   const queryClient = useQueryClient();
   const featuredRef = useRef(null);
   const galleryRef  = useRef(null);
+  const videoRef    = useRef(null);
 
   const [form, setForm] = useState({
     title:"", description:"", type:"apartment", purpose:"sale",
@@ -37,8 +38,12 @@ export default function AddPropertyPage({ onBack }) {
   const [featuredFile,    setFeaturedFile]    = useState(null);
   const [featuredPreview, setFeaturedPreview] = useState(null);
   const [galleryFiles,    setGalleryFiles]    = useState([]);   // [{file, preview}]
+  const [videoFile,       setVideoFile]       = useState(null);
+  const [videoCaption,    setVideoCaption]    = useState("");
+  const [videoError,      setVideoError]      = useState("");
   const [errors,          setErrors]          = useState({});
   const [submitError,     setSubmitError]     = useState("");
+  const [videoUploading,  setVideoUploading]  = useState(false);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -84,6 +89,22 @@ export default function AddPropertyPage({ onBack }) {
     });
   };
 
+  // ── Video handler ─────────────────────────────────────────────────────────
+  const onVideoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const MAX = 100 * 1024 * 1024;
+    if (file.size > MAX) { setVideoError("Video must be under 100 MB"); return; }
+    setVideoFile(file);
+    setVideoError("");
+    e.target.value = "";
+  };
+
+  const fmtFileSize = (bytes) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
@@ -104,9 +125,28 @@ export default function AddPropertyPage({ onBack }) {
 
   // ── Mutation ──────────────────────────────────────────────────────────────
   const mutation = useMutation({
+    // Step 1: only create the property (no video here)
     mutationFn: (fd) => createProperty(fd),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      const propertyId = result?.data?.property?._id;
+
+      // Step 2: video upload (separate so its failure doesn't mask property creation)
+      if (videoFile && propertyId) {
+        setVideoUploading(true);
+        try {
+          const vfd = new FormData();
+          vfd.append("video", videoFile);
+          if (videoCaption.trim()) vfd.append("caption", videoCaption.trim());
+          await uploadPropertyVideo(propertyId, vfd);
+        } catch {
+          setVideoUploading(false);
+          setSubmitError("Property created! Video upload failed — upload it from the Edit page.");
+          return; // stay on page so the user sees the message
+        }
+        setVideoUploading(false);
+      }
+
       onBack();
     },
     onError: (err) => {
@@ -423,9 +463,68 @@ export default function AddPropertyPage({ onBack }) {
             )}
           </div>
 
+          {/* ── Property Video (optional) ── */}
+          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <Video size={16} strokeWidth={2} style={{ color:"#475569", flexShrink:0 }} />
+                <span style={{ fontSize:14, fontWeight:800, color:"#000000" }}>Property Video</span>
+                <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", background:"#f1f5f9", borderRadius:99, padding:"2px 8px" }}>optional</span>
+              </div>
+            </div>
+            <p style={{ margin:"0 0 14px", fontSize:12, color:"#94a3b8" }}>
+              A walkthrough or tour video — uploaded after the property is created
+            </p>
+
+            <input ref={videoRef} type="file"
+              accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+              style={{ display:"none" }} onChange={onVideoChange} />
+
+            {videoFile ? (
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0", marginBottom:10 }}>
+                  <div style={{ width:38, height:38, borderRadius:8, background:"#eef0fb", border:"1px solid #c7cdf4", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <Video size={18} color="#2D368E" />
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#000000", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{videoFile.name}</p>
+                    <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8" }}>{fmtFileSize(videoFile.size)}</p>
+                  </div>
+                  <button type="button" onClick={() => { setVideoFile(null); setVideoCaption(""); }}
+                    style={{ background:"#fee2e2", border:"none", color:"#dc2626", borderRadius:"50%", width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <X size={12} />
+                  </button>
+                </div>
+                <div>
+                  <label style={labelStyle}>Caption (optional)</label>
+                  <input style={inputStyle} value={videoCaption}
+                    onChange={(e) => setVideoCaption(e.target.value)}
+                    placeholder="e.g. Virtual tour of the property" maxLength={200} />
+                </div>
+              </div>
+            ) : (
+              <div onClick={() => videoRef.current?.click()}
+                style={{ border:"2px dashed #e2e8f0", borderRadius:10, padding:"32px 20px", textAlign:"center", cursor:"pointer", background:"#f8fafc" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2D368E")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}>
+                <Video size={28} strokeWidth={1.5} style={{ marginBottom:8, color:"#94a3b8" }} />
+                <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:"#475569" }}>Click to select a video file</p>
+                <p style={{ margin:0, fontSize:11, color:"#94a3b8" }}>MP4, MOV, WebM, AVI — max 100 MB</p>
+              </div>
+            )}
+            {videoError && (
+              <span style={{ fontSize:11, color:"#b91c1c", marginTop:6, display:"block" }}>{videoError}</span>
+            )}
+          </div>
+
           {/* Submit error */}
           {submitError && (
-            <div style={{ border:"1px solid #fecaca", background:"#fef2f2", color:"#b91c1c", borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:14 }}>
+            <div style={{
+              border: submitError.startsWith("Property created") ? "1px solid #bbf7d0" : "1px solid #fecaca",
+              background: submitError.startsWith("Property created") ? "#f0fdf4" : "#fef2f2",
+              color: submitError.startsWith("Property created") ? "#15803d" : "#b91c1c",
+              borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:14,
+            }}>
               {submitError}
             </div>
           )}
@@ -436,10 +535,10 @@ export default function AddPropertyPage({ onBack }) {
               style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#000000", borderRadius:9, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending}
-              style={{ border:"1px solid #2D368E", background:"#2D368E", color:"#fff", borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:mutation.isPending?"not-allowed":"pointer", opacity:mutation.isPending?0.7:1, display:"flex", alignItems:"center", gap:8 }}>
+            <button type="submit" disabled={mutation.isPending || videoUploading}
+              style={{ border:"1px solid #2D368E", background:"#2D368E", color:"#fff", borderRadius:9, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:(mutation.isPending||videoUploading)?"not-allowed":"pointer", opacity:(mutation.isPending||videoUploading)?0.7:1, display:"flex", alignItems:"center", gap:8 }}>
               <Plus size={15} />
-              {mutation.isPending ? "Creating..." : "Create Property"}
+              {videoUploading ? "Uploading video..." : mutation.isPending ? "Creating..." : "Create Property"}
             </button>
           </div>
         </div>

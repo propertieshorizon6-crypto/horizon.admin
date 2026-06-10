@@ -89,8 +89,13 @@ const mapProperty = (property = {}) => {
 const mapPropertyDetail = (property = {}) => {
   const address = [property.location?.address, property.location?.city, property.location?.state, property.location?.country].filter(Boolean).join(", ");
   const featuredImage  = resolveImageUrl(property.images?.featured);
-  const galleryImages  = Array.isArray(property.images?.gallery)
-    ? property.images.gallery.map((img) => resolveImageUrl(img)).filter(Boolean) : [];
+  // Use the backend-computed gallery array (videos first, then images) when available
+  const backendGallery = Array.isArray(property.gallery) ? property.gallery : null;
+  const galleryImages  = backendGallery
+    ? backendGallery.filter((g) => g.type === "image").map((g) => g.url)
+    : (Array.isArray(property.images?.gallery)
+        ? property.images.gallery.map((img) => resolveImageUrl(img)).filter(Boolean)
+        : []);
   const images    = [featuredImage, ...galleryImages].filter(Boolean);
   const amenities = Array.isArray(property.amenities) ? property.amenities.map(formatAmenity) : [];
   const highlights = [];
@@ -126,6 +131,15 @@ const mapPropertyDetail = (property = {}) => {
     highlights,
     documents:      Array.isArray(property.documents) ? property.documents : [],
     images,
+    videos: Array.isArray(property.videos)
+      ? property.videos.map((v) => ({
+          _id:       v._id || v.id || null,
+          url:       v.url,
+          publicId:  v.publicId,
+          thumbnail: v.thumbnail || null,
+          caption:   v.caption || "",
+        }))
+      : [],
     assignedAgent:  agentName,
     assignedTo:     agentName,
     createdBy:      ownerName || "Admin User",
@@ -140,8 +154,14 @@ const mapPropertyDetail = (property = {}) => {
     rentFrequency:  property.rentFrequency,
     purpose:        property.purpose,
     parking:        property.details?.parking,
-    rawAmenities:   Array.isArray(property.amenities) ? property.amenities : [],
-    approvalStatus: property.approvalStatus ?? null,
+    rawAmenities:    Array.isArray(property.amenities) ? property.amenities : [],
+    approvalStatus:  property.approvalStatus ?? null,
+    featuredImageUrl: featuredImage,
+    galleryImages:   Array.isArray(property.images?.gallery)
+      ? property.images.gallery
+          .map((img, index) => ({ url: resolveImageUrl(img), index }))
+          .filter((item) => item.url)
+      : [],
   };
 };
 
@@ -217,5 +237,52 @@ export const editProperty = async (propertyId, body) => {
 export const deleteProperty = async (propertyId) => {
   if (!propertyId) return null;
   const { data } = await apiClient.delete(`/admin/properties/${propertyId}`);
+  return data;
+};
+
+// POST /api/v1/admin/properties/:id/video  (multipart/form-data, field: "video")
+// timeout:0 — video can be up to 100 MB; skip the global 15s Axios timeout
+export const uploadPropertyVideo = async (propertyId, formData) => {
+  const { data } = await apiClient.post(
+    `/admin/properties/${propertyId}/video`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+  );
+  return data;
+};
+
+// PUT /api/v1/admin/properties/:id/featured-image
+export const updateFeaturedImage = async (propertyId, formData) => {
+  const { data } = await apiClient.put(
+    `/admin/properties/${propertyId}/featured-image`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+  );
+  return data;
+};
+
+// POST /api/v1/admin/properties/:id/gallery
+export const addGalleryImages = async (propertyId, formData) => {
+  const { data } = await apiClient.post(
+    `/admin/properties/${propertyId}/gallery`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+  );
+  return data;
+};
+
+// DELETE /api/v1/admin/properties/:id/gallery/:index
+export const removeGalleryImage = async (propertyId, index) => {
+  const { data } = await apiClient.delete(
+    `/admin/properties/${propertyId}/gallery/${index}`,
+  );
+  return data;
+};
+
+// DELETE /api/v1/admin/properties/:id/video/:videoId
+export const deletePropertyVideo = async (propertyId, videoId) => {
+  const { data } = await apiClient.delete(
+    `/admin/properties/${propertyId}/video/${videoId}`,
+  );
   return data;
 };

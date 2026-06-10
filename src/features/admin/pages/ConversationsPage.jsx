@@ -1,15 +1,12 @@
 // 📁 src/features/admin/pages/ConversationsPage.jsx
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MessageSquare, Search, Send, X, ChevronDown,
   Archive, XCircle, CheckCircle, AlertCircle,
 } from "lucide-react";
 import {
-  fetchConversations,
-  fetchThreads,
-  fetchMessages,
   sendMessage,
   closeThread,
   closeConversation,
@@ -17,6 +14,7 @@ import {
   unarchiveConversation,
 } from "../api/conversationsApi";
 import { useAuthStore } from "../../../store/useAuthStore";
+import useChatPolling from "../hooks/useChatPolling";
 
 // ── Brand color ───────────────────────────────────────────────────────────────
 const NAVY = "#2D368E";
@@ -132,31 +130,21 @@ export default function ConversationsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Fetch conversations ──────────────────────────────────────────────────
-  const { data: convsData, isLoading: isConvsLoading } = useQuery({
-    queryKey: ["conversations", statusFilter],
-    queryFn:  () => fetchConversations({ status: statusFilter || undefined, limit: 50 }),
-    staleTime: 1000 * 30,
+  // ── Polling (messages every 5 s, threads every 15 s, convs every 30 s) ──
+  const {
+    convsData,
+    isConvsLoading,
+    threads,
+    isThreadsLoading,
+    messages,
+    isMsgsLoading,
+  } = useChatPolling({
+    conversationId: selectedConvId,
+    threadId:       selectedThreadId,
+    statusFilter,
   });
 
   const conversations = convsData?.conversations ?? [];
-
-  // ── Fetch threads for selected conversation ──────────────────────────────
-  const { data: threads = [], isLoading: isThreadsLoading } = useQuery({
-    queryKey: ["threads", selectedConvId],
-    queryFn:  () => fetchThreads(selectedConvId),
-    enabled:  Boolean(selectedConvId),
-    staleTime: 1000 * 30,
-  });
-
-  // ── Fetch messages for selected thread ───────────────────────────────────
-  const { data: messages = [], isLoading: isMsgsLoading } = useQuery({
-    queryKey: ["messages", selectedConvId, selectedThreadId],
-    queryFn:  () => fetchMessages(selectedConvId, selectedThreadId),
-    enabled:  Boolean(selectedConvId && selectedThreadId),
-    staleTime: 1000 * 15,
-    refetchInterval: 10000,
-  });
 
   // ── Auto scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
