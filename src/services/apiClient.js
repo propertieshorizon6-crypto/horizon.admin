@@ -18,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto refresh token on 401
+// Auto refresh token on 401 (Unauthorized) responses
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
