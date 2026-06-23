@@ -3,16 +3,16 @@ import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, ChevronDown, Plus } from "lucide-react";
+import { Search, ChevronDown, Plus, Download } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
-import { assignPropertyAgent } from "../api/propertiesApi";
+import { assignPropertyAgent, markPropertySold } from "../api/propertiesApi";
+import { fetchFacebookImport, fetchImportStatus, cancelImportBatch } from "../api/facebookApi";
 import { fetchUsers, MOCK_MODE as USERS_MOCK_MODE, MOCK_USERS } from "../api/usersApi";
 import AddPropertyPage from "./AddPropertyPage";
 import EditPropertyModal from "../components/EditPropertyModal";
@@ -61,9 +61,12 @@ const PinIcon = () => (
 
 function StatusBadge({ status }) {
   const map = {
-    Active: { bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
-    Draft: { bg: "#f1f5f9", color: "#475569", border: "#e2e8f0" },
+    Active:   { bg: "#dcfce7", color: "#15803d", border: "#bbf7d0" },
+    Draft:    { bg: "#f1f5f9", color: "#475569", border: "#e2e8f0" },
     Archived: { bg: "#f1f5f9", color: "#64748b", border: "#e2e8f0" },
+    Sold:     { bg: "#ede9fe", color: "#6d28d9", border: "#ddd6fe" },
+    Rejected: { bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
+    Inactive: { bg: "#f1f5f9", color: "#64748b", border: "#e2e8f0" },
   };
 
   const style = map[status] ?? map.Draft;
@@ -86,7 +89,10 @@ function StatusBadge({ status }) {
   );
 }
 
-function ComplianceBadge({ value }) {
+function ComplianceBadge({ value, issues = [] }) {
+  const [hovered, setHovered] = useState(false);
+  const hasIssues = issues.length > 0;
+
   if (value === "Compliant") {
     return (
       <span
@@ -114,42 +120,360 @@ function ComplianceBadge({ value }) {
 
   return (
     <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "3px 10px",
-        borderRadius: 99,
-        background: "#fef9c3",
-        color: "#a16207",
-        border: "1px solid #fde68a",
-        whiteSpace: "nowrap",
-      }}
+      style={{ position: "relative", display: "inline-flex" }}
+      onMouseEnter={() => hasIssues && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-      {value}
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "3px 10px",
+          borderRadius: 99,
+          background: "#fef9c3",
+          color: "#a16207",
+          border: "1px solid #fde68a",
+          whiteSpace: "nowrap",
+          cursor: "default",
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        {value}
+      </span>
+
+      {hovered && hasIssues && (
+        <span style={{
+          position: "absolute",
+          bottom: "calc(100% + 8px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#1e293b",
+          color: "#f8fafc",
+          fontSize: 11,
+          fontWeight: 500,
+          borderRadius: 6,
+          padding: "6px 10px",
+          whiteSpace: "nowrap",
+          zIndex: 9999,
+          pointerEvents: "none",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+        }}>
+          {issues.map((issue) => (
+            <span key={issue} style={{ display: "block" }}>• {issue}</span>
+          ))}
+          {/* arrow */}
+          <span style={{
+            position: "absolute",
+            top: "100%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "5px solid transparent",
+            borderRight: "5px solid transparent",
+            borderTop: "5px solid #1e293b",
+          }} />
+        </span>
+      )}
     </span>
   );
 }
 
 
-const TABS = ["All", "Draft", "Active"];
+const STATUS_META = {
+  queued:     { label:"Queued",     bg:"#f1f5f9", color:"#475569", dot:"#94a3b8" },
+  processing: { label:"Processing", bg:"#fef9c3", color:"#854d0e", dot:"#eab308" },
+  completed:  { label:"Imported",   bg:"#dcfce7", color:"#15803d", dot:"#22c55e" },
+  filtered:   { label:"Filtered",   bg:"#f1f5f9", color:"#64748b", dot:"#cbd5e1" },
+  failed:     { label:"Failed",     bg:"#fee2e2", color:"#dc2626", dot:"#f87171" },
+};
+
+const PROP_STATUS_STYLE = {
+  draft:    { bg:"#f1f5f9", color:"#475569" },
+  active:   { bg:"#dcfce7", color:"#15803d" },
+  sold:     { bg:"#ede9fe", color:"#6d28d9" },
+  pending:  { bg:"#fef9c3", color:"#854d0e" },
+  rejected: { bg:"#fee2e2", color:"#dc2626" },
+};
+
+function FacebookImportDialog({ batchId, onClose }) {
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [cancelError, setCancelError] = useState("");
+  const LIMIT = 15;
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["fb-import-status", statusFilter, page],
+    queryFn: () => fetchImportStatus({ ...(statusFilter ? { status: statusFilter } : {}), page, limit: LIMIT }),
+    // Poll every 3s while work is in flight; stop once nothing is queued/processing.
+    refetchInterval: (query) => {
+      const jobs = query.state.data?.jobs;
+      if (!jobs) return 3000; // first load — keep polling until we have data
+      const running = jobs.some((j) => ["queued", "processing"].includes(j.status));
+      // A freshly started batch may have no jobs yet — keep polling until they appear.
+      if (running || (batchId && jobs.length === 0)) return 3000;
+      return false;
+    },
+  });
+
+  const items      = Array.isArray(data?.jobs) ? data.jobs : [];
+  const total      = data?.pagination?.total ?? items.length;
+  const totalPages = data?.pagination?.pages ?? Math.max(1, Math.ceil(total / LIMIT));
+
+  // Compute counts from current page items when API doesn't return them
+  const counts = useMemo(() => {
+    const c = {};
+    items.forEach(item => {
+      const s = item.status ?? "queued";
+      c[s] = (c[s] ?? 0) + 1;
+    });
+    return c;
+  }, [items]);
+
+  const hasActive = items.some(i => ["queued","processing"].includes(i.status));
+  const allDone   = !isLoading && items.length > 0 && !hasActive;
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelImportBatch(batchId),
+    onSuccess: () => {
+      setCancelError("");
+      queryClient.invalidateQueries({ queryKey: ["fb-import-status"] });
+    },
+    onError: (err) => {
+      setCancelError(err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || "Could not cancel — the batch may have already finished.");
+    },
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:"fixed", inset:0, zIndex:4000, background:"rgba(15,23,42,0.5)",
+        display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width:"100%", maxWidth:600, maxHeight:"85vh", display:"flex", flexDirection:"column",
+          background:"#fff", borderRadius:16, border:"1px solid #e2e8f0",
+          boxShadow:"0 20px 60px rgba(0,0,0,0.18)", overflow:"hidden" }}
+      >
+        {/* Header */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+          padding:"16px 20px", borderBottom:"1px solid #f1f5f9", flexShrink:0 }}>
+          <div>
+            <p style={{ margin:0, fontSize:16, fontWeight:800, color:"#000" }}>Facebook Import</p>
+            <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>
+              {allDone ? `Import complete · ${items.length} posts processed`
+                : hasActive ? "Processing posts…"
+                : isFetching ? "Updating…"
+                : `${items.length} posts`}
+            </p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {hasActive && (
+              <span style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e",
+                display:"inline-block", animation:"pulse 1.5s infinite" }} />
+            )}
+            {batchId && hasActive && (
+              <button onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}
+                style={{ border:"1px solid #fecaca", background:"#fff", borderRadius:8,
+                  color:"#dc2626", padding:"6px 12px", fontSize:12, fontWeight:600,
+                  cursor: cancelMutation.isPending ? "not-allowed" : "pointer",
+                  opacity: cancelMutation.isPending ? 0.6 : 1 }}>
+                {cancelMutation.isPending ? "Cancelling…" : "Cancel Import"}
+              </button>
+            )}
+            <button onClick={onClose}
+              style={{ border:"1px solid #e2e8f0", background:"#fff", borderRadius:8,
+                color:"#475569", padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              Close
+            </button>
+          </div>
+        </div>
+
+        {cancelError && (
+          <div style={{ padding:"10px 20px", background:"#fef2f2", borderBottom:"1px solid #fecaca",
+            color:"#b91c1c", fontSize:12, fontWeight:500, flexShrink:0 }}>
+            {cancelError}
+          </div>
+        )}
+
+        {/* Summary counts */}
+        {Object.keys(counts).length > 0 && (
+          <div style={{ display:"flex", gap:8, padding:"12px 20px", borderBottom:"1px solid #f1f5f9",
+            flexWrap:"wrap", flexShrink:0 }}>
+            {Object.entries(counts).map(([key, val]) => {
+              const m = STATUS_META[key] ?? STATUS_META.queued;
+              return (
+                <div key={key} style={{ display:"flex", alignItems:"center", gap:6,
+                  padding:"4px 12px", borderRadius:99, background:m.bg }}>
+                  <span style={{ width:7, height:7, borderRadius:"50%", background:m.dot, flexShrink:0 }} />
+                  <span style={{ fontSize:12, fontWeight:700, color:m.color }}>{val} {m.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        <div style={{ display:"flex", gap:0, padding:"0 20px", borderBottom:"1px solid #f1f5f9",
+          overflow:"hidden", flexShrink:0 }}>
+          {["", "queued", "processing", "completed", "filtered", "failed"].map(s => {
+            const active = statusFilter === s;
+            const label = s ? (STATUS_META[s]?.label ?? s) : "All";
+            return (
+              <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
+                style={{ padding:"10px 14px", border:"none", background:"transparent", cursor:"pointer",
+                  fontSize:12, fontWeight: active ? 700 : 500, whiteSpace:"nowrap",
+                  color: active ? "#000" : "#64748b",
+                  borderBottom: active ? "2px solid #2D368E" : "2px solid transparent" }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* List */}
+        <div style={{ overflowY:"auto", flex:1 }}>
+          {isLoading ? (
+            [...Array(5)].map((_,i) => (
+              <div key={i} style={{ display:"flex", gap:12, padding:"12px 20px", borderBottom:"1px solid #f8fafc" }}>
+                <div style={{ width:52, height:40, borderRadius:6, background:"#f1f5f9", flexShrink:0 }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ height:12, background:"#f1f5f9", borderRadius:4, marginBottom:6, width:"60%" }} />
+                  <div style={{ height:10, background:"#f8fafc", borderRadius:4, width:"40%" }} />
+                </div>
+              </div>
+            ))
+          ) : items.length === 0 ? (
+            <p style={{ textAlign:"center", color:"#94a3b8", fontSize:13, padding:"40px 0" }}>
+              No posts found{statusFilter ? ` with status "${STATUS_META[statusFilter]?.label}"` : ""}
+            </p>
+          ) : items.map((item, i) => {
+            const s  = item.status ?? "queued";
+            const m  = STATUS_META[s] ?? STATUS_META.queued;
+            const title = item.openAiResponse?.title ?? item.propertyId?.title
+              ?? item.rawData?.message?.split("\n")[0] ?? `Post #${i+1}`;
+            const snippet = item.rawData?.message
+              ? item.rawData.message.split("\n").slice(0,2).join(" · ").slice(0,80)
+              : null;
+            const thumb = item.rawData?.full_picture;
+            const prop  = item.propertyId;
+            const propStatus = prop?.status;
+            const propStyle  = PROP_STATUS_STYLE[propStatus] ?? PROP_STATUS_STYLE.draft;
+
+            return (
+              <div key={item._id ?? i}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 20px",
+                  borderBottom:"1px solid #f8fafc" }}>
+                {/* Thumbnail */}
+                {thumb
+                  ? <img src={thumb} alt="" style={{ width:52, height:40, objectFit:"cover",
+                      borderRadius:6, border:"1px solid #e2e8f0", flexShrink:0 }} />
+                  : <div style={{ width:52, height:40, borderRadius:6, background:"#f1f5f9",
+                      border:"1px solid #e2e8f0", flexShrink:0, display:"flex",
+                      alignItems:"center", justifyContent:"center", fontSize:16 }}>🏠</div>
+                }
+
+                {/* Info */}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#000",
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {title}
+                  </p>
+                  {snippet && (
+                    <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8",
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {snippet}
+                    </p>
+                  )}
+                  {item.error && (
+                    <p style={{ margin:"2px 0 0", fontSize:11, color:"#dc2626" }}>
+                      {typeof item.error === "string" ? item.error : item.error?.message ?? "An error occurred"}
+                    </p>
+                  )}
+                  {!item.error && item.filterReason && (
+                    <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8", fontStyle:"italic" }}>
+                      {item.filterReason}
+                    </p>
+                  )}
+                </div>
+
+                {/* Right side */}
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:99,
+                    background:m.bg, color:m.color }}>
+                    {m.label}
+                  </span>
+                  {prop && propStatus && (
+                    <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:99,
+                      background:propStyle.bg, color:propStyle.color }}>
+                      {propStatus}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+            padding:"10px 20px", borderTop:"1px solid #f1f5f9", flexShrink:0 }}>
+            <p style={{ margin:0, fontSize:12, color:"#94a3b8" }}>
+              Page {page} of {totalPages} · {total} posts
+            </p>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                style={{ padding:"5px 12px", border:"1px solid #e2e8f0", borderRadius:7,
+                  fontSize:12, background:"#fff", color:"#475569", cursor: page===1?"not-allowed":"pointer",
+                  opacity: page===1 ? 0.4 : 1 }}>Prev</button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
+                style={{ padding:"5px 12px", border:"1px solid #2D368E", borderRadius:7,
+                  fontSize:12, background:"#2D368E", color:"#fff", cursor: page===totalPages?"not-allowed":"pointer",
+                  opacity: page===totalPages ? 0.4 : 1 }}>Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+    </div>
+  );
+}
+
+const TABS = ["All", "Draft", "Active", "Sold", "Rejected", "Inactive"];
 const columnHelper = createColumnHelper();
 
 export default function PropertiesPage() {
   const queryClient = useQueryClient();
-  const { data: properties = [], isLoading } = useProperties();
 
   const [activeTab, setActiveTab] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
   const [globalFilter, setGlobalFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [compFilter, setCompFilter] = useState("");
+
+  const queryParams = useMemo(() => ({
+    page: currentPage,
+    limit: 20,
+    ...(activeTab !== "All" ? { status: activeTab.toLowerCase() } : {}),
+  }), [currentPage, activeTab]);
+
+  const { data: propertiesData, isLoading, isFetching } = useProperties(queryParams);
+  const properties  = propertiesData?.properties ?? [];
+  const metaCounts  = propertiesData?.meta ?? {};
+  const pagination  = propertiesData?.pagination ?? { total: 0, page: 1, limit: 20, totalPages: 1 };
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showAddPage, setShowAddPage] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
@@ -157,6 +481,26 @@ export default function PropertiesPage() {
   const [selectedAgentId,   setSelectedAgentId]   = useState("");
   const [assignError,       setAssignError]        = useState("");
   const [agentsEnabled,     setAgentsEnabled]      = useState(false);
+  const [importDialog,      setImportDialog]       = useState(false);
+  const [importBatchId,     setImportBatchId]      = useState(null);
+  const [importToast,       setImportToast]        = useState(null);
+
+  const showImportToast = (type, message) => {
+    setImportToast({ type, message });
+    setTimeout(() => setImportToast(null), 5000);
+  };
+
+  const fbImportMutation = useMutation({
+    mutationFn: () => fetchFacebookImport(30),
+    onSuccess: (data) => {
+      setImportBatchId(data?.batchId ?? null);
+      setImportDialog(true);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["properties"] }), 8000);
+    },
+    onError: (err) => {
+      showImportToast("error", err?.response?.data?.message || "Facebook import failed.");
+    },
+  });
 
   // ── Agents query — lazy: only fires after the user first opens the modal ───
   const {
@@ -214,6 +558,12 @@ export default function PropertiesPage() {
     },
   });
 
+  // ── Mark sold / rented mutation ────────────────────────────────────────────
+  const markSoldMutation = useMutation({
+    mutationFn: (propertyId) => markPropertySold(propertyId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["properties"] }),
+  });
+
   const openAssignModal  = (prop) => {
     setAgentsEnabled(true);
     setAssigningProperty(prop);
@@ -237,62 +587,34 @@ export default function PropertiesPage() {
     ? agentsQueryError?.response?.data?.message || agentsQueryError?.message || "Could not load agents list."
     : "";
 
-  const tabCounts = useMemo(
-    () =>
-      TABS.reduce((acc, tab) => {
-        acc[tab] =
-          tab === "All"
-            ? properties.length
-            : properties.filter((property) => property.status === tab).length;
-        return acc;
-      }, {}),
-    [properties],
-  );
+  // Tab counts come from API meta; fall back to counting current page only
+  const tabCounts = useMemo(() => ({
+    All:    metaCounts.all    ?? pagination.total,
+    Draft:  metaCounts.draft  ?? 0,
+    Active: metaCounts.active ?? 0,
+    Sold:     metaCounts.sold     ?? 0,
+    Rejected: metaCounts.rejected ?? 0,
+    Inactive: metaCounts.inactive ?? 0,
+  }), [metaCounts, pagination.total]);
 
   const typeOptions = useMemo(
     () =>
-      Array.from(new Set(properties.map((property) => property.type).filter(Boolean))).sort(
-        (a, b) => a.localeCompare(b),
-      ),
+      Array.from(new Set(properties.map((p) => p.type).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [properties],
   );
 
-
+  // Status filtering is server-side; type/compliance/search filter the current page
   const filteredData = useMemo(() => {
     let data = properties;
-
-    if (activeTab !== "All") {
-      data = data.filter((property) => property.status === activeTab);
-    }
-
-    if (typeFilter) {
-      data = data.filter((property) => property.type === typeFilter);
-    }
-
-
-    if (compFilter === "Compliant") {
-      data = data.filter((property) => property.compliance === "Compliant");
-    } else if (compFilter === "Issues") {
-      data = data.filter((property) => property.compliance !== "Compliant");
-    }
-
+    if (typeFilter) data = data.filter((p) => p.type === typeFilter);
+    if (compFilter === "Compliant") data = data.filter((p) => p.compliance === "Compliant");
+    else if (compFilter === "Issues") data = data.filter((p) => p.compliance !== "Compliant");
     if (globalFilter) {
-      const query = globalFilter.toLowerCase();
-      data = data.filter(
-        (property) =>
-          property.title?.toLowerCase().includes(query) ||
-          property.location?.toLowerCase().includes(query),
-      );
+      const q = globalFilter.toLowerCase();
+      data = data.filter((p) => p.title?.toLowerCase().includes(q) || p.location?.toLowerCase().includes(q));
     }
-
     return data;
-  }, [
-    properties,
-    activeTab,
-    typeFilter,
-    compFilter,
-    globalFilter,
-  ]);
+  }, [properties, typeFilter, compFilter, globalFilter]);
 
   const columns = useMemo(
     () => [
@@ -397,7 +719,12 @@ export default function PropertiesPage() {
       }),
       columnHelper.accessor("compliance", {
         header: "Compliance",
-        cell: (info) => <ComplianceBadge value={info.getValue()} />,
+        cell: (info) => (
+          <ComplianceBadge
+            value={info.getValue()}
+            issues={info.row.original.complianceIssues ?? []}
+          />
+        ),
       }),
       columnHelper.accessor("assignedTo", {
         header: "Agent",
@@ -421,6 +748,9 @@ export default function PropertiesPage() {
                 : undefined}
               deleteTitle="Remove Agent"
               onAssignAgent={openAssignModal}
+              onMarkSold={prop.status === "Active"
+                ? (p) => markSoldMutation.mutate(p.id)
+                : undefined}
             />
           );
         },
@@ -435,8 +765,6 @@ export default function PropertiesPage() {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   if (selectedProperty) {
@@ -537,26 +865,81 @@ export default function PropertiesPage() {
         fontFamily: "system-ui,sans-serif",
       }}
     >
-      <div style={{ marginBottom: 20, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>
-            Properties
-          </h1>
-          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
-            Manage property listings and compliance
-          </p>
+      {importDialog && (
+        <FacebookImportDialog
+          batchId={importBatchId}
+          onClose={() => setImportDialog(false)}
+        />
+      )}
+
+      {importToast && (
+        <div style={{
+          position:"fixed", bottom:24, right:24, zIndex:9999,
+          padding:"12px 18px", borderRadius:12,
+          background: importToast.type === "error" ? "#fef2f2" : "#f0fdf4",
+          border: `1px solid ${importToast.type === "error" ? "#fecaca" : "#bbf7d0"}`,
+          color: importToast.type === "error" ? "#b91c1c" : "#166534",
+          fontSize:13, fontWeight:600, boxShadow:"0 8px 24px rgba(0,0,0,0.12)",
+          maxWidth:380, fontFamily:"system-ui,sans-serif",
+        }}>
+          {importToast.message}
         </div>
-        <button
-          onClick={() => setShowAddPage(true)}
-          style={{
-            display:"flex", alignItems:"center", gap:7,
-            padding:"9px 18px", borderRadius:9, border:"1px solid #2D368E",
-            background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700,
-            cursor:"pointer",
-          }}
-        >
-          <Plus size={15} /> Add Property
-        </button>
+      )}
+
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom: 10 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#000000" }}>
+              Properties
+            </h1>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
+              Manage property listings and compliance
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setImportDialog(true)}
+            className="flex-1 md:flex-none"
+            style={{
+              display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+              padding:"9px 14px", borderRadius:9,
+              border:"1px solid #e2e8f0", background:"#fff",
+              color:"#475569", fontSize:13, fontWeight:600, cursor:"pointer",
+            }}
+          >
+            View Status
+          </button>
+          <button
+            onClick={() => fbImportMutation.mutate()}
+            disabled={fbImportMutation.isPending}
+            className="flex-1 md:flex-none"
+            style={{
+              display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+              padding:"9px 18px", borderRadius:9,
+              border:"1px solid #1877f2",
+              background: fbImportMutation.isPending ? "#e7f0fd" : "#fff",
+              color:"#1877f2", fontSize:13, fontWeight:700,
+              cursor: fbImportMutation.isPending ? "not-allowed" : "pointer",
+              opacity: fbImportMutation.isPending ? 0.7 : 1,
+            }}
+          >
+            <Download size={15} />
+            {fbImportMutation.isPending ? "Importing..." : "Import from Facebook"}
+          </button>
+          <button
+            onClick={() => setShowAddPage(true)}
+            className="flex-1 md:flex-none"
+            style={{
+              display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+              padding:"9px 18px", borderRadius:9, border:"1px solid #2D368E",
+              background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700,
+              cursor:"pointer",
+            }}
+          >
+            <Plus size={15} /> Add Property
+          </button>
+        </div>
       </div>
 
       <div
@@ -682,7 +1065,7 @@ export default function PropertiesPage() {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -810,40 +1193,35 @@ export default function PropertiesPage() {
           }}
         >
           <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
-            Showing <strong style={{ color: "#475569" }}>{filteredData.length}</strong> of{" "}
-            <strong style={{ color: "#475569" }}>{properties.length}</strong> properties
+            {isFetching && !isLoading && (
+              <span style={{ marginRight: 8, color: "#94a3b8" }}>Updating…</span>
+            )}
+            Page <strong style={{ color: "#475569" }}>{pagination.page}</strong> of{" "}
+            <strong style={{ color: "#475569" }}>{pagination.totalPages}</strong>
+            {" · "}
+            <strong style={{ color: "#475569" }}>{pagination.total}</strong> total
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1 || isFetching}
               style={{
-                padding: "5px 14px",
-                border: "1px solid #e2e8f0",
-                borderRadius: 7,
-                fontSize: 12,
-                fontWeight: 500,
-                color: "#475569",
-                background: "#fff",
-                cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed",
-                opacity: table.getCanPreviousPage() ? 1 : 0.4,
+                padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7,
+                fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff",
+                cursor: currentPage <= 1 || isFetching ? "not-allowed" : "pointer",
+                opacity: currentPage <= 1 || isFetching ? 0.4 : 1,
               }}
             >
               Previous
             </button>
             <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={currentPage >= pagination.totalPages || isFetching}
               style={{
-                padding: "5px 14px",
-                border: "1px solid #e2e8f0",
-                borderRadius: 7,
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#fff",
-                background: "#2D368E",
-                cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
-                opacity: table.getCanNextPage() ? 1 : 0.4,
+                padding: "5px 14px", border: "1px solid #2D368E", borderRadius: 7,
+                fontSize: 12, fontWeight: 600, color: "#fff", background: "#2D368E",
+                cursor: currentPage >= pagination.totalPages || isFetching ? "not-allowed" : "pointer",
+                opacity: currentPage >= pagination.totalPages || isFetching ? 0.4 : 1,
               }}
             >
               Next

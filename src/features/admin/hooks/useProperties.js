@@ -3,12 +3,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { MOCK_MODE, MOCK_PROPERTIES, fetchProperties } from "../api/propertiesApi";
 
-export default function useProperties() {
+export default function useProperties(params = {}) {
   return useQuery({
-    queryKey: ["properties"],
-    queryFn:  MOCK_MODE
-      ? () => new Promise((res) => setTimeout(() => res(MOCK_PROPERTIES), 400))
-      : () => fetchProperties(),
-    staleTime: 1000 * 60 * 5,
+    queryKey: ["properties", params],
+    queryFn: MOCK_MODE
+      ? () => new Promise((res) => setTimeout(() => res({
+          properties: MOCK_PROPERTIES,
+          meta: {},
+          pagination: { total: MOCK_PROPERTIES.length, page: 1, limit: 20, totalPages: 1 },
+        }), 400))
+      : () => fetchProperties(params),
+    staleTime: 1000 * 60 * 2,
+    placeholderData: (prev) => prev,
   });
 }

@@ -1,6 +1,6 @@
-import { Trash2, Pencil, UserPlus } from "lucide-react";
+import { Trash2, Pencil, UserPlus, CheckCircle2 } from "lucide-react";
 
-export default function PropertyActionsMenu({ property, onDeleteProperty, onEditProperty, onAssignAgent, deleteTitle = "Delete Property" }) {
+export default function PropertyActionsMenu({ property, onDeleteProperty, onEditProperty, onAssignAgent, onMarkSold, deleteTitle = "Delete Property" }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       {onDeleteProperty && (
@@ -27,6 +27,32 @@ export default function PropertyActionsMenu({ property, onDeleteProperty, onEdit
         onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
       >
         <Trash2 size={15} color="#ef4444" />
+      </button>
+      )}
+
+      {onMarkSold && (
+      <button
+        type="button"
+        title={property?.purpose === "rent" ? "Mark as Rented" : "Mark as Sold"}
+        onClick={(e) => {
+          e.stopPropagation();
+          onMarkSold?.(property);
+        }}
+        style={{
+          padding: 6,
+          borderRadius: 6,
+          border: "1px solid #e2e8f0",
+          background: "#fff",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.15s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#dcfce7"; e.currentTarget.style.borderColor = "#16a34a"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
+      >
+        <CheckCircle2 size={15} color="#16a34a" />
       </button>
       )}
 

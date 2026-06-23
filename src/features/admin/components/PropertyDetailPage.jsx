@@ -2,8 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Home, User, Calendar, Clock, Activity, Trash2, AlertTriangle, CheckCircle, XCircle, EyeOff, Eye, Video, Play, Upload } from "lucide-react";
-import { MOCK_MODE, fetchPropertyDetail, deleteProperty, approveProperty, rejectProperty, unpublishProperty, republishProperty, uploadPropertyVideo, deletePropertyVideo } from "../api/propertiesApi";
+import { MoreHorizontal, Home, User, Calendar, Clock, Activity, Trash2, AlertTriangle, CheckCircle, XCircle, EyeOff, Eye, Video, Play, Upload, CheckCircle2 } from "lucide-react";
+import { MOCK_MODE, fetchPropertyDetail, deleteProperty, approveProperty, rejectProperty, unpublishProperty, republishProperty, uploadPropertyVideo, deletePropertyVideo, markPropertySold } from "../api/propertiesApi";
 import PropertyActionsMenu from "./PropertyActionsMenu";
 
 const STATUS_STYLE = {
@@ -15,6 +15,7 @@ const STATUS_STYLE = {
   pending:            { bg: "#fef9c3", color: "#854d0e", label: "Pending"    },
   "pending approval": { bg: "#fef9c3", color: "#854d0e", label: "Pending"    },
   rejected:           { bg: "#fee2e2", color: "#dc2626", label: "Rejected"   },
+  sold:               { bg: "#ede9fe", color: "#6d28d9", label: "Sold"       },
 };
 const TABS = ["Details", "Description", "Documents", "Videos"];
 
@@ -409,7 +410,7 @@ function EmptyView({ onBack }) {
 }
 
 // ── Admin Action Bar ──────────────────────────────────────────────────────────
-function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublish, isLoading }) {
+function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublish, onMarkSold, isLoading }) {
   const rawStatus        = property.rawStatus?.toLowerCase() ?? "";
   const mappedStatus     = property.status?.toLowerCase() ?? "";
   const approvalStatus   = property.approvalStatus?.status?.toLowerCase() ?? "";
@@ -459,10 +460,16 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
           </>
         )}
         {isActive && (
-          <button type="button" onClick={onUnpublish} disabled={isLoading}
-            style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"1px solid #fde68a", background:"#fef9c3", color:"#a16207", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
-            <EyeOff size={15}/> Unpublish
-          </button>
+          <>
+            <button type="button" onClick={onMarkSold} disabled={isLoading}
+              style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"1px solid #bbf7d0", background:"#dcfce7", color:"#15803d", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
+              <CheckCircle2 size={15}/> {property?.purpose === "rent" ? "Mark as Rented" : "Mark as Sold"}
+            </button>
+            <button type="button" onClick={onUnpublish} disabled={isLoading}
+              style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"1px solid #fde68a", background:"#fef9c3", color:"#a16207", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
+              <EyeOff size={15}/> Unpublish
+            </button>
+          </>
         )}
         {(isInactive||isRejected) && (
           <button type="button" onClick={onRepublish} disabled={isLoading}
@@ -506,8 +513,9 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
   const rejectMutation    = useMutation({ mutationFn:(reason)=>rejectProperty(propertyId,reason),    onSuccess:()=>{invalidate();setShowRejectModal(false);showToast("success","Property rejected");}, onError:(e)=>{setShowRejectModal(false);showToast("error",e?.response?.data?.message||"Could not reject");} });
   const unpublishMutation = useMutation({ mutationFn:(reason)=>unpublishProperty(propertyId,reason), onSuccess:()=>{invalidate();setShowUnpublishModal(false);showToast("success","Property unpublished");}, onError:(e)=>{setShowUnpublishModal(false);showToast("error",e?.response?.data?.message||"Could not unpublish");} });
   const republishMutation = useMutation({ mutationFn:()=>republishProperty(propertyId), onSuccess:()=>{invalidate();showToast("success","Property republished!");}, onError:(e)=>showToast("error",e?.response?.data?.message||"Could not republish") });
+  const markSoldMutation  = useMutation({ mutationFn:()=>markPropertySold(propertyId),  onSuccess:()=>{invalidate();showToast("success","Property marked as sold/rented!");}, onError:(e)=>showToast("error",e?.response?.data?.message||"Could not update status") });
 
-  const isActionLoading = approveMutation.isPending||rejectMutation.isPending||unpublishMutation.isPending||republishMutation.isPending;
+  const isActionLoading = approveMutation.isPending||rejectMutation.isPending||unpublishMutation.isPending||republishMutation.isPending||markSoldMutation.isPending;
   const property = apiProperty ?? fallbackProperty;
 
   if (isLoading && !property) return <LoadingView onBack={onBack}/>;
@@ -565,6 +573,7 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
         onReject={()=>setShowRejectModal(true)}
         onUnpublish={()=>setShowUnpublishModal(true)}
         onRepublish={()=>republishMutation.mutate()}
+        onMarkSold={()=>markSoldMutation.mutate()}
       />
 
       {/* Body */}
@@ -610,20 +619,87 @@ export default function PropertyDetailPage({ propertyId, property: initialProper
             <p style={{ margin:0, fontSize:12, color:"#94a3b8" }}>{property.intent??"For Sale"}</p>
           </div>
 
-          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
-            <p style={{ margin:"0 0 16px", fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:7 }}><Home size={14} color="#64748b"/> Property Info</p>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid #f8fafc" }}>
-              <span style={{ fontSize:12, color:"#94a3b8", display:"flex", alignItems:"center", gap:6 }}><User size={13} color="#94a3b8"/> Assigned Agent</span>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:12, fontWeight:700, color:"#00000", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{property.assignedAgent??property.assignedTo??"-"}</span>
+          {/* Agent Card */}
+          {(property.assignedAgent ?? property.assignedTo) && (
+            <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:7 }}>
+                  <User size={14} color="#64748b"/> Assigned Agent
+                </p>
                 {onAssignAgent && (
                   <button type="button" onClick={()=>onAssignAgent(property)}
-                    style={{ fontSize:11, fontWeight:600, color:"#000000", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:6, padding:"2px 8px", cursor:"pointer", whiteSpace:"nowrap" }}>
-                    {(property.assignedAgent??property.assignedTo) ? "Reassign" : "Assign"}
+                    style={{ fontSize:11, fontWeight:600, color:"#2D368E", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:6, padding:"3px 9px", cursor:"pointer" }}>
+                    Reassign
                   </button>
                 )}
               </div>
+              {/* Avatar + name row */}
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, paddingBottom:14, borderBottom:"1px solid #f1f5f9" }}>
+                {property.agentAvatar
+                  ? <img src={property.agentAvatar} alt="" style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover", border:"2px solid #e2e8f0", flexShrink:0 }} />
+                  : (
+                    <div style={{ width:44, height:44, borderRadius:"50%", background:"#2D368E", border:"2px solid #e2e8f0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontSize:15, fontWeight:800, color:"#fff", letterSpacing:0 }}>
+                        {(property.assignedAgent ?? property.assignedTo ?? "?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+                      </span>
+                    </div>
+                  )
+                }
+                <div style={{ minWidth:0 }}>
+                  <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#000", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {property.assignedAgent ?? property.assignedTo}
+                  </p>
+                  <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8" }}>Agent</p>
+                </div>
+              </div>
+              {/* Contact links */}
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {property.agentEmail && (
+                  <a href={`mailto:${property.agentEmail}`}
+                    style={{ display:"flex", alignItems:"center", gap:10, textDecoration:"none", padding:"9px 12px", borderRadius:9, background:"#f8fafc", border:"1px solid #f1f5f9" }}
+                    onMouseEnter={e=>e.currentTarget.style.background="#eef0fb"}
+                    onMouseLeave={e=>e.currentTarget.style.background="#f8fafc"}>
+                    <div style={{ width:30, height:30, borderRadius:"50%", background:"#eef0fb", border:"1px solid #c7cdf4", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2D368E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize:12, color:"#374151", fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {property.agentEmail}
+                    </span>
+                  </a>
+                )}
+                {property.agentPhone && (
+                  <a href={`tel:${property.agentPhone}`}
+                    style={{ display:"flex", alignItems:"center", gap:10, textDecoration:"none", padding:"9px 12px", borderRadius:9, background:"#f8fafc", border:"1px solid #f1f5f9" }}
+                    onMouseEnter={e=>e.currentTarget.style.background="#f0fdf4"}
+                    onMouseLeave={e=>e.currentTarget.style.background="#f8fafc"}>
+                    <div style={{ width:30, height:30, borderRadius:"50%", background:"#dcfce7", border:"1px solid #bbf7d0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize:12, color:"#374151", fontWeight:500 }}>
+                      {property.agentPhone}
+                    </span>
+                  </a>
+                )}
+              </div>
             </div>
+          )}
+
+          {/* Property Info */}
+          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:20 }}>
+            <p style={{ margin:"0 0 16px", fontSize:13, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:7 }}><Home size={14} color="#64748b"/> Property Info</p>
+            {!(property.assignedAgent ?? property.assignedTo) && onAssignAgent && (
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom:"1px solid #f8fafc" }}>
+                <span style={{ fontSize:12, color:"#94a3b8", display:"flex", alignItems:"center", gap:6 }}><User size={13} color="#94a3b8"/> Assigned Agent</span>
+                <button type="button" onClick={()=>onAssignAgent(property)}
+                  style={{ fontSize:11, fontWeight:600, color:"#2D368E", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:6, padding:"2px 8px", cursor:"pointer" }}>
+                  Assign
+                </button>
+              </div>
+            )}
             {[
               {icon:<User size={13} color="#94a3b8"/>,    label:"Created By",     value:property.createdBy??"Admin User"},
               {icon:<Calendar size={13} color="#94a3b8"/>,label:"Created",        value:fmtDate(property.createdAt)},
