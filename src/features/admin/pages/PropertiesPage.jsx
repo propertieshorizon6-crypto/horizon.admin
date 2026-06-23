@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,7 +7,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, ChevronDown, Plus, Download } from "lucide-react";
+import { Search, ChevronDown, Plus, Download, X } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
@@ -204,10 +204,8 @@ const PROP_STATUS_STYLE = {
 };
 
 function FacebookImportDialog({ batchId, onClose }) {
-  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
-  const [cancelError, setCancelError] = useState("");
   const LIMIT = 15;
 
   const { data, isLoading, isFetching } = useQuery({
@@ -241,19 +239,6 @@ function FacebookImportDialog({ batchId, onClose }) {
   const hasActive = items.some(i => ["queued","processing"].includes(i.status));
   const allDone   = !isLoading && items.length > 0 && !hasActive;
 
-  const cancelMutation = useMutation({
-    mutationFn: () => cancelImportBatch(batchId),
-    onSuccess: () => {
-      setCancelError("");
-      queryClient.invalidateQueries({ queryKey: ["fb-import-status"] });
-    },
-    onError: (err) => {
-      setCancelError(err?.response?.data?.error?.message
-        || err?.response?.data?.message
-        || "Could not cancel — the batch may have already finished.");
-    },
-  });
-
   return (
     <div
       onClick={onClose}
@@ -283,15 +268,6 @@ function FacebookImportDialog({ batchId, onClose }) {
               <span style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e",
                 display:"inline-block", animation:"pulse 1.5s infinite" }} />
             )}
-            {batchId && hasActive && (
-              <button onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}
-                style={{ border:"1px solid #fecaca", background:"#fff", borderRadius:8,
-                  color:"#dc2626", padding:"6px 12px", fontSize:12, fontWeight:600,
-                  cursor: cancelMutation.isPending ? "not-allowed" : "pointer",
-                  opacity: cancelMutation.isPending ? 0.6 : 1 }}>
-                {cancelMutation.isPending ? "Cancelling…" : "Cancel Import"}
-              </button>
-            )}
             <button onClick={onClose}
               style={{ border:"1px solid #e2e8f0", background:"#fff", borderRadius:8,
                 color:"#475569", padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
@@ -299,13 +275,6 @@ function FacebookImportDialog({ batchId, onClose }) {
             </button>
           </div>
         </div>
-
-        {cancelError && (
-          <div style={{ padding:"10px 20px", background:"#fef2f2", borderBottom:"1px solid #fecaca",
-            color:"#b91c1c", fontSize:12, fontWeight:500, flexShrink:0 }}>
-            {cancelError}
-          </div>
-        )}
 
         {/* Summary counts */}
         {Object.keys(counts).length > 0 && (
@@ -447,12 +416,150 @@ function FacebookImportDialog({ batchId, onClose }) {
         )}
       </div>
 
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} } @keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   );
 }
 
 const TABS = ["All", "Draft", "Active", "Sold", "Rejected", "Inactive"];
+
+// Server-side filter enums (values match the API; labels are display-only).
+const TYPE_OPTIONS = ["apartment", "house", "villa", "townhouse", "condo", "land", "commercial"];
+const PURPOSE_OPTIONS = ["sale", "rent"];
+const APPROVAL_OPTIONS = ["pending", "approved", "rejected"];
+const FEATURED_OPTIONS = [
+  { value: "true", label: "Featured" },
+  { value: "false", label: "Not featured" },
+];
+const SORT_OPTIONS = [
+  { value: "-createdAt", label: "Newest first" },
+  { value: "createdAt", label: "Oldest first" },
+  { value: "-price", label: "Price: high to low" },
+  { value: "price", label: "Price: low to high" },
+];
+const titleCase = (s = "") => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+const TEXT_FILTER_STYLE = {
+  width: 130,
+  padding: "9px 12px",
+  border: "1px solid #e2e8f0",
+  borderRadius: 9,
+  fontSize: 13,
+  color: "#000000",
+  outline: "none",
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
+// options: [{ value, label }]
+function FilterSelect({ value, onChange, options }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <select
+        value={value}
+        onChange={onChange}
+        style={{
+          appearance: "none",
+          paddingLeft: 12,
+          paddingRight: 28,
+          paddingTop: 9,
+          paddingBottom: 9,
+          border: "1px solid #e2e8f0",
+          borderRadius: 9,
+          fontSize: 13,
+          color: value ? "#000000" : "#64748b",
+          background: "#fff",
+          cursor: "pointer",
+          outline: "none",
+          minWidth: 130,
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown
+        size={12}
+        style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }}
+      />
+    </div>
+  );
+}
+
+function PageButton({ label, active, disabled, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        minWidth: 32,
+        padding: "5px 10px",
+        borderRadius: 7,
+        fontSize: 12,
+        fontWeight: active ? 700 : 500,
+        border: `1px solid ${active ? "#2D368E" : "#e2e8f0"}`,
+        background: active ? "#2D368E" : "#fff",
+        color: active ? "#fff" : "#475569",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+const range = (start, end) =>
+  Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
+
+// Builds the page list with ellipsis gaps, regenerated from the current page:
+//   first page, a window of `siblingCount` pages either side of current, last page.
+function buildPageItems(page, totalPages, siblingCount = 1) {
+  // first + last + current + 2*siblings + 2 dots
+  const totalSlots = siblingCount * 2 + 5;
+  if (totalPages <= totalSlots) return range(1, totalPages);
+
+  const leftSibling = Math.max(page - siblingCount, 1);
+  const rightSibling = Math.min(page + siblingCount, totalPages);
+  const showLeftDots = leftSibling > 2;
+  const showRightDots = rightSibling < totalPages - 1;
+  const edgeCount = 3 + siblingCount * 2;
+
+  if (!showLeftDots && showRightDots) {
+    return [...range(1, edgeCount), "dots-r", totalPages];
+  }
+  if (showLeftDots && !showRightDots) {
+    return [1, "dots-l", ...range(totalPages - edgeCount + 1, totalPages)];
+  }
+  return [1, "dots-l", ...range(leftSibling, rightSibling), "dots-r", totalPages];
+}
+
+// Layout: [Prev] 1 … 6 [7] 8 … 20 [Next] — numbers shift as you navigate.
+function TablePagination({ page, totalPages, disabled, onChange }) {
+  const go = (n) => {
+    const clamped = Math.min(totalPages, Math.max(1, n));
+    if (clamped !== page) onChange(clamped);
+  };
+
+  const items = buildPageItems(page, totalPages);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <PageButton label="Previous" disabled={disabled || page <= 1} onClick={() => go(page - 1)} />
+      {items.map((item) =>
+        typeof item === "number" ? (
+          <PageButton key={item} label={item} active={item === page} disabled={disabled} onClick={() => go(item)} />
+        ) : (
+          <span key={item} style={{ minWidth: 24, textAlign: "center", color: "#94a3b8", fontSize: 12, userSelect: "none" }}>
+            …
+          </span>
+        ),
+      )}
+      <PageButton label="Next" disabled={disabled || page >= totalPages} onClick={() => go(page + 1)} />
+    </div>
+  );
+}
+
 const columnHelper = createColumnHelper();
 
 export default function PropertiesPage() {
@@ -460,15 +567,73 @@ export default function PropertiesPage() {
 
   const [activeTab, setActiveTab] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [globalFilter, setGlobalFilter] = useState("");
+
+  // Filters sent to the server (selects fire immediately).
   const [typeFilter, setTypeFilter] = useState("");
+  const [purposeFilter, setPurposeFilter] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState("");
+  const [featuredFilter, setFeaturedFilter] = useState("");
+  const [sortBy, setSortBy] = useState("-createdAt");
+  // Compliance is a derived/computed field — not an API param — so it stays client-side.
   const [compFilter, setCompFilter] = useState("");
 
-  const queryParams = useMemo(() => ({
-    page: currentPage,
-    limit: 20,
-    ...(activeTab !== "All" ? { status: activeTab.toLowerCase() } : {}),
-  }), [currentPage, activeTab]);
+  // Free-text inputs are debounced before they hit the server.
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [cityInput, setCityInput] = useState("");
+  const [stateInput, setStateInput] = useState("");
+  const [minPriceInput, setMinPriceInput] = useState("");
+  const [maxPriceInput, setMaxPriceInput] = useState("");
+  const [debouncedText, setDebouncedText] = useState({
+    search: "", city: "", state: "", minPrice: "", maxPrice: "",
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedText({
+      search: globalFilter.trim(),
+      city: cityInput.trim(),
+      state: stateInput.trim(),
+      minPrice: minPriceInput,
+      maxPrice: maxPriceInput,
+    }), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter, cityInput, stateInput, minPriceInput, maxPriceInput]);
+
+  const queryParams = useMemo(() => {
+    const p = { page: currentPage, limit: 20, sort: sortBy };
+    if (activeTab !== "All") p.status = activeTab.toLowerCase();
+    if (approvalFilter)      p.approvalStatus = approvalFilter;
+    if (typeFilter)          p.type = typeFilter;
+    if (purposeFilter)       p.purpose = purposeFilter;
+    if (featuredFilter)      p.featured = featuredFilter;
+    if (debouncedText.search)   p.search = debouncedText.search;
+    if (debouncedText.city)     p.city = debouncedText.city;
+    if (debouncedText.state)    p.state = debouncedText.state;
+    if (debouncedText.minPrice !== "") p.minPrice = debouncedText.minPrice;
+    if (debouncedText.maxPrice !== "") p.maxPrice = debouncedText.maxPrice;
+    return p;
+  }, [currentPage, activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, sortBy, debouncedText]);
+
+  // Any filter change resets to the first page (page itself is excluded from deps).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, sortBy, debouncedText]);
+
+  const hasActiveFilters =
+    !!(typeFilter || purposeFilter || approvalFilter || featuredFilter || compFilter ||
+       globalFilter || cityInput || stateInput || minPriceInput || maxPriceInput);
+
+  const clearFilters = () => {
+    setTypeFilter("");
+    setPurposeFilter("");
+    setApprovalFilter("");
+    setFeaturedFilter("");
+    setCompFilter("");
+    setGlobalFilter("");
+    setCityInput("");
+    setStateInput("");
+    setMinPriceInput("");
+    setMaxPriceInput("");
+  };
 
   const { data: propertiesData, isLoading, isFetching } = useProperties(queryParams);
   const properties  = propertiesData?.properties ?? [];
@@ -499,6 +664,23 @@ export default function PropertiesPage() {
     },
     onError: (err) => {
       showImportToast("error", err?.response?.data?.message || "Facebook import failed.");
+    },
+  });
+
+  const fbCancelMutation = useMutation({
+    mutationFn: () => cancelImportBatch(importBatchId),
+    onSuccess: (data) => {
+      const n = data?.jobsCancelled ?? 0;
+      showImportToast("success", `Import cancelled — ${n} job(s) cancelled. Jobs already processing will finish.`);
+      setImportBatchId(null);
+      queryClient.invalidateQueries({ queryKey: ["fb-import-status"] });
+    },
+    onError: (err) => {
+      // A 400 means the batch already finished/expired — clear it so the button hides.
+      setImportBatchId(null);
+      showImportToast("error", err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || "Could not cancel — the batch may have already finished.");
     },
   });
 
@@ -597,24 +779,12 @@ export default function PropertiesPage() {
     Inactive: metaCounts.inactive ?? 0,
   }), [metaCounts, pagination.total]);
 
-  const typeOptions = useMemo(
-    () =>
-      Array.from(new Set(properties.map((p) => p.type).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
-    [properties],
-  );
-
-  // Status filtering is server-side; type/compliance/search filter the current page
+  // All filters except compliance are server-side; compliance is computed client-side.
   const filteredData = useMemo(() => {
-    let data = properties;
-    if (typeFilter) data = data.filter((p) => p.type === typeFilter);
-    if (compFilter === "Compliant") data = data.filter((p) => p.compliance === "Compliant");
-    else if (compFilter === "Issues") data = data.filter((p) => p.compliance !== "Compliant");
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      data = data.filter((p) => p.title?.toLowerCase().includes(q) || p.location?.toLowerCase().includes(q));
-    }
-    return data;
-  }, [properties, typeFilter, compFilter, globalFilter]);
+    if (compFilter === "Compliant") return properties.filter((p) => p.compliance === "Compliant");
+    if (compFilter === "Issues")    return properties.filter((p) => p.compliance !== "Compliant");
+    return properties;
+  }, [properties, compFilter]);
 
   const columns = useMemo(
     () => [
@@ -927,6 +1097,23 @@ export default function PropertiesPage() {
             <Download size={15} />
             {fbImportMutation.isPending ? "Importing..." : "Import from Facebook"}
           </button>
+          {importBatchId && (
+            <button
+              onClick={() => fbCancelMutation.mutate()}
+              disabled={fbCancelMutation.isPending}
+              className="flex-1 md:flex-none"
+              style={{
+                display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+                padding:"9px 16px", borderRadius:9,
+                border:"1px solid #fecaca", background:"#fff",
+                color:"#dc2626", fontSize:13, fontWeight:700,
+                cursor: fbCancelMutation.isPending ? "not-allowed" : "pointer",
+                opacity: fbCancelMutation.isPending ? 0.7 : 1,
+              }}
+            >
+              {fbCancelMutation.isPending ? "Cancelling..." : "Cancel Import"}
+            </button>
+          )}
           <button
             onClick={() => setShowAddPage(true)}
             className="flex-1 md:flex-none"
@@ -950,25 +1137,19 @@ export default function PropertiesPage() {
           padding: "14px 16px",
           marginBottom: 14,
           display: "flex",
-          alignItems: "center",
-          gap: 10,
+          flexDirection: "column",
+          gap: 12,
         }}
       >
-        <div style={{ position: "relative", flex: 1 }}>
+        <div style={{ position: "relative" }}>
           <Search
             size={14}
-            style={{
-              position: "absolute",
-              left: 11,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#94a3b8",
-            }}
+            style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }}
           />
           <input
             value={globalFilter}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            placeholder="Search by title or location..."
+            placeholder="Search by title, description, or location..."
             style={{
               width: "100%",
               paddingLeft: 32,
@@ -986,60 +1167,86 @@ export default function PropertiesPage() {
           />
         </div>
 
-        {[
-          {
-            value: typeFilter,
-            setValue: setTypeFilter,
-            label: "Type",
-            options: typeOptions,
-          },
-          {
-            value: compFilter,
-            setValue: setCompFilter,
-            label: "Compliance",
-            options: ["Compliant", "Issues"],
-          },
-        ].map(({ value, setValue, label, options }) => (
-          <div key={label} style={{ position: "relative" }}>
-            <select
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+          <FilterSelect
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            options={[{ value: "", label: "Type" }, ...TYPE_OPTIONS.map((t) => ({ value: t, label: titleCase(t) }))]}
+          />
+          <FilterSelect
+            value={purposeFilter}
+            onChange={(e) => setPurposeFilter(e.target.value)}
+            options={[{ value: "", label: "Purpose" }, ...PURPOSE_OPTIONS.map((t) => ({ value: t, label: titleCase(t) }))]}
+          />
+          <FilterSelect
+            value={approvalFilter}
+            onChange={(e) => setApprovalFilter(e.target.value)}
+            options={[{ value: "", label: "Approval" }, ...APPROVAL_OPTIONS.map((t) => ({ value: t, label: titleCase(t) }))]}
+          />
+          <FilterSelect
+            value={featuredFilter}
+            onChange={(e) => setFeaturedFilter(e.target.value)}
+            options={[{ value: "", label: "Featured?" }, ...FEATURED_OPTIONS]}
+          />
+          <FilterSelect
+            value={compFilter}
+            onChange={(e) => setCompFilter(e.target.value)}
+            options={[{ value: "", label: "Compliance" }, { value: "Compliant", label: "Compliant" }, { value: "Issues", label: "Issues" }]}
+          />
+
+          <input
+            value={cityInput}
+            onChange={(e) => setCityInput(e.target.value)}
+            placeholder="City"
+            style={TEXT_FILTER_STYLE}
+          />
+          <input
+            value={stateInput}
+            onChange={(e) => setStateInput(e.target.value)}
+            placeholder="State"
+            style={TEXT_FILTER_STYLE}
+          />
+          <input
+            type="number"
+            min="0"
+            value={minPriceInput}
+            onChange={(e) => setMinPriceInput(e.target.value)}
+            placeholder="Min price"
+            style={{ ...TEXT_FILTER_STYLE, width: 110 }}
+          />
+          <input
+            type="number"
+            min="0"
+            value={maxPriceInput}
+            onChange={(e) => setMaxPriceInput(e.target.value)}
+            placeholder="Max price"
+            style={{ ...TEXT_FILTER_STYLE, width: 110 }}
+          />
+
+          <FilterSelect value={sortBy} onChange={(e) => setSortBy(e.target.value)} options={SORT_OPTIONS} />
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
               style={{
-                appearance: "none",
-                paddingLeft: 12,
-                paddingRight: 28,
-                paddingTop: 9,
-                paddingBottom: 9,
-                border: "1px solid #e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "9px 12px",
                 borderRadius: 9,
-                fontSize: 13,
-                color: value ? "#000000" : "#64748b",
+                border: "1px solid #e2e8f0",
                 background: "#fff",
+                color: "#dc2626",
+                fontSize: 13,
+                fontWeight: 600,
                 cursor: "pointer",
-                outline: "none",
-                minWidth: 130,
               }}
             >
-              <option value="">{label}</option>
-              {options.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={12}
-              style={{
-                position: "absolute",
-                right: 9,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
-        ))}
+              <X size={13} /> Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -1201,32 +1408,12 @@ export default function PropertiesPage() {
             {" · "}
             <strong style={{ color: "#475569" }}>{pagination.total}</strong> total
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1 || isFetching}
-              style={{
-                padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7,
-                fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff",
-                cursor: currentPage <= 1 || isFetching ? "not-allowed" : "pointer",
-                opacity: currentPage <= 1 || isFetching ? 0.4 : 1,
-              }}
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-              disabled={currentPage >= pagination.totalPages || isFetching}
-              style={{
-                padding: "5px 14px", border: "1px solid #2D368E", borderRadius: 7,
-                fontSize: 12, fontWeight: 600, color: "#fff", background: "#2D368E",
-                cursor: currentPage >= pagination.totalPages || isFetching ? "not-allowed" : "pointer",
-                opacity: currentPage >= pagination.totalPages || isFetching ? 0.4 : 1,
-              }}
-            >
-              Next
-            </button>
-          </div>
+          <TablePagination
+            page={currentPage}
+            totalPages={pagination.totalPages}
+            disabled={isFetching}
+            onChange={setCurrentPage}
+          />
         </div>
       </div>
 
