@@ -1,10 +1,124 @@
 // 📁 src/features/admin/pages/AddPropertyPage.jsx
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Upload, X, Plus, Images, Video } from "lucide-react";
 import { createProperty, uploadPropertyVideo } from "../api/propertiesApi";
+import PhoneInput from "../components/PhoneInput";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
+const RESIDENTIAL_TYPES = new Set(["apartment","house","villa","townhouse","condo"]);
+
+
+const CURRENCIES = [
+  { code:"ZMW", symbol:"K",   name:"Zambian Kwacha"         },
+  { code:"USD", symbol:"$",   name:"US Dollar"              },
+  { code:"ZAR", symbol:"R",   name:"South African Rand"     },
+  { code:"KES", symbol:"KSh", name:"Kenyan Shilling"        },
+  { code:"TZS", symbol:"TSh", name:"Tanzanian Shilling"     },
+  { code:"UGX", symbol:"USh", name:"Ugandan Shilling"       },
+  { code:"MWK", symbol:"MK",  name:"Malawian Kwacha"        },
+  { code:"MZN", symbol:"MT",  name:"Mozambican Metical"     },
+  { code:"BWP", symbol:"P",   name:"Botswana Pula"          },
+  { code:"NAD", symbol:"N$",  name:"Namibian Dollar"        },
+  { code:"CDF", symbol:"FC",  name:"Congolese Franc"        },
+  { code:"AOA", symbol:"Kz",  name:"Angolan Kwanza"         },
+  { code:"GHS", symbol:"₵",   name:"Ghanaian Cedi"          },
+  { code:"NGN", symbol:"₦",   name:"Nigerian Naira"         },
+  { code:"ETB", symbol:"Br",  name:"Ethiopian Birr"         },
+  { code:"RWF", symbol:"RF",  name:"Rwandan Franc"          },
+  { code:"SDG", symbol:"ج.س", name:"Sudanese Pound"         },
+  { code:"XOF", symbol:"CFA", name:"West African CFA Franc" },
+  { code:"XAF", symbol:"CFA", name:"Central African CFA"    },
+  { code:"MAD", symbol:"د.م", name:"Moroccan Dirham"        },
+  { code:"DZD", symbol:"د.ج", name:"Algerian Dinar"         },
+  { code:"TND", symbol:"د.ت", name:"Tunisian Dinar"         },
+  { code:"EGP", symbol:"£",   name:"Egyptian Pound"         },
+  { code:"GBP", symbol:"£",   name:"British Pound"          },
+  { code:"EUR", symbol:"€",   name:"Euro"                   },
+  { code:"AED", symbol:"د.إ", name:"UAE Dirham"             },
+  { code:"SAR", symbol:"﷼",   name:"Saudi Riyal"            },
+  { code:"QAR", symbol:"﷼",   name:"Qatari Riyal"           },
+  { code:"KWD", symbol:"د.ك", name:"Kuwaiti Dinar"          },
+  { code:"INR", symbol:"₹",   name:"Indian Rupee"           },
+  { code:"CNY", symbol:"¥",   name:"Chinese Yuan"           },
+  { code:"JPY", symbol:"¥",   name:"Japanese Yen"           },
+  { code:"AUD", symbol:"A$",  name:"Australian Dollar"      },
+  { code:"CAD", symbol:"CA$", name:"Canadian Dollar"        },
+  { code:"CHF", symbol:"Fr",  name:"Swiss Franc"            },
+  { code:"BRL", symbol:"R$",  name:"Brazilian Real"         },
+];
+
+function CurrencySelect({ value, onChange }) {
+  const [open,   setOpen]   = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapRef = useRef(null);
+
+  const selected = CURRENCIES.find(c => c.code === value) ?? CURRENCIES[0];
+  const filtered = search.trim()
+    ? CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(search.toLowerCase()) ||
+        c.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : CURRENCIES;
+
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position:"relative" }}>
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); setSearch(""); }}
+        style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", background:"#fff", cursor:"pointer", fontSize:13, color:"#000000", outline:"none" }}
+      >
+        <span style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontWeight:700, color:"#2D368E" }}>{selected.code}</span>
+          <span style={{ color:"#64748b" }}>{selected.symbol} — {selected.name}</span>
+        </span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" style={{ flexShrink:0, transition:"transform 0.15s", transform: open ? "rotate(180deg)" : "none" }}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      {open && (
+        <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, zIndex:9999, background:"#fff", border:"1px solid #e2e8f0", borderRadius:10, boxShadow:"0 8px 24px rgba(0,0,0,0.12)", width:"100%", minWidth:260, overflow:"hidden" }}>
+          <div style={{ padding:"8px 10px", borderBottom:"1px solid #f1f5f9" }}>
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search currency..."
+              style={{ width:"100%", padding:"7px 10px", borderRadius:7, border:"1px solid #e2e8f0", fontSize:12, color:"#000000", outline:"none", boxSizing:"border-box" }}
+            />
+          </div>
+          <div style={{ maxHeight:220, overflowY:"auto" }}>
+            {filtered.length === 0 && (
+              <p style={{ margin:0, padding:"12px", fontSize:12, color:"#94a3b8", textAlign:"center" }}>No results</p>
+            )}
+            {filtered.map(c => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => { onChange(c.code); setOpen(false); setSearch(""); }}
+                style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", border:"none", background: c.code === value ? "#f1f5f9" : "#fff", cursor:"pointer", fontSize:12, color:"#000000", textAlign:"left" }}
+                onMouseEnter={e => { if (c.code !== value) e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { if (c.code !== value) e.currentTarget.style.background = c.code === value ? "#f1f5f9" : "#fff"; }}
+              >
+                <span style={{ fontWeight:700, color:"#2D368E", flexShrink:0, minWidth:36 }}>{c.code}</span>
+                <span style={{ color:"#475569", flexShrink:0 }}>{c.symbol}</span>
+                <span style={{ color:"#64748b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 const AMENITIES_LIST = [
   "parking","gym","pool","garden","balcony","elevator","security",
   "petFriendly","furnished","airConditioning","heating","fireplace",
@@ -32,7 +146,12 @@ export default function AddPropertyPage({ onBack }) {
     price:"", currency:"ZMW", rentFrequency:"monthly",
     address:"", city:"", state:"", zipCode:"", country:"Zambia",
     bedrooms:"", bathrooms:"", squareFeet:"", parking:"",
+    yearBuilt:"", lotSize:"", stories:"", garage:"",
+    isFeatured: false,
     amenities:[],
+    whatsappCode:"+260", whatsapp:"",
+    phoneCode:"+260",    phone:"",
+    email:"",
   });
 
   const [featuredFile,    setFeaturedFile]    = useState(null);
@@ -70,7 +189,7 @@ export default function AddPropertyPage({ onBack }) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
 
-    const remaining = 10 - galleryFiles.length;
+    const remaining = 20 - galleryFiles.length;
     const toAdd = files.slice(0, remaining).map(file => ({
       file,
       preview: URL.createObjectURL(file),
@@ -108,22 +227,53 @@ export default function AddPropertyPage({ onBack }) {
   // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-    if (!form.title.trim())                         e.title       = "Title is required";
-    else if (form.title.trim().length < 5)          e.title       = "Title must be at least 5 characters";
-    if (!form.description.trim())                   e.description = "Description is required";
-    else if (form.description.trim().length < 20)   e.description = "Description must be at least 20 characters";
-    if (form.bedrooms   === "" || isNaN(Number(form.bedrooms)))   e.bedrooms   = "Bedrooms is required";
-    if (form.bathrooms  === "" || isNaN(Number(form.bathrooms)))  e.bathrooms  = "Bathrooms is required";
-    if (form.squareFeet === "" || isNaN(Number(form.squareFeet))) e.squareFeet = "Area is required";
-    if (!form.price || isNaN(Number(form.price)))   e.price       = "Valid price is required";
-    if (!form.address.trim())                       e.address     = "Address is required";
-    if (!form.city.trim())                          e.city        = "City is required";
-    if (!form.country.trim())                       e.country     = "Country is required";
-    if (!featuredFile)                              e.featured    = "Featured image is required";
+    const currentYear = new Date().getFullYear();
+    if (!form.title.trim())                        e.title       = "Title is required";
+    else if (form.title.trim().length < 5)         e.title       = "Title must be at least 5 characters";
+    if (!form.description.trim())                  e.description = "Description is required";
+    else if (form.description.trim().length < 20)  e.description = "Description must be at least 20 characters";
+    if (!form.price || isNaN(Number(form.price)))  e.price       = "Valid price is required";
+    if (RESIDENTIAL_TYPES.has(form.type)) {
+      if (form.bedrooms  === "" || isNaN(Number(form.bedrooms)))  e.bedrooms  = "Bedrooms is required for this property type";
+      if (form.bathrooms === "" || isNaN(Number(form.bathrooms))) e.bathrooms = "Bathrooms is required for this property type";
+    }
+    if (form.yearBuilt !== "") {
+      const yr = Number(form.yearBuilt);
+      if (!Number.isInteger(yr) || yr < 1800 || yr > currentYear + 1) e.yearBuilt = `Year built must be between 1800 and ${currentYear + 1}`;
+    }
+    if (!featuredFile) e.featured = "Featured image is required";
     return e;
   };
 
   // ── Mutation ──────────────────────────────────────────────────────────────
+  const KNOWN_FIELDS = new Set([
+    "title","description","type","purpose","rentFrequency",
+    "price","currency",
+    "address","city","state","zipCode","country",
+    "bedrooms","bathrooms","squareFeet","parking","yearBuilt","lotSize","stories","garage",
+    "featured","isFeatured",
+    "phone","whatsapp","email",
+  ]);
+
+  const FIELD_ALIAS = {
+    "location.address": "address", "location.city": "city",
+    "location.state": "state",     "location.zipCode": "zipCode",
+    "location.country": "country",
+    "details.bedrooms": "bedrooms",   "details.bathrooms": "bathrooms",
+    "details.squareFeet": "squareFeet","details.parking": "parking",
+    "details.yearBuilt": "yearBuilt",  "details.lotSize": "lotSize",
+    "details.stories": "stories",      "details.garage": "garage",
+    "images.featured": "featured",
+    "contact.phone": "phone", "contact.whatsapp": "whatsapp", "contact.email": "email",
+  };
+
+  const normalizeFieldKey = (raw = "") => {
+    const dotted = raw
+      .replace(/^body\./, "")
+      .replace(/\[(\w+)\]/g, ".$1");
+    return FIELD_ALIAS[dotted] ?? dotted.split(".").pop();
+  };
+
   const mutation = useMutation({
     // Step 1: only create the property (no video here)
     mutationFn: (fd) => createProperty(fd),
@@ -151,19 +301,43 @@ export default function AddPropertyPage({ onBack }) {
     },
     onError: (err) => {
       const details = err?.response?.data?.error?.details;
-      if (details?.length) {
+      if (Array.isArray(details) && details.length) {
         const fieldErrors = {};
-        details.forEach(({ field, message }) => {
-          const key = field.replace("body.", "").replace("location.", "").replace("details.", "");
-          fieldErrors[key] = message;
+        const unmapped = [];
+        details.forEach((item) => {
+          const raw = item?.field ?? item?.path ?? item?.param ?? "";
+          const msg = item?.message ?? item?.msg ?? "";
+          if (!msg) return;
+          const key = normalizeFieldKey(String(raw));
+          if (KNOWN_FIELDS.has(key)) {
+            fieldErrors[key] = msg;
+          } else {
+            unmapped.push(msg);
+          }
         });
         setErrors(prev => ({ ...prev, ...fieldErrors }));
-        setSubmitError("Please fix the highlighted errors.");
-      } else {
+        const hasHighlighted = Object.keys(fieldErrors).length > 0;
         setSubmitError(
+          hasHighlighted
+            ? `Please fix the highlighted errors.${unmapped.length ? " " + unmapped.join(" ") : ""}`
+            : unmapped.join(" ") || "Please review and fix the errors below."
+        );
+      } else {
+        const ERROR_MESSAGES = {
+          INVALID_FILE_TYPE:  "One of your images is not a supported format. Please upload JPG, PNG, WebP, or HEIC files only.",
+          FILE_TOO_LARGE:     "One of your images is too large. Please keep each file under 10MB.",
+          TOO_MANY_FILES:     "Too many images uploaded. Maximum is 20 gallery images.",
+          UNAUTHORIZED:       "You don't have permission to create properties.",
+          UNAUTHENTICATED:    "Your session has expired. Please log in again.",
+          DUPLICATE_PROPERTY: "A property with this title already exists.",
+        };
+        const code = err?.response?.data?.error?.details;
+        const friendly = typeof code === "string" ? ERROR_MESSAGES[code] : null;
+        setSubmitError(
+          friendly ||
           err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
-          "Could not create property."
+          "Something went wrong. Please try again."
         );
       }
     },
@@ -181,7 +355,7 @@ export default function AddPropertyPage({ onBack }) {
     // Featured image
     fd.append("featured", featuredFile);
 
-    // Gallery images (max 10)
+    // Gallery images (max 20)
     galleryFiles.forEach(({ file }) => fd.append("gallery", file));
 
     // Basic
@@ -191,6 +365,7 @@ export default function AddPropertyPage({ onBack }) {
     fd.append("purpose",     form.purpose);
     fd.append("price",       Number(form.price));
     fd.append("currency",    form.currency);
+    fd.append("featured",    String(form.isFeatured));
     if (form.purpose === "rent") fd.append("rentFrequency", form.rentFrequency);
 
     // Location — bracket notation
@@ -205,9 +380,18 @@ export default function AddPropertyPage({ onBack }) {
     if (form.bathrooms  !== "") fd.append("details[bathrooms]",  Number(form.bathrooms));
     if (form.squareFeet !== "") fd.append("details[squareFeet]", Number(form.squareFeet));
     if (form.parking    !== "") fd.append("details[parking]",    Number(form.parking));
+    if (form.yearBuilt  !== "") fd.append("details[yearBuilt]",  Number(form.yearBuilt));
+    if (form.lotSize    !== "") fd.append("details[lotSize]",    Number(form.lotSize));
+    if (form.stories    !== "") fd.append("details[stories]",    Number(form.stories));
+    if (form.garage     !== "") fd.append("details[garage]",     Number(form.garage));
 
     // Amenities
     form.amenities.forEach((a) => fd.append("amenities", a));
+
+    // Contact
+    if (form.whatsapp.trim()) fd.append("contact[whatsapp]", `${form.whatsappCode}${form.whatsapp.trim()}`);
+    if (form.phone.trim())    fd.append("contact[phone]",    `${form.phoneCode}${form.phone.trim()}`);
+    if (form.email.trim())    fd.append("contact[email]",    form.email.trim());
 
     mutation.mutate(fd);
   };
@@ -290,12 +474,13 @@ export default function AddPropertyPage({ onBack }) {
               <div>
                 <label style={labelStyle}>Price *</label>
                 <input type="number" min="0" style={{ ...inputStyle, borderColor: errors.price?"#fca5a5":"#e2e8f0" }}
-                  value={form.price} onChange={e => set("price", e.target.value)} placeholder="0" />
+                  value={form.price} onChange={e => set("price", e.target.value)}
+                  onWheel={e => e.currentTarget.blur()} placeholder="0" />
                 {fieldErr("price")}
               </div>
               <div>
                 <label style={labelStyle}>Currency</label>
-                <input style={inputStyle} value={form.currency} onChange={e => set("currency", e.target.value)} placeholder="ZMW" />
+                <CurrencySelect value={form.currency} onChange={v => set("currency", v)} />
               </div>
             </div>
           </div>
@@ -336,20 +521,35 @@ export default function AddPropertyPage({ onBack }) {
           {/* Details */}
           <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
             <p style={sectionTitle}>Property Details</p>
+
+            {/* Featured listing toggle */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:9, marginBottom:16 }}>
+              <div>
+                <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>Featured Listing</p>
+                <p style={{ margin:"2px 0 0", fontSize:11, color:"#94a3b8" }}>Highlight this property at the top of search results</p>
+              </div>
+              <button type="button" onClick={() => set("isFeatured", !form.isFeatured)}
+                style={{ width:44, height:24, borderRadius:99, border:"none", cursor:"pointer", background: form.isFeatured ? "#2D368E" : "#cbd5e1", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
+                <span style={{ position:"absolute", top:3, left: form.isFeatured ? 22 : 3, width:18, height:18, borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }} />
+              </button>
+            </div>
+
             <div style={grid2}>
               {[
-                { key:"bedrooms",   label:"Bedrooms",       required:true  },
-                { key:"bathrooms",  label:"Bathrooms",      required:true  },
-                { key:"squareFeet", label:"Area (sq ft)",   required:true  },
-                { key:"parking",    label:"Parking Spaces", required:false },
-              ].map(({ key, label, required }) => (
+                { key:"bedrooms",   label:"Bedrooms",       min:0, isRequired: RESIDENTIAL_TYPES.has(form.type) },
+                { key:"bathrooms",  label:"Bathrooms",      min:0, isRequired: RESIDENTIAL_TYPES.has(form.type) },
+                { key:"squareFeet", label:"Area (sq ft)",   min:0, isRequired: false },
+                { key:"parking",    label:"Parking Spaces", min:0, isRequired: false },
+                { key:"stories",    label:"Stories",        min:1, isRequired: false },
+              ].map(({ key, label, min, isRequired }) => (
                 <div key={key}>
-                  <label style={labelStyle}>{label} {required && <span style={{ color:"#dc2626" }}>*</span>}</label>
-                  <input type="number" min="0" required={required}
+                  <label style={labelStyle}>{label} {isRequired && <span style={{ color:"#dc2626" }}>*</span>}</label>
+                  <input type="number" min={min}
                     style={{ ...inputStyle, borderColor: errors[key]?"#fca5a5":"#e2e8f0" }}
                     value={form[key]}
                     onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]:"" })); }}
-                    placeholder="0" />
+                    onWheel={e => e.currentTarget.blur()}
+                    placeholder={key === "yearBuilt" ? "e.g. 2018" : "0"} />
                   {errors[key] && <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>{errors[key]}</span>}
                 </div>
               ))}
@@ -369,6 +569,53 @@ export default function AddPropertyPage({ onBack }) {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"20px 22px", marginBottom:14 }}>
+            <p style={sectionTitle}>Contact Details</p>
+            <p style={{ margin:"-6px 0 14px", fontSize:12, color:"#94a3b8" }}>
+              Used for enquiries and Facebook post captions. WhatsApp is preferred for the call-to-action link.
+            </p>
+            {(!form.whatsapp.trim() && !form.phone.trim()) && (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:8, background:"#fffbeb", border:"1px solid #fde68a", borderRadius:8, padding:"9px 12px", marginBottom:14, fontSize:12, color:"#92400e" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink:0, marginTop:1 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>No phone or WhatsApp number — Facebook posts will have no call-to-action.</span>
+              </div>
+            )}
+            <div style={grid3}>
+              <div>
+                <label style={labelStyle}>WhatsApp</label>
+                <PhoneInput
+                  countryCode={form.whatsappCode}
+                  number={form.whatsapp}
+                  onCodeChange={v => set("whatsappCode", v)}
+                  onNumberChange={v => set("whatsapp", v)}
+                  placeholder="978032673"
+                  hasError={!!errors.whatsapp}
+                />
+                {fieldErr("whatsapp")}
+              </div>
+              <div>
+                <label style={labelStyle}>Phone</label>
+                <PhoneInput
+                  countryCode={form.phoneCode}
+                  number={form.phone}
+                  onCodeChange={v => set("phoneCode", v)}
+                  onNumberChange={v => set("phone", v)}
+                  placeholder="978032673"
+                  hasError={!!errors.phone}
+                />
+                {fieldErr("phone")}
+              </div>
+              <div>
+                <label style={labelStyle}>Email</label>
+                <input type="email" style={{ ...inputStyle, borderColor: errors.email?"#fca5a5":"#e2e8f0" }}
+                  value={form.email} onChange={e => set("email", e.target.value)}
+                  placeholder="agent@example.com" />
+                {fieldErr("email")}
+              </div>
             </div>
           </div>
 
@@ -407,12 +654,12 @@ export default function AddPropertyPage({ onBack }) {
                 <span style={{ fontSize:14, fontWeight:800, color:"#000000" }}>Gallery Images</span>
                 <span style={{ fontSize:11, fontWeight:500, color:"#94a3b8", background:"#f1f5f9", borderRadius:99, padding:"2px 8px" }}>optional</span>
               </div>
-              <span style={{ fontSize:12, color: galleryFiles.length >= 10 ? "#dc2626" : "#94a3b8", fontWeight:600 }}>
-                {galleryFiles.length} / 10
+              <span style={{ fontSize:12, color: galleryFiles.length >= 20 ? "#dc2626" : "#94a3b8", fontWeight:600 }}>
+                {galleryFiles.length} / 20
               </span>
             </div>
             <p style={{ margin:"0 0 14px", fontSize:12, color:"#94a3b8" }}>
-              Additional photos shown in the property detail gallery — max 10 images
+              Additional photos shown in the property detail gallery — max 20 images
             </p>
 
             <input ref={galleryRef} type="file" accept="image/*" multiple style={{ display:"none" }} onChange={onGalleryChange} />
@@ -432,7 +679,7 @@ export default function AddPropertyPage({ onBack }) {
                 ))}
 
                 {/* Add more slot */}
-                {galleryFiles.length < 10 && (
+                {galleryFiles.length < 20 && (
                   <div onClick={() => galleryRef.current?.click()}
                     style={{ aspectRatio:"1", borderRadius:10, border:"2px dashed #e2e8f0", background:"#f8fafc", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", gap:6 }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2D368E")}
@@ -456,9 +703,9 @@ export default function AddPropertyPage({ onBack }) {
               </div>
             )}
 
-            {galleryFiles.length >= 10 && (
+            {galleryFiles.length >= 20 && (
               <p style={{ margin:"8px 0 0", fontSize:12, color:"#dc2626", fontWeight:600 }}>
-                Maximum 10 gallery images reached
+                Maximum 20 gallery images reached
               </p>
             )}
           </div>

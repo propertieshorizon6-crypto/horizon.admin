@@ -17,13 +17,16 @@ const formatName = (user) => {
 const resolveEntityId = (user = {}) => user?._id || user?.id || null;
 
 const normalizeStatus = (status, isDeleted) => {
-  if (isDeleted || ["inactive", "sold", "rented"].includes(status)) return "Archived";
+  if (isDeleted || status === "inactive") return "Archived";
+  if (["sold", "rented"].includes(status)) return "Sold";
   if (["active", "approved"].includes(status)) return "Active";
+  if (status === "rejected") return "Rejected";
   return "Draft";
 };
 
 const normalizeDetailStatus = (status, isDeleted) => {
-  if (isDeleted || ["inactive", "sold", "rented"].includes(status)) return "Archived";
+  if (isDeleted || status === "inactive") return "Archived";
+  if (["sold", "rented"].includes(status)) return "Sold";
   if (["active", "approved"].includes(status)) return "Active";
   if (status === "pending") return "Pending Approval";
   return "Draft";
@@ -49,7 +52,9 @@ const mapProperty = (property = {}) => {
   const hasFeatured  = !!property.images?.featured?.original?.url;
   const galleryCount = Array.isArray(property.images?.gallery) ? property.images.gallery.length : 0;
   const photoCount   = (hasFeatured ? 1 : 0) + galleryCount;
-  const isCompliant  = hasFeatured && galleryCount > 0;
+  const issues       = [];
+  if (!hasFeatured)       issues.push("Missing featured image");
+  if (galleryCount === 0) issues.push("No gallery images");
   const location     = [property.location?.city, property.location?.state].filter(Boolean).join(", ");
   const agentName    = formatName(property.agent);
   const ownerName    = formatName(property.owner);
@@ -65,7 +70,8 @@ const mapProperty = (property = {}) => {
     status:          normalizeStatus(property.status, property.isDeleted),
     rawStatus:       property.status,
     media:           { photos: photoCount, docs: 0 },
-    compliance:      isCompliant ? "Compliant" : "1 issue(s)",
+    compliance:       issues.length === 0 ? "Compliant" : `${issues.length} issue(s)`,
+    complianceIssues: issues,
     assignedTo:      agentName,
     ownerName,
     assignedAgentId: resolveEntityId(property.agent),
@@ -89,14 +95,16 @@ const mapProperty = (property = {}) => {
 const mapPropertyDetail = (property = {}) => {
   const address = [property.location?.address, property.location?.city, property.location?.state, property.location?.country].filter(Boolean).join(", ");
   const featuredImage  = resolveImageUrl(property.images?.featured);
-  // Use the backend-computed gallery array (videos first, then images) when available
   const backendGallery = Array.isArray(property.gallery) ? property.gallery : null;
   const galleryImages  = backendGallery
     ? backendGallery.filter((g) => g.type === "image").map((g) => g.url)
     : (Array.isArray(property.images?.gallery)
         ? property.images.gallery.map((img) => resolveImageUrl(img)).filter(Boolean)
         : []);
-  const images    = [featuredImage, ...galleryImages].filter(Boolean);
+  // backendGallery already includes the featured image — avoid duplicating it
+  const images    = backendGallery
+    ? [...new Set(galleryImages)].filter(Boolean)
+    : [featuredImage, ...galleryImages].filter(Boolean);
   const amenities = Array.isArray(property.amenities) ? property.amenities.map(formatAmenity) : [];
   const highlights = [];
   if (property.featured) highlights.push("Featured Listing");
@@ -142,6 +150,10 @@ const mapPropertyDetail = (property = {}) => {
       : [],
     assignedAgent:  agentName,
     assignedTo:     agentName,
+    agentEmail:     property.agent?.email ?? null,
+    agentPhone:     property.agent?.phone ?? null,
+    agentAvatar:    property.agent?.avatar ?? null,
+    agentId:        resolveEntityId(property.agent),
     createdBy:      ownerName || "Admin User",
     createdAt:      property.createdAt,
     updatedAt:      property.updatedAt,
@@ -170,8 +182,20 @@ const mapPropertyDetail = (property = {}) => {
 // GET /api/v1/admin/properties
 export const fetchProperties = async (params = {}) => {
   const { data } = await apiClient.get("/admin/properties", { params });
-  const properties = data?.data?.properties ?? data?.data ?? data ?? [];
-  return Array.isArray(properties) ? properties.map(mapProperty) : [];
+  const raw = data?.data ?? {};
+  const list = Array.isArray(raw?.properties) ? raw.properties
+             : Array.isArray(raw)             ? raw
+             : [];
+  const meta       = raw?.meta ?? {};
+  const total      = raw?.total ?? raw?.totalCount ?? meta?.all ?? list.length;
+  const limit      = raw?.limit ?? params.limit ?? 20;
+  const page       = raw?.page  ?? params.page  ?? 1;
+  const totalPages = raw?.totalPages ?? raw?.pages ?? Math.max(1, Math.ceil(total / limit));
+  return {
+    properties: list.map(mapProperty),
+    meta,
+    pagination: { total, page, limit, totalPages },
+  };
 };
 
 // GET /api/v1/admin/properties/:id
@@ -226,11 +250,38 @@ export const republishProperty = async (propertyId) => {
 };
 
 // PATCH /api/v1/admin/properties/:id
-export const editProperty = async (propertyId, body) => {
+// files = { featured?: File, gallery?: File[] } — when present, sends multipart/form-data
+export const editProperty = async (propertyId, body = {}, files = {}) => {
   if (!propertyId) return null;
-  const { data } = await apiClient.patch(`/admin/properties/${propertyId}`, body);
+  const hasFeatured = !!files.featured;
+  const hasGallery  = files.gallery?.length > 0;
+
+  let payload;
+  if (hasFeatured || hasGallery) {
+    const fd = new FormData();
+    Object.entries(body).forEach(([k, v]) => {
+      if (v === undefined || v === null) return;
+      fd.append(k, typeof v === "object" && !Array.isArray(v) ? JSON.stringify(v) : v);
+    });
+    if (hasFeatured) fd.append("featured", files.featured);
+    if (hasGallery)  Array.from(files.gallery).forEach(f => fd.append("gallery", f));
+    payload = fd;
+    console.log("[editProperty] sending multipart", {
+      hasFeatured, hasGallery,
+      galleryCount: files.gallery?.length,
+      fdEntries: [...fd.entries()].map(([k]) => k),
+    });
+  } else {
+    payload = body;
+  }
+
+  const { data } = await apiClient.patch(
+    `/admin/properties/${propertyId}`,
+    payload,
+    hasFeatured || hasGallery ? { timeout: 0 } : undefined,
+  );
   const property = data?.data?.property;
-  return property ? mapProperty(property) : null;
+  return property ? mapPropertyDetail(property) : null;
 };
 
 // DELETE /api/v1/admin/properties/:id
@@ -241,14 +292,14 @@ export const deleteProperty = async (propertyId) => {
 };
 
 // POST /api/v1/admin/properties/:id/video  (multipart/form-data, field: "video")
-// timeout:0 — video can be up to 100 MB; skip the global 15s Axios timeout
 export const uploadPropertyVideo = async (propertyId, formData) => {
   const { data } = await apiClient.post(
     `/admin/properties/${propertyId}/video`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
   );
-  return data;
+  const property = data?.data?.property;
+  return property ? mapPropertyDetail(property) : null;
 };
 
 // PUT /api/v1/admin/properties/:id/featured-image
@@ -266,7 +317,7 @@ export const addGalleryImages = async (propertyId, formData) => {
   const { data } = await apiClient.post(
     `/admin/properties/${propertyId}/gallery`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+    { timeout: 0 },
   );
   return data;
 };
@@ -276,7 +327,8 @@ export const removeGalleryImage = async (propertyId, index) => {
   const { data } = await apiClient.delete(
     `/admin/properties/${propertyId}/gallery/${index}`,
   );
-  return data;
+  const property = data?.data?.property;
+  return property ? mapPropertyDetail(property) : null;
 };
 
 // DELETE /api/v1/admin/properties/:id/video/:videoId
@@ -284,5 +336,14 @@ export const deletePropertyVideo = async (propertyId, videoId) => {
   const { data } = await apiClient.delete(
     `/admin/properties/${propertyId}/video/${videoId}`,
   );
-  return data;
+  const property = data?.data?.property;
+  return property ? mapPropertyDetail(property) : null;
+};
+
+// PATCH /api/v1/admin/properties/:id/sold
+export const markPropertySold = async (propertyId) => {
+  if (!propertyId) return null;
+  const { data } = await apiClient.patch(`/admin/properties/${propertyId}/sold`);
+  const property = data?.data?.property;
+  return property ? mapProperty(property) : null;
 };

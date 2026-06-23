@@ -1,22 +1,52 @@
-import { useEffect, useRef, useState } from "react";
+// 📁 src/features/admin/components/EditPropertyModal.jsx
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   editProperty,
   fetchPropertyDetail,
-  updateFeaturedImage,
-  addGalleryImages,
   removeGalleryImage,
   uploadPropertyVideo,
   deletePropertyVideo,
 } from "../api/propertiesApi";
+import PhoneInput from "./PhoneInput";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
+const STATUSES = ["draft","pending","active","approved","rejected","sold","rented","inactive"];
 const AMENITIES_LIST = [
   "parking","gym","pool","garden","balcony","elevator","security",
   "petFriendly","furnished","airConditioning","heating","fireplace",
   "laundry","dishwasher","hardwoodFloors","internet","cableTV",
   "unfurnished","semi-furnished",
 ];
+const CURRENCIES = [
+  { code:"ZMW", name:"Zambian Kwacha"         },
+  { code:"USD", name:"US Dollar"              },
+  { code:"ZAR", name:"South African Rand"     },
+  { code:"KES", name:"Kenyan Shilling"        },
+  { code:"TZS", name:"Tanzanian Shilling"     },
+  { code:"UGX", name:"Ugandan Shilling"       },
+  { code:"MWK", name:"Malawian Kwacha"        },
+  { code:"MZN", name:"Mozambican Metical"     },
+  { code:"BWP", name:"Botswana Pula"          },
+  { code:"NAD", name:"Namibian Dollar"        },
+  { code:"NGN", name:"Nigerian Naira"         },
+  { code:"GHS", name:"Ghanaian Cedi"          },
+  { code:"GBP", name:"British Pound"          },
+  { code:"EUR", name:"Euro"                   },
+  { code:"AED", name:"UAE Dirham"             },
+  { code:"SAR", name:"Saudi Riyal"            },
+  { code:"INR", name:"Indian Rupee"           },
+  { code:"AUD", name:"Australian Dollar"      },
+  { code:"CAD", name:"Canadian Dollar"        },
+];
+
+const FRIENDLY_ERRORS = {
+  INVALID_FILE_TYPE:  "One of the images has an unsupported format. Use JPG, PNG, WebP, or HEIC.",
+  FILE_TOO_LARGE:     "One of the images is too large. Keep each file under 10MB.",
+  UNAUTHORIZED:       "You don't have permission to edit this property.",
+  UNAUTHENTICATED:    "Your session has expired. Please log in again.",
+};
+
 const formatAmenity = (a) =>
   a.replace(/([A-Z])/g," $1").replace(/[-_]/g," ").trim()
    .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -27,28 +57,39 @@ const inputStyle = {
   fontSize:13, color:"#000000", background:"#fff", outline:"none", boxSizing:"border-box",
 };
 const grid2 = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 };
-const sectionLabel = { fontSize:11, fontWeight:800, color:"#94a3b8", textTransform:"uppercase",
-  letterSpacing:"0.06em", margin:"18px 0 10px" };
+const grid3 = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 };
+const sectionLabel = {
+  fontSize:11, fontWeight:800, color:"#94a3b8", textTransform:"uppercase",
+  letterSpacing:"0.06em", margin:"18px 0 10px",
+};
 
-const toEditState = (property) => ({
-  title: property?.title || "",
-  description: property?.description || "",
-  type: (property?.type || "apartment").toLowerCase(),
-  purpose: property?.purpose || "sale",
-  price: property?.rawPrice ?? property?.price ?? "",
-  currency: property?.currency || "ZMW",
-  rentFrequency: property?.rentFrequency || "monthly",
-  address: property?.rawAddress || "",
-  city: property?.rawCity || "",
-  state: property?.rawState || "",
-  zipCode: property?.rawZip || "",
-  country: property?.rawCountry || "Zambia",
-  bedrooms: property?.bedrooms ?? property?.beds ?? "",
-  bathrooms: property?.bathrooms ?? property?.baths ?? "",
-  squareFeet: property?.squareFeet ?? property?.area ?? "",
-  parking: property?.parking ?? "",
-  amenities: Array.isArray(property?.rawAmenities) ? property.rawAmenities : [],
-  status: property?.rawStatus || "draft",
+const toEditState = (p) => ({
+  title:         p?.title || "",
+  description:   p?.description || "",
+  type:          (p?.type || "apartment").toLowerCase(),
+  purpose:       p?.purpose || "sale",
+  price:         p?.rawPrice ?? p?.price ?? "",
+  currency:      p?.currency || "ZMW",
+  rentFrequency: p?.rentFrequency || "monthly",
+  status:        p?.rawStatus || "draft",
+  featured:      Boolean(p?.featured),
+  address:       p?.rawAddress  || "",
+  city:          p?.rawCity     || "",
+  state:         p?.rawState    || "",
+  zipCode:       p?.rawZip      || "",
+  country:       p?.rawCountry  || "Zambia",
+  bedrooms:      p?.bedrooms  ?? p?.beds  ?? "",
+  bathrooms:     p?.bathrooms ?? p?.baths ?? "",
+  squareFeet:    p?.squareFeet ?? p?.area ?? "",
+  parking:       p?.parking    ?? "",
+  yearBuilt:     p?.yearBuilt  ?? "",
+  lotSize:       p?.lotSize    ?? "",
+  stories:       p?.stories    ?? "",
+  garage:        p?.garage     ?? "",
+  whatsappCode:  "+260", whatsapp: "",
+  phoneCode:     "+260", phone:    "",
+  email:         "",
+  amenities:     Array.isArray(p?.rawAmenities) ? p.rawAmenities : [],
 });
 
 // ── Media Tab ─────────────────────────────────────────────────────────────────
@@ -68,7 +109,6 @@ function MediaTab({ property: initialProperty, onMutation }) {
     setTimeout(() => setMediaToast(null), 4000);
   };
 
-  // Use live query so media updates are reflected immediately after mutations
   const { data: liveProperty } = useQuery({
     queryKey: ["property", initialProperty.id],
     queryFn: () => fetchPropertyDetail(initialProperty.id),
@@ -76,42 +116,43 @@ function MediaTab({ property: initialProperty, onMutation }) {
   });
   const property = liveProperty ?? initialProperty;
 
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["properties"] });
-    await queryClient.invalidateQueries({ queryKey: ["property", initialProperty.id] });
-  };
+  const cacheKey = ["property", initialProperty.id];
 
-  // ── Featured image ──────────────────────────────────────────────────────────
   const featuredMutation = useMutation({
-    mutationFn: (file) => {
-      const fd = new FormData();
-      fd.append("image", file);
-      return updateFeaturedImage(property.id, fd);
+    mutationFn: (file) => editProperty(property.id, {}, { featured: file }),
+    onSuccess: async (updated) => {
+      if (updated) queryClient.setQueryData(cacheKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      showToast("success", "Featured image updated");
+      onMutation();
     },
-    onSuccess: async () => { await invalidate(); showToast("success", "Featured image updated"); onMutation(); },
     onError: (err) => showToast("error", err?.response?.data?.error?.message || err?.message || "Upload failed"),
   });
 
-  // ── Gallery add ─────────────────────────────────────────────────────────────
   const galleryAddMutation = useMutation({
-    mutationFn: (files) => {
-      const fd = new FormData();
-      Array.from(files).forEach((f) => fd.append("gallery", f));
-      return addGalleryImages(property.id, fd);
+    mutationFn: (files) => editProperty(property.id, {}, { gallery: files }),
+    onSuccess: async (updated) => {
+      if (updated) queryClient.setQueryData(cacheKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      showToast("success", "Gallery images added");
+      onMutation();
     },
-    onSuccess: async () => { await invalidate(); showToast("success", "Gallery images added"); onMutation(); },
     onError: (err) => showToast("error", err?.response?.data?.error?.message || err?.message || "Upload failed"),
   });
 
-  // ── Gallery remove ──────────────────────────────────────────────────────────
   const [removingIndex, setRemovingIndex] = useState(null);
   const galleryRemoveMutation = useMutation({
     mutationFn: (index) => removeGalleryImage(property.id, index),
-    onSuccess: async () => { await invalidate(); showToast("success", "Image removed"); onMutation(); setRemovingIndex(null); },
+    onSuccess: async (updated) => {
+      if (updated) queryClient.setQueryData(cacheKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      showToast("success", "Image removed");
+      onMutation();
+      setRemovingIndex(null);
+    },
     onError: (err) => { showToast("error", err?.response?.data?.error?.message || err?.message || "Remove failed"); setRemovingIndex(null); },
   });
 
-  // ── Video upload ────────────────────────────────────────────────────────────
   const videoMutation = useMutation({
     mutationFn: ({ file, caption }) => {
       const fd = new FormData();
@@ -119,15 +160,27 @@ function MediaTab({ property: initialProperty, onMutation }) {
       if (caption) fd.append("caption", caption);
       return uploadPropertyVideo(property.id, fd);
     },
-    onSuccess: async () => { await invalidate(); showToast("success", "Video uploaded"); onMutation(); setPendingVideo(null); setVideoCaption(""); },
+    onSuccess: async (updated) => {
+      if (updated) queryClient.setQueryData(cacheKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      showToast("success", "Video uploaded");
+      onMutation();
+      setPendingVideo(null);
+      setVideoCaption("");
+    },
     onError: (err) => showToast("error", err?.response?.data?.error?.message || err?.message || "Upload failed"),
   });
 
-  // ── Video delete ────────────────────────────────────────────────────────────
   const [deletingVideoId, setDeletingVideoId] = useState(null);
   const videoDeleteMutation = useMutation({
     mutationFn: (videoId) => deletePropertyVideo(initialProperty.id, videoId),
-    onSuccess: async () => { await invalidate(); showToast("success", "Video deleted"); onMutation(); setDeletingVideoId(null); },
+    onSuccess: async (updated) => {
+      if (updated) queryClient.setQueryData(cacheKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      showToast("success", "Video deleted");
+      onMutation();
+      setDeletingVideoId(null);
+    },
     onError: (err) => { showToast("error", err?.response?.data?.error?.message || err?.message || "Delete failed"); setDeletingVideoId(null); },
   });
 
@@ -135,7 +188,6 @@ function MediaTab({ property: initialProperty, onMutation }) {
 
   return (
     <div style={{ padding:"16px 20px 24px" }}>
-      {/* Toast */}
       {mediaToast && (
         <div style={{ border:`1px solid ${mediaToast.type==="success"?"#bbf7d0":"#fecaca"}`,
           background: mediaToast.type==="success"?"#f0fdf4":"#fef2f2",
@@ -200,7 +252,13 @@ function MediaTab({ property: initialProperty, onMutation }) {
       )}
       <div style={{ marginBottom:20 }}>
         <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display:"none" }}
-          onChange={(e) => { if (e.target.files?.length) galleryAddMutation.mutate(e.target.files); e.target.value=""; }} />
+          onChange={(e) => {
+            if (e.target.files?.length) {
+              const snapshot = Array.from(e.target.files);
+              e.target.value = "";
+              galleryAddMutation.mutate(snapshot);
+            }
+          }} />
         <button type="button" disabled={anyPending || (property.galleryImages?.length ?? 0) >= 20}
           onClick={() => galleryInputRef.current?.click()}
           style={{ padding:"8px 16px", borderRadius:8, border:"1px solid #2D368E",
@@ -238,7 +296,6 @@ function MediaTab({ property: initialProperty, onMutation }) {
                     whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{v.caption}</div>
                 )}
               </a>
-              {/* Delete button */}
               {v._id && (
                 <button type="button"
                   disabled={anyPending}
@@ -257,7 +314,6 @@ function MediaTab({ property: initialProperty, onMutation }) {
         <p style={{ fontSize:12, color:"#94a3b8", marginBottom:12 }}>No videos yet.</p>
       )}
 
-      {/* Video upload */}
       {pendingVideo ? (
         <div style={{ border:"1px solid #e2e8f0", borderRadius:10, padding:"12px 14px", marginBottom:12,
           background:"#f8fafc", display:"flex", flexDirection:"column", gap:8 }}>
@@ -300,8 +356,15 @@ function MediaTab({ property: initialProperty, onMutation }) {
 export default function EditPropertyModal({ property, onClose }) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("details");
-  const [form, setForm] = useState(toEditState(property));
+  const [form, setForm]           = useState(toEditState(property));
   const [submitError, setSubmitError] = useState("");
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
+
+  useLayoutEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   useEffect(() => { setForm(toEditState(property)); setSubmitError(""); }, [property]);
 
@@ -322,16 +385,19 @@ export default function EditPropertyModal({ property, onClose }) {
       onClose();
     },
     onError: (err) => {
-      const respData = err?.response?.data;
-      const errorObj = respData?.error;
-      const details = errorObj?.details || respData?.errors;
-      if (details) {
-        const msgs = Array.isArray(details)
-          ? details.map((e) => `${e.field || e.path?.join(".") || "Field"}: ${e.message}`).join(" | ")
-          : JSON.stringify(details);
-        setSubmitError(`Validation Error: ${msgs}`);
+      const errObj  = err?.response?.data?.error;
+      const details = errObj?.details;
+      if (Array.isArray(details) && details.length) {
+        const msgs = details.map(d => d?.message || d?.msg).filter(Boolean).join(" • ");
+        setSubmitError(msgs || "Please fix the errors and try again.");
       } else {
-        setSubmitError(errorObj?.message || respData?.message || err?.message || "Could not update property.");
+        const code = typeof details === "string" ? details : null;
+        setSubmitError(
+          FRIENDLY_ERRORS[code] ||
+          errObj?.message ||
+          err?.response?.data?.message ||
+          "Could not update property. Please try again."
+        );
       }
     },
   });
@@ -339,27 +405,43 @@ export default function EditPropertyModal({ property, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitError("");
+
+    const num = (v) => (v !== "" && v !== undefined ? Number(v) : undefined);
+    const str = (v) => (v?.trim() ? v.trim() : undefined);
+
+    const contact = {};
+    if (form.whatsapp.trim()) contact.whatsapp = `${form.whatsappCode}${form.whatsapp.trim()}`;
+    if (form.phone.trim())    contact.phone    = `${form.phoneCode}${form.phone.trim()}`;
+    if (form.email.trim())    contact.email    = form.email.trim();
+
     const body = {
-      title: form.title,
-      description: form.description,
-      type: form.type,
-      purpose: form.purpose,
-      price: form.price !== "" ? Number(form.price) : undefined,
-      currency: form.currency,
+      title:         str(form.title),
+      description:   str(form.description),
+      type:          form.type,
+      purpose:       form.purpose,
+      price:         num(form.price),
+      currency:      form.currency,
       rentFrequency: form.purpose === "rent" ? form.rentFrequency : undefined,
-      address: form.address,
-      city: form.city,
-      state: form.state || undefined,
-      zipCode: form.zipCode || undefined,
-      country: form.country,
-      bedrooms: form.bedrooms !== "" ? Number(form.bedrooms) : undefined,
-      bathrooms: form.bathrooms !== "" ? Number(form.bathrooms) : undefined,
-      squareFeet: form.squareFeet !== "" ? Number(form.squareFeet) : undefined,
-      parking: form.parking !== "" ? Number(form.parking) : undefined,
-      amenities: form.amenities,
-      status: form.status,
+      status:        form.status,
+      featured:      form.featured,
+      address:       str(form.address),
+      city:          str(form.city),
+      state:         str(form.state),
+      zipCode:       str(form.zipCode),
+      country:       str(form.country),
+      bedrooms:      num(form.bedrooms),
+      bathrooms:     num(form.bathrooms),
+      squareFeet:    num(form.squareFeet),
+      parking:       num(form.parking),
+      yearBuilt:     num(form.yearBuilt),
+      lotSize:       num(form.lotSize),
+      stories:       num(form.stories),
+      garage:        num(form.garage),
+      amenities:     form.amenities,
+      ...(Object.keys(contact).length ? { contact } : {}),
     };
-    Object.keys(body).forEach((k) => { if (body[k] === undefined || body[k] === "") delete body[k]; });
+
+    Object.keys(body).forEach(k => { if (body[k] === undefined) delete body[k]; });
     detailsMutation.mutate(body);
   };
 
@@ -369,12 +451,23 @@ export default function EditPropertyModal({ property, onClose }) {
     <div
       onClick={modalBusy ? undefined : onClose}
       style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(15,23,42,0.5)",
-        display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
+        display:"flex",
+        alignItems: isDesktop ? "center" : "flex-end",
+        justifyContent:"center",
+        padding: isDesktop ? 16 : 0 }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width:"100%", maxWidth:680, maxHeight:"90vh", overflowY:"auto",
-          background:"#fff", borderRadius:16, boxShadow:"0 20px 60px rgba(0,0,0,0.2)", border:"1px solid #e2e8f0" }}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width:"100%",
+          maxWidth: isDesktop ? 700 : "100%",
+          maxHeight: isDesktop ? "90vh" : "92vh",
+          overflowY:"auto",
+          background:"#fff",
+          borderRadius: isDesktop ? 16 : "16px 16px 0 0",
+          boxShadow:"0 20px 60px rgba(0,0,0,0.2)",
+          border:"1px solid #e2e8f0",
+        }}
       >
         {/* Header */}
         <div style={{ position:"sticky", top:0, zIndex:1, background:"#fff",
@@ -411,28 +504,31 @@ export default function EditPropertyModal({ property, onClose }) {
           <form onSubmit={handleSubmit}>
             <div style={{ padding:"16px 20px 24px" }}>
 
+              {/* Basic */}
               <p style={sectionLabel}>Basic Information</p>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Title</label>
-                <input style={inputStyle} value={form.title} onChange={(e) => set("title", e.target.value)} />
+                <input style={inputStyle} value={form.title}
+                  onChange={e => set("title", e.target.value)} />
               </div>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Description</label>
                 <textarea style={{ ...inputStyle, minHeight:80, resize:"vertical" }}
-                  value={form.description} onChange={(e) => set("description", e.target.value)} />
+                  value={form.description} onChange={e => set("description", e.target.value)} />
               </div>
 
+              {/* Category & Status */}
               <p style={sectionLabel}>Category & Status</p>
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>Type</label>
-                  <select style={inputStyle} value={form.type} onChange={(e) => set("type", e.target.value)}>
-                    {TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+                  <select style={inputStyle} value={form.type} onChange={e => set("type", e.target.value)}>
+                    {TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={labelStyle}>Purpose</label>
-                  <select style={inputStyle} value={form.purpose} onChange={(e) => set("purpose", e.target.value)}>
+                  <select style={inputStyle} value={form.purpose} onChange={e => set("purpose", e.target.value)}>
                     <option value="sale">For Sale</option>
                     <option value="rent">For Rent</option>
                   </select>
@@ -440,8 +536,8 @@ export default function EditPropertyModal({ property, onClose }) {
                 {form.purpose === "rent" && (
                   <div>
                     <label style={labelStyle}>Rent Frequency</label>
-                    <select style={inputStyle} value={form.rentFrequency} onChange={(e) => set("rentFrequency", e.target.value)}>
-                      {["monthly","yearly","weekly","daily"].map((f) => (
+                    <select style={inputStyle} value={form.rentFrequency} onChange={e => set("rentFrequency", e.target.value)}>
+                      {["monthly","yearly","weekly","daily"].map(f => (
                         <option key={f} value={f}>{f.charAt(0).toUpperCase()+f.slice(1)}</option>
                       ))}
                     </select>
@@ -449,86 +545,148 @@ export default function EditPropertyModal({ property, onClose }) {
                 )}
                 <div>
                   <label style={labelStyle}>Status</label>
-                  <select style={inputStyle} value={form.status} onChange={(e) => set("status", e.target.value)}>
-                    {["draft","pending","active","approved","rejected","sold","rented","inactive"].map((s) => (
+                  <select style={inputStyle} value={form.status} onChange={e => set("status", e.target.value)}>
+                    {STATUSES.map(s => (
                       <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* Featured toggle */}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"11px 14px", background:"#f8fafc", border:"1px solid #e2e8f0",
+                borderRadius:9, marginBottom:12 }}>
+                <div>
+                  <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>Featured Listing</p>
+                  <p style={{ margin:"1px 0 0", fontSize:11, color:"#94a3b8" }}>Highlight this property at the top of search results</p>
+                </div>
+                <button type="button" onClick={() => set("featured", !form.featured)}
+                  style={{ width:44, height:24, borderRadius:99, border:"none", cursor:"pointer",
+                    background: form.featured ? "#2D368E" : "#cbd5e1", position:"relative",
+                    transition:"background 0.2s", flexShrink:0 }}>
+                  <span style={{ position:"absolute", top:3, left: form.featured ? 22 : 3,
+                    width:18, height:18, borderRadius:"50%", background:"#fff",
+                    transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }} />
+                </button>
+              </div>
+
+              {/* Pricing */}
               <p style={sectionLabel}>Pricing</p>
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>Price</label>
                   <input type="number" min="0" style={inputStyle}
-                    value={form.price} onChange={(e) => set("price", e.target.value)} />
+                    value={form.price} onChange={e => set("price", e.target.value)}
+                    onWheel={e => e.currentTarget.blur()} />
                 </div>
                 <div>
                   <label style={labelStyle}>Currency</label>
-                  <input style={inputStyle} value={form.currency} onChange={(e) => set("currency", e.target.value)} />
+                  <select style={inputStyle} value={form.currency} onChange={e => set("currency", e.target.value)}>
+                    {CURRENCIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {/* Location */}
               <p style={sectionLabel}>Location</p>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Street Address</label>
-                <input style={inputStyle} value={form.address} onChange={(e) => set("address", e.target.value)} />
+                <input style={inputStyle} value={form.address} onChange={e => set("address", e.target.value)} />
               </div>
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>City</label>
-                  <input style={inputStyle} value={form.city} onChange={(e) => set("city", e.target.value)} />
+                  <input style={inputStyle} value={form.city} onChange={e => set("city", e.target.value)} />
                 </div>
                 <div>
                   <label style={labelStyle}>State / Province</label>
-                  <input style={inputStyle} value={form.state} onChange={(e) => set("state", e.target.value)} />
+                  <input style={inputStyle} value={form.state} onChange={e => set("state", e.target.value)} />
                 </div>
                 <div>
                   <label style={labelStyle}>Zip / Postal Code</label>
-                  <input style={inputStyle} value={form.zipCode} onChange={(e) => set("zipCode", e.target.value)} />
+                  <input style={inputStyle} value={form.zipCode} onChange={e => set("zipCode", e.target.value)} />
                 </div>
                 <div>
                   <label style={labelStyle}>Country</label>
-                  <input style={inputStyle} value={form.country} onChange={(e) => set("country", e.target.value)} />
+                  <input style={inputStyle} value={form.country} onChange={e => set("country", e.target.value)} />
                 </div>
               </div>
 
+              {/* Details */}
               <p style={sectionLabel}>Property Details</p>
               <div style={{ ...grid2, marginBottom:12 }}>
                 {[
-                  { key:"bedrooms", label:"Bedrooms" },
-                  { key:"bathrooms", label:"Bathrooms" },
-                  { key:"squareFeet", label:"Area (sq ft)" },
-                  { key:"parking", label:"Parking" },
-                ].map(({ key, label }) => (
+                  { key:"bedrooms",   label:"Bedrooms",        min:0 },
+                  { key:"bathrooms",  label:"Bathrooms",       min:0 },
+                  { key:"squareFeet", label:"Area (sq ft)",    min:0 },
+                  { key:"parking",    label:"Parking Spaces",  min:0 },
+                  { key:"stories",    label:"Stories",         min:1 },
+                ].map(({ key, label, min }) => (
                   <div key={key}>
                     <label style={labelStyle}>{label}</label>
-                    <input type="number" min="0" style={inputStyle}
-                      value={form[key]} onChange={(e) => set(key, e.target.value)} />
+                    <input type="number" min={min} style={inputStyle}
+                      value={form[key]} onChange={e => set(key, e.target.value)}
+                      onWheel={e => e.currentTarget.blur()} />
                   </div>
                 ))}
               </div>
 
+              {/* Amenities */}
               <p style={sectionLabel}>Amenities</p>
               <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:16 }}>
-                {AMENITIES_LIST.map((a) => {
+                {AMENITIES_LIST.map(a => {
                   const active = form.amenities.includes(a);
                   return (
                     <button key={a} type="button" onClick={() => toggleAmenity(a)}
-                      style={{
-                        padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:600, cursor:"pointer",
-                        border: active ? "1px solid #2D368E" : "1px solid #e2e8f0",
+                      style={{ padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:600,
+                        cursor:"pointer", transition:"all 0.15s",
+                        border:   active ? "1px solid #2D368E" : "1px solid #e2e8f0",
                         background: active ? "#2D368E" : "#f8fafc",
-                        color: active ? "#fff" : "#475569",
-                        transition:"all 0.15s",
-                      }}>
+                        color:      active ? "#fff"    : "#475569" }}>
                       {formatAmenity(a)}
                     </button>
                   );
                 })}
               </div>
 
+              {/* Contact */}
+              <p style={sectionLabel}>Contact Details</p>
+              <p style={{ margin:"-6px 0 10px", fontSize:11, color:"#94a3b8" }}>
+                Leave blank to keep existing contact info. WhatsApp is used in Facebook post captions.
+              </p>
+              <div style={{ ...grid2, marginBottom:12 }}>
+                <div>
+                  <label style={labelStyle}>WhatsApp</label>
+                  <PhoneInput
+                    countryCode={form.whatsappCode}
+                    number={form.whatsapp}
+                    onCodeChange={v => set("whatsappCode", v)}
+                    onNumberChange={v => set("whatsapp", v)}
+                    placeholder="978032673"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <PhoneInput
+                    countryCode={form.phoneCode}
+                    number={form.phone}
+                    onCodeChange={v => set("phoneCode", v)}
+                    onNumberChange={v => set("phone", v)}
+                    placeholder="978032673"
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={labelStyle}>Email</label>
+                <input type="email" style={inputStyle} value={form.email}
+                  onChange={e => set("email", e.target.value)}
+                  placeholder="agent@example.com" />
+              </div>
+
+              {/* Error */}
               {submitError && (
                 <div style={{ border:"1px solid #fecaca", background:"#fef2f2", color:"#b91c1c",
                   borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:14 }}>
@@ -536,6 +694,7 @@ export default function EditPropertyModal({ property, onClose }) {
                 </div>
               )}
 
+              {/* Footer */}
               <div style={{ display:"flex", justifyContent:"flex-end", gap:10, paddingTop:4 }}>
                 <button type="button" onClick={onClose} disabled={detailsMutation.isPending}
                   style={{ border:"1px solid #e2e8f0", background:"#fff", color:"#000000",
