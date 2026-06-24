@@ -4,31 +4,36 @@ import { useQuery }      from "@tanstack/react-query";
 import { useAuthStore }  from "../../../store/useAuthStore";
 import { fetchMyActivity } from "../api/settingsApi";
 import { formatRelativeTime } from "../../../utils/formatters";
+import {
+  KeyRound, Lock, User, ClipboardList, Sparkles, FileText,
+  CalendarDays, CheckCircle, XCircle, Home, RefreshCw,
+  Building2, Pencil, MessageCircle, File, Users,
+} from "lucide-react";
 
-// Map audit log actions → { icon, colorClass }
+// Map audit log actions → { Icon, colorClass }
 const ACTION_META = {
-  login_success:         { icon: "🔑", color: "bg-green-100 text-green-600"   },
-  password_changed:      { icon: "🔒", color: "bg-blue-100 text-blue-600"     },
-  lead_assigned:         { icon: "👤", color: "bg-blue-100 text-blue-600"     },
-  lead_reassigned:       { icon: "👤", color: "bg-indigo-100 text-indigo-600" },
-  lead_status_changed:   { icon: "📋", color: "bg-sky-100 text-sky-600"       },
-  lead_created:          { icon: "✨", color: "bg-green-100 text-green-600"   },
-  lead_note_added:       { icon: "📝", color: "bg-yellow-100 text-yellow-600" },
-  tour_created:          { icon: "📅", color: "bg-orange-100 text-orange-600" },
-  tour_confirmed:        { icon: "✅", color: "bg-green-100 text-green-600"   },
-  tour_cancelled:        { icon: "❌", color: "bg-red-100 text-red-600"       },
-  tour_completed:        { icon: "🏠", color: "bg-teal-100 text-teal-600"     },
-  tour_rescheduled:      { icon: "🔄", color: "bg-orange-100 text-orange-600" },
-  property_created:      { icon: "🏢", color: "bg-purple-100 text-purple-600" },
-  property_updated:      { icon: "✏️", color: "bg-slate-100 text-slate-600"   },
-  conversation_created:  { icon: "💬", color: "bg-teal-100 text-teal-600"     },
-  conversation_closed:   { icon: "💬", color: "bg-slate-100 text-slate-600"   },
-  export_completed:      { icon: "📄", color: "bg-purple-100 text-purple-600" },
-  user_created:          { icon: "👥", color: "bg-blue-100 text-blue-600"     },
-  user_status_changed:   { icon: "🔄", color: "bg-amber-100 text-amber-600"   },
+  login_success:         { Icon: KeyRound,       color: "bg-green-100 text-green-600"   },
+  password_changed:      { Icon: Lock,           color: "bg-blue-100 text-blue-600"     },
+  lead_assigned:         { Icon: User,           color: "bg-blue-100 text-blue-600"     },
+  lead_reassigned:       { Icon: User,           color: "bg-indigo-100 text-indigo-600" },
+  lead_status_changed:   { Icon: ClipboardList,  color: "bg-sky-100 text-sky-600"       },
+  lead_created:          { Icon: Sparkles,       color: "bg-green-100 text-green-600"   },
+  lead_note_added:       { Icon: FileText,       color: "bg-yellow-100 text-yellow-600" },
+  tour_created:          { Icon: CalendarDays,   color: "bg-orange-100 text-orange-600" },
+  tour_confirmed:        { Icon: CheckCircle,    color: "bg-green-100 text-green-600"   },
+  tour_cancelled:        { Icon: XCircle,        color: "bg-red-100 text-red-600"       },
+  tour_completed:        { Icon: Home,           color: "bg-teal-100 text-teal-600"     },
+  tour_rescheduled:      { Icon: RefreshCw,      color: "bg-orange-100 text-orange-600" },
+  property_created:      { Icon: Building2,      color: "bg-purple-100 text-purple-600" },
+  property_updated:      { Icon: Pencil,         color: "bg-slate-100 text-slate-600"   },
+  conversation_created:  { Icon: MessageCircle,  color: "bg-teal-100 text-teal-600"     },
+  conversation_closed:   { Icon: MessageCircle,  color: "bg-slate-100 text-slate-600"   },
+  export_completed:      { Icon: File,           color: "bg-purple-100 text-purple-600" },
+  user_created:          { Icon: Users,          color: "bg-blue-100 text-blue-600"     },
+  user_status_changed:   { Icon: RefreshCw,      color: "bg-amber-100 text-amber-600"   },
 };
 
-const DEFAULT_META = { icon: "📋", color: "bg-slate-100 text-slate-600" };
+const DEFAULT_META = { Icon: ClipboardList, color: "bg-slate-100 text-slate-600" };
 
 function formatAction(action = "") {
   return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -99,8 +104,8 @@ export default function ActivityTab() {
             return (
               <div key={log._id ?? i}>
                 <div className="flex items-start gap-4 py-4">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${meta.color}`}>
-                    {meta.icon}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.color}`}>
+                    <meta.Icon size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800">

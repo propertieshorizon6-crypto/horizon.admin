@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Calendar, ChevronDown, Eye, Search } from "lucide-react";
 import useAuditLogs from "../hooks/useAuditLogs";
 import AuditLogDetailPanel from "../components/AuditLogDetailPanel";
@@ -164,8 +164,11 @@ function FilterSelect({ label, options, value, onChange, minWidth = 140 }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -173,55 +176,46 @@ export default function AuditLogsPage() {
   const [dateTo, setDateTo] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState(null);
+  const [page, setPage] = useState(1);
+
+  // Debounce the search box before it hits the server; reset to page 1 on change.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Filter setters that also jump back to the first page.
+  const withPageReset = (setter) => (value) => {
+    setter(value);
+    setPage(1);
+  };
+  const setActionFilterReset = withPageReset(setActionFilter);
+  const setEntityFilterReset = withPageReset(setEntityFilter);
+  const setRoleFilterReset = withPageReset(setRoleFilter);
+  const setDateFromReset = withPageReset(setDateFrom);
+  const setDateToReset = withPageReset(setDateTo);
 
   const queryParams = useMemo(() => {
-    const params = { page: 1, limit: 200 };
+    const params = { page, limit: PAGE_SIZE };
 
     if (actionFilter) params.action = actionFilter;
     if (entityFilter) params.resourceType = entityFilter;
+    if (roleFilter) params.actorRole = roleFilter;
+    if (debouncedSearch) params.search = debouncedSearch;
     if (dateFrom) params.startDate = dateFrom;
     if (dateTo) params.endDate = dateTo;
 
     return params;
-  }, [actionFilter, entityFilter, dateFrom, dateTo]);
+  }, [page, actionFilter, entityFilter, roleFilter, debouncedSearch, dateFrom, dateTo]);
 
-  const { data, isLoading, error } = useAuditLogs(queryParams);
+  const { data, isLoading, isFetching, error } = useAuditLogs(queryParams);
 
   const logs = useMemo(() => data?.logs ?? [], [data]);
-  const remoteTotal = data?.pagination?.total ?? logs.length;
-
-  const filteredLogs = useMemo(() => {
-    let result = logs;
-
-    if (roleFilter) {
-      result = result.filter((log) => log.actorRoleKey === roleFilter);
-    }
-
-    if (search.trim()) {
-      const query = search.trim().toLowerCase();
-      result = result.filter((log) =>
-        [
-          log.entityId,
-          log.entity,
-          log.actor,
-          log.summary,
-          log.action,
-          log.actorRole,
-        ].some((value) =>
-          String(value || "")
-            .toLowerCase()
-            .includes(query),
-        ),
-      );
-    }
-
-    return result;
-  }, [logs, roleFilter, search]);
-
-  const hasLocalFilter = Boolean(search.trim() || roleFilter);
-  const countLabel = hasLocalFilter
-    ? `${filteredLogs.length} of ${remoteTotal}`
-    : `${remoteTotal}`;
+  const pagination = data?.pagination ?? { page: 1, total: logs.length, pages: 1 };
+  const countLabel = `${pagination.total}`;
 
   return (
     <div
@@ -296,19 +290,19 @@ export default function AuditLogsPage() {
 
         <FilterSelect
           value={actionFilter}
-          onChange={setActionFilter}
+          onChange={setActionFilterReset}
           label="All Actions"
           options={ACTION_OPTIONS}
         />
         <FilterSelect
           value={entityFilter}
-          onChange={setEntityFilter}
+          onChange={setEntityFilterReset}
           label="All Entities"
           options={RESOURCE_OPTIONS}
         />
         <FilterSelect
           value={roleFilter}
-          onChange={setRoleFilter}
+          onChange={setRoleFilterReset}
           label="All Roles"
           options={ROLE_OPTIONS}
           minWidth={130}
@@ -374,7 +368,7 @@ export default function AuditLogsPage() {
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={(event) => setDateFrom(event.target.value)}
+                  onChange={(event) => setDateFromReset(event.target.value)}
                   style={{
                     border: "1px solid #e2e8f0",
                     borderRadius: 8,
@@ -403,7 +397,7 @@ export default function AuditLogsPage() {
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={(event) => setDateTo(event.target.value)}
+                  onChange={(event) => setDateToReset(event.target.value)}
                   style={{
                     border: "1px solid #e2e8f0",
                     borderRadius: 8,
@@ -420,6 +414,7 @@ export default function AuditLogsPage() {
                 onClick={() => {
                   setDateFrom("");
                   setDateTo("");
+                  setPage(1);
                   setShowDatePicker(false);
                 }}
                 style={{
@@ -472,7 +467,7 @@ export default function AuditLogsPage() {
       >
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#000000" }}>
-            {countLabel} Log {filteredLogs.length === 1 ? "Entry" : "Entries"}
+            {countLabel} Log {pagination.total === 1 ? "Entry" : "Entries"}
           </h2>
         </div>
 
@@ -515,7 +510,7 @@ export default function AuditLogsPage() {
                   Loading audit logs...
                 </td>
               </tr>
-            ) : filteredLogs.length === 0 ? (
+            ) : logs.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
@@ -530,12 +525,12 @@ export default function AuditLogsPage() {
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log, index) => (
+              logs.map((log, index) => (
                 <tr
                   key={log.id}
                   style={{
                     borderBottom:
-                      index < filteredLogs.length - 1 ? "1px solid #f8fafc" : "none",
+                      index < logs.length - 1 ? "1px solid #f8fafc" : "none",
                     background: "#fff",
                     transition: "background 0.1s",
                     cursor: "pointer",
@@ -638,6 +633,42 @@ export default function AuditLogsPage() {
             )}
           </tbody>
         </table>
+
+        {pagination.pages > 1 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 20px",
+              borderTop: "1px solid #f1f5f9",
+            }}
+          >
+            <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
+              {isFetching && <span style={{ marginRight: 8 }}>Updating…</span>}
+              Page <strong style={{ color: "#475569" }}>{pagination.page}</strong> of{" "}
+              <strong style={{ color: "#475569" }}>{pagination.pages}</strong>
+              {" · "}
+              <strong style={{ color: "#475569" }}>{pagination.total}</strong> entries
+            </p>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || isFetching}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page <= 1 || isFetching ? "not-allowed" : "pointer", opacity: page <= 1 || isFetching ? 0.4 : 1 }}
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                disabled={page >= pagination.pages || isFetching}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page >= pagination.pages || isFetching ? "not-allowed" : "pointer", opacity: page >= pagination.pages || isFetching ? 0.4 : 1 }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <AuditLogDetailPanel

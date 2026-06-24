@@ -2,7 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { PRIORITY_STYLE, SOURCE_ICON, INTENT_ICON } from "../constants/leadsConfig";
+import { Mail, Phone, Building2 } from "lucide-react";
+import { PRIORITY_STYLE, SOURCE_ICON, INTENT_ICON, SOURCE_ICON_FALLBACK, INTENT_ICON_FALLBACK } from "../constants/leadsConfig";
 import { timeAgo } from "../../../utils/timeAgo";
 
 export default function KanbanCard({ lead }) {
@@ -40,20 +41,24 @@ export default function KanbanCard({ lead }) {
         </span>
       </div>
 
-      {lead.email && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8" }}>✉ {lead.email}</p>}
-      {lead.phone && <p style={{ margin: "0 0 8px", fontSize: 11, color: "#94a3b8" }}>📞 {lead.phone}</p>}
+      {lead.email && <p style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}><Mail size={10} /> {lead.email}</p>}
+      {lead.phone && <p style={{ margin: "0 0 8px", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}><Phone size={10} /> {lead.phone}</p>}
 
-      <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        🏢 {lead.property}
+      <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+        <Building2 size={10} /> {lead.property}
       </p>
 
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
-          {SOURCE_ICON[lead.source] ?? "🔗"} {lead.source}
-        </span>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
-          {INTENT_ICON[lead.intent] ?? "📌"} {lead.intent}
-        </span>
+        {(() => { const SrcIcon = SOURCE_ICON[lead.source] ?? SOURCE_ICON_FALLBACK; return (
+          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
+            <SrcIcon size={10} /> {lead.source}
+          </span>
+        ); })()}
+        {(() => { const IntIcon = INTENT_ICON[lead.intent] ?? INTENT_ICON_FALLBACK; return (
+          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
+            <IntIcon size={10} /> {lead.intent}
+          </span>
+        ); })()}
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>

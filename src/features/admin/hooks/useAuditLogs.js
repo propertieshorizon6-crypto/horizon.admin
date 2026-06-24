@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { MOCK_AUDIT_LOGS, MOCK_MODE, fetchAuditLogs } from "../api/auditLogsApi";
 
 export default function useAuditLogs(params = {}, queryOptions = {}) {
@@ -17,6 +17,7 @@ export default function useAuditLogs(params = {}, queryOptions = {}) {
             ),
           )
       : () => fetchAuditLogs(params),
+    placeholderData: keepPreviousData, // keep current page visible while next loads
     staleTime: 1000 * 60,
     ...queryOptions,
   });

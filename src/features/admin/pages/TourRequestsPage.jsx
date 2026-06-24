@@ -10,43 +10,31 @@
 // Drawer action → handleTourUpdate() → tours state update → UI refresh
 
 import { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import {
-  useReactTable, getCoreRowModel, getFilteredRowModel,
-  getPaginationRowModel, getSortedRowModel,
+  useReactTable, getCoreRowModel,
+  getSortedRowModel,
   flexRender, createColumnHelper,
 } from "@tanstack/react-table";
-import { Search, ChevronDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import useTourRequests from "../hooks/useTourRequests";
 import TourDetailDrawer from "../components/TourDetailDrawer";
 
-// ── Source Icon ───────────────────────────────────────────────────────────────
-function SourceIcon({ source }) {
-  if (source === "app") return (
-    <div style={{ width: 28, height: 28, borderRadius: 6, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-      </svg>
-    </div>
-  );
-  if (source === "website") return (
-    <div style={{ width: 28, height: 28, borderRadius: 6, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="2" y1="12" x2="22" y2="12"/>
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-      </svg>
-    </div>
-  );
-  return (
-    <div style={{ width: 28, height: 28, borderRadius: 6, background: "#fce7f3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.4 19.79 19.79 0 0 1 1.61 4.83 2 2 0 0 1 3.59 2.63h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.17a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5z"/>
-      </svg>
-    </div>
-  );
-}
+const PAGE_SIZE = 20;
+const EMPTY = [];
+
+// UI status label → backend status (mapTour produces these labels). "Proposed"
+// has no backend equivalent, so it's left for the client-side refinement only.
+const STATUS_TO_API = {
+  Requested: "pending",
+  Confirmed: "confirmed",
+  Completed: "completed",
+  Cancelled: "cancelled",
+};
+
+// UI visit-type label → backend visitType.
+const VISIT_TO_API = { physical: "in-person", virtual: "virtual" };
 
 function VisitBadge({ type }) {
   return (
@@ -80,76 +68,68 @@ const columnHelper = createColumnHelper();
 
 export default function TourRequestsPage() {
   const location = useLocation();
-  const {
-    data: initialTours = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useTourRequests();
+  const queryClient = useQueryClient();
 
-  // 🔑 LOCAL STATE for tours
-  // useMemo/useQuery se aaya data → local state mein copy karte hain
-  // Kyunki drawer se update hone par UI ko re-render karna hai
-  const [tours,        setTours]        = useState(null); // null = use API data
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [searchQuery,  setSearchQuery]  = useState(""); // debounced → server
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter,   setTypeFilter]   = useState("");
+  const [page,         setPage]         = useState(1);
   const [selectedTour, setSelectedTour] = useState(null); // currently open drawer tour
 
-  // Actual tours: local update hai to use karo, warna API data
-  const tourData = tours ?? initialTours;
+  // Debounce search before it hits the server.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(globalFilter.trim()), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+
+  // status/type/search are server-side → reset to first page when they change.
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter, typeFilter]);
+
+  // ── Server-paginated query powers the table ────────────────────────────────
+  const tableParams = useMemo(() => {
+    const p = { page, limit: PAGE_SIZE };
+    if (statusFilter && STATUS_TO_API[statusFilter]) p.status = STATUS_TO_API[statusFilter];
+    if (typeFilter && VISIT_TO_API[typeFilter]) p.visitType = VISIT_TO_API[typeFilter];
+    if (searchQuery) p.search = searchQuery;
+    return p;
+  }, [page, statusFilter, typeFilter, searchQuery]);
+
+  const { data: tableData, isLoading, isError, error, refetch, isFetching } =
+    useTourRequests(tableParams);
+  const tableTours      = tableData?.tours ?? EMPTY;
+  const tablePagination = tableData?.pagination ?? { page: 1, total: 0, pages: 1 };
+
+  // ── "Load all" query powers the stats bar (counts must be global, and Tours
+  //    has no dedicated stats endpoint) ──────────────────────────────────────
+  const STATS_PARAMS = useMemo(() => ({ limit: 1000 }), []);
+  const { data: statsData } = useTourRequests(STATS_PARAMS);
+  const allTours = statsData?.tours ?? EMPTY;
 
   // If navigated with state, open drawer for that tour
   useEffect(() => {
-    if (location.state && location.state.tourId && tourData.length) {
-      const found = tourData.find(t => t.id === location.state.tourId);
+    if (location.state && location.state.tourId && allTours.length) {
+      const found = allTours.find(t => t.id === location.state.tourId);
       if (found) setSelectedTour(found);
     }
-    // eslint-disable-next-line
-  }, [location.state, tourData]);
+  }, [location.state, allTours]);
 
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter,   setTypeFilter]   = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
-
-  // Stats — tourData se calculate hote hain (real-time update)
   const stats = useMemo(() => ({
-    total:     tourData.length,
-    requested: tourData.filter((t) => t.status === "Requested").length,
-    overdue:   tourData.filter((t) => t.sla === "Overdue").length,
-    confirmed: tourData.filter((t) => t.status === "Confirmed").length,
-    completed: tourData.filter((t) => t.status === "Completed").length,
-  }), [tourData]);
+    total:     allTours.length,
+    requested: allTours.filter((t) => t.status === "Requested").length,
+    overdue:   allTours.filter((t) => t.sla === "Overdue").length,
+    confirmed: allTours.filter((t) => t.status === "Confirmed").length,
+    completed: allTours.filter((t) => t.status === "Completed").length,
+  }), [allTours]);
 
-  // Filtered data
-  const filteredData = useMemo(() => {
-    let data = tourData;
-    if (statusFilter) data = data.filter((t) => t.status === statusFilter);
-    if (typeFilter)   data = data.filter((t) => t.visitType === typeFilter);
-    if (sourceFilter) data = data.filter((t) => t.source === sourceFilter);
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      data = data.filter((t) =>
-        t.id.toLowerCase().includes(q)            ||
-        t.customer.name.toLowerCase().includes(q) ||
-        t.customer.phone.includes(q)              ||
-        t.property.name.toLowerCase().includes(q)
-      );
-    }
-    return data;
-  }, [tourData, globalFilter, statusFilter, typeFilter, sourceFilter]);
+  // status/type/search are all server-side.
+  const filteredData = tableTours;
 
   // ── HANDLE TOUR UPDATE ─────────────────────────────────────────────────────
-  // 🧠 Concept:
-  //   Drawer se action hone par (status change, agent reassign, etc.)
-  //   Is function ko call kiya jaata hai with updated tour object
-  //   Hum tours array mein us ID ka item replace kar dete hain
-  //   React re-render karta hai → table aur drawer dono update ho jaate hain
+  // Drawer action (status change, reassign, etc.) → refetch both queries so the
+  // table and stats stay in sync, and keep the drawer showing the updated tour.
   const handleTourUpdate = (updatedTour) => {
-    // Pehle initialTours se copy banao agar pehli baar update ho raha hai
-    const base = tours ?? initialTours;
-    // Updated tour ko find karke replace karo
-    setTours(base.map((t) => t.id === updatedTour.id ? updatedTour : t));
-    // Drawer mein bhi updated data dikhao
+    queryClient.invalidateQueries({ queryKey: ["tour-requests"] });
     setSelectedTour(updatedTour);
   };
 
@@ -163,10 +143,6 @@ export default function TourRequestsPage() {
       header: "Created",
       cell: (i) => <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>{i.getValue()}</span>,
     }),
-    columnHelper.accessor("source", {
-      header: "Src",
-      cell: (i) => <SourceIcon source={i.getValue()} />,
-    }),
     columnHelper.accessor("property", {
       header: "Property",
       cell: (i) => {
@@ -174,7 +150,7 @@ export default function TourRequestsPage() {
         return (
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#000000", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{p.name}</p>
-            <p style={{ fontSize: 10, color: "#94a3b8", margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>📍 {p.location}</p>
+            <p style={{ fontSize: 10, color: "#94a3b8", margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150, display: "flex", alignItems: "center", gap: 3 }}><MapPin size={9} /> {p.location}</p>
           </div>
         );
       },
@@ -228,11 +204,10 @@ export default function TourRequestsPage() {
 
   const table = useReactTable({
     data: filteredData, columns,
-    getCoreRowModel:       getCoreRowModel(),
-    getFilteredRowModel:   getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel:     getSortedRowModel(),
-    initialState: { pagination: { pageSize: 5 } },
+    getCoreRowModel:   getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(), // sorts the current page only
+    manualPagination:  true,
+    pageCount:         tablePagination.pages,
   });
 
   if (isLoading) return (
@@ -259,8 +234,6 @@ export default function TourRequestsPage() {
       </div>
     </div>
   );
-
-  const { pageIndex, pageSize } = table.getState().pagination;
 
   return (
     // 🔑 position: relative nahi chahiye — drawer fixed position mein hai
@@ -299,14 +272,13 @@ export default function TourRequestsPage() {
           <input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Search by ID, name, phone, property..."
+            placeholder="Search by name, phone, property, location..."
             style={{ width: "100%", paddingLeft: 30, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#000000", background: "#fff", outline: "none", boxSizing: "border-box" }}
           />
         </div>
         {[
           { value: statusFilter, set: setStatusFilter, label: "All Status",  opts: ["Requested","Proposed","Confirmed","Completed","Cancelled"] },
           { value: typeFilter,   set: setTypeFilter,   label: "All Types",   opts: ["virtual","physical"] },
-          { value: sourceFilter, set: setSourceFilter, label: "All Sources", opts: ["app","website","call"] },
         ].map(({ value, set, label, opts }) => (
           <div key={label} style={{ position: "relative" }}>
             <select value={value} onChange={(e) => set(e.target.value)} style={{ appearance: "none", paddingLeft: 10, paddingRight: 26, paddingTop: 8, paddingBottom: 8, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 12, color: "#475569", background: "#fff", cursor: "pointer", outline: "none", minWidth: 110 }}>
@@ -324,14 +296,13 @@ export default function TourRequestsPage() {
           <colgroup>
             <col style={{ width: "8%" }} />
             <col style={{ width: "10%" }} />
-            <col style={{ width: "4%" }} />
-            <col style={{ width: "15%" }} />
+            <col style={{ width: "17%" }} />
             <col style={{ width: "12%" }} />
             <col style={{ width: "7%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "7%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
           </colgroup>
           <thead>
             <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#fafafa" }}>
@@ -347,7 +318,7 @@ export default function TourRequestsPage() {
           </thead>
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
-              <tr><td colSpan={10} style={{ padding: "50px 0", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No tour requests found</td></tr>
+              <tr><td colSpan={9} style={{ padding: "50px 0", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No tour requests found</td></tr>
             ) : (
               table.getRowModel().rows.map((row, idx) => {
                 // 🔑 Selected row highlighting — kaunsi row drawer mein open hai
@@ -380,21 +351,23 @@ export default function TourRequestsPage() {
           </tbody>
         </table>
 
-        {/* Pagination */}
+        {/* Pagination — server-driven */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderTop: "1px solid #f1f5f9" }}>
           <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
-            Showing {pageIndex * pageSize + 1} to {Math.min((pageIndex + 1) * pageSize, filteredData.length)} of <strong style={{ color: "#475569" }}>{filteredData.length}</strong> results
+            {isFetching && <span style={{ marginRight: 8 }}>Updating…</span>}
+            Page <strong style={{ color: "#475569" }}>{tablePagination.page}</strong> of <strong style={{ color: "#475569" }}>{tablePagination.pages}</strong>
+            {" · "}<strong style={{ color: "#475569" }}>{tablePagination.total}</strong> results
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff", cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed", opacity: table.getCanPreviousPage() ? 1 : 0.4 }}>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || isFetching} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff", cursor: page <= 1 || isFetching ? "not-allowed" : "pointer", opacity: page <= 1 || isFetching ? 0.4 : 1 }}>
               <ChevronLeft size={13} /> Previous
             </button>
-            {Array.from({ length: table.getPageCount() }).map((_, i) => (
-              <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: pageIndex === i ? "none" : "1px solid #e2e8f0", background: pageIndex === i ? "#2D368E" : "#fff", color: pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>
+            {Array.from({ length: tablePagination.pages }).map((_, i) => (
+              <button key={i} onClick={() => setPage(i + 1)} disabled={isFetching} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: page === i + 1 ? "none" : "1px solid #e2e8f0", background: page === i + 1 ? "#2D368E" : "#fff", color: page === i + 1 ? "#fff" : "#475569", cursor: isFetching ? "not-allowed" : "pointer" }}>
                 {i + 1}
               </button>
             ))}
-            <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff", cursor: table.getCanNextPage() ? "pointer" : "not-allowed", opacity: table.getCanNextPage() ? 1 : 0.4 }}>
+            <button onClick={() => setPage((p) => Math.min(tablePagination.pages, p + 1))} disabled={page >= tablePagination.pages || isFetching} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, fontWeight: 500, color: "#475569", background: "#fff", cursor: page >= tablePagination.pages || isFetching ? "not-allowed" : "pointer", opacity: page >= tablePagination.pages || isFetching ? 0.4 : 1 }}>
               Next <ChevronRight size={13} />
             </button>
           </div>

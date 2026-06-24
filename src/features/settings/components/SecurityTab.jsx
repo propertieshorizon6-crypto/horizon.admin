@@ -2,6 +2,7 @@
 
 import { useState }    from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 import { changePassword } from "../api/settingsApi";
 
 export default function SecurityTab() {
@@ -76,7 +77,7 @@ export default function SecurityTab() {
                   onClick={() => setShow((s) => ({ ...s, [key]: !s[key] }))}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm"
                 >
-                  {show[key] ? "🙈" : "👁"}
+                  {show[key] ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>

@@ -33,7 +33,7 @@ const UI_TO_API_PRIORITY = {
   Urgent: "urgent",
 };
 
-const UI_TO_API_STATUS = {
+export const UI_TO_API_STATUS = {
   New:           "new",
   Assigned:      "contacted",
   "In Progress": "nurturing",
@@ -66,10 +66,21 @@ const mapLead = (lead = {}) => {
   };
 };
 
+// GET /api/v1/leads — supports status, search, agentId, archived, page, limit.
+// Returns mapped leads plus pagination metadata.
 export const fetchLeads = async (params = {}) => {
   const { data } = await apiClient.get("/leads", { params });
-  const leads = data?.data?.leads ?? [];
-  return leads.map(mapLead);
+  const raw  = data?.data ?? {};
+  const list = Array.isArray(raw.leads) ? raw.leads : Array.isArray(raw) ? raw : [];
+  const pg    = raw.pagination ?? {};
+  const total = pg.total ?? raw.total ?? list.length;
+  const limit = pg.limit ?? params.limit ?? 20;
+  const page  = pg.page  ?? params.page  ?? 1;
+  const pages = pg.pages ?? raw.pages ?? Math.max(1, Math.ceil(total / limit));
+  return {
+    leads: list.map(mapLead),
+    pagination: { total, page, limit, pages },
+  };
 };
 
 export const updateLeadPriority = async (leadId, priority) => {

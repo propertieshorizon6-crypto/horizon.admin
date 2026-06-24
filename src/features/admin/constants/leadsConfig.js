@@ -1,5 +1,7 @@
 // 📁 src/features/admin/constants/leadsConfig.js
 
+import { Globe, Smartphone, MessageCircle, Phone, Mail, CalendarDays, Link2, MapPin } from "lucide-react";
+
 export const TABS       = ["All", "New", "Assigned", "In Progress", "Closed", "Archived"];
 export const STATUSES   = ["New", "Assigned", "In Progress", "Closed", "Archived"];
 export const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
@@ -42,5 +44,7 @@ export const PRIORITY_COLOR = {
   Urgent: "#9d174d",
 };
 
-export const SOURCE_ICON = { Website: "🌐", App: "📱", Whatsapp: "💬", Call: "📞" };
-export const INTENT_ICON = { Inquiry: "✉",  Tour: "📅", Call: "📞",  Message: "💬" };
+export const SOURCE_ICON = { Website: Globe, App: Smartphone, Whatsapp: MessageCircle, Call: Phone };
+export const INTENT_ICON = { Inquiry: Mail, Tour: CalendarDays, Call: Phone, Message: MessageCircle };
+export const SOURCE_ICON_FALLBACK = Link2;
+export const INTENT_ICON_FALLBACK = MapPin;

@@ -187,10 +187,11 @@ export const fetchProperties = async (params = {}) => {
              : Array.isArray(raw)             ? raw
              : [];
   const meta       = raw?.meta ?? {};
-  const total      = raw?.total ?? raw?.totalCount ?? meta?.all ?? list.length;
-  const limit      = raw?.limit ?? params.limit ?? 20;
-  const page       = raw?.page  ?? params.page  ?? 1;
-  const totalPages = raw?.totalPages ?? raw?.pages ?? Math.max(1, Math.ceil(total / limit));
+  const pg         = raw?.pagination ?? {};
+  const total      = pg.total ?? raw?.total ?? raw?.totalCount ?? meta?.all ?? list.length;
+  const limit      = pg.limit ?? raw?.limit ?? params.limit ?? 20;
+  const page       = pg.page  ?? raw?.page  ?? params.page  ?? 1;
+  const totalPages = pg.pages ?? raw?.totalPages ?? raw?.pages ?? Math.max(1, Math.ceil(total / limit));
   return {
     properties: list.map(mapProperty),
     meta,

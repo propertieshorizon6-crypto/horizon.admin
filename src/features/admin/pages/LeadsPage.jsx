@@ -1,17 +1,17 @@
 // 📁 src/features/admin/pages/LeadsPage.jsx
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel,
-  getPaginationRowModel, getSortedRowModel,
+  getSortedRowModel,
   flexRender, createColumnHelper,
 } from "@tanstack/react-table";
-import { Search, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
+import { Search, ChevronDown, LayoutList, LayoutGrid, Mail, Phone, Building2 } from "lucide-react";
 
 import useLeads            from "../hooks/useLeads";
-import { updateLeadPriority, assignLead, updateLeadStatus, archiveLead, unarchiveLead } from "../api/leadsApi";
+import { updateLeadPriority, assignLead, updateLeadStatus, archiveLead, unarchiveLead, UI_TO_API_STATUS } from "../api/leadsApi";
 import {
   fetchUsers,
   MOCK_MODE as USERS_MOCK_MODE,
@@ -24,11 +24,16 @@ import KanbanColumn        from "../components/KanbanColumn";
 import {
   TABS, KANBAN_COLS,
   STATUS_STYLE, STATUS_DOT,
-  PRIORITY_STYLE, SOURCE_ICON, INTENT_ICON,
+  PRIORITY_STYLE, SOURCE_ICON, INTENT_ICON, SOURCE_ICON_FALLBACK, INTENT_ICON_FALLBACK,
 } from "../constants/leadsConfig";
 import { timeAgo } from "../../../utils/timeAgo";
 
 const columnHelper = createColumnHelper();
+
+// UI source label → backend lead source.type (the only real origins are
+// enquiry/tour; Whatsapp/Call have no backing data).
+const SOURCE_TO_API = { Website: "enquiry", App: "tour" };
+
 const thStyle = {
   padding: "11px 18px", textAlign: "left", fontSize: 10, fontWeight: 700,
   color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em",
@@ -36,17 +41,51 @@ const thStyle = {
 };
 
 export default function LeadsPage() {
-  const { data: leads = [], isLoading } = useLeads();
   const queryClient = useQueryClient();
 
   const [view,           setView]           = useState("table");
   const [activeTab,      setActiveTab]      = useState("All");
   const [globalFilter,   setGlobalFilter]   = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sourceFilter,   setSourceFilter]   = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
+  const [agentFilter,    setAgentFilter]    = useState("");
+  const [page,           setPage]           = useState(1);
   const [selectedLead,   setSelectedLead]   = useState(null);
   const [priorityLead,   setPriorityLead]   = useState(null);
   const [activeLead,     setActiveLead]     = useState(null);
+  const LIMIT = 10;
+
+  // Debounce the free-text search before it hits the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(globalFilter.trim()), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+
+  // Any server-driven filter change resets to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, debouncedSearch, agentFilter, sourceFilter]);
+
+  // ── "Load all" query: powers Kanban, tab counts, DnD, and optimistic updates ──
+  const ALL_PARAMS = useMemo(() => ({ archived: "all", limit: 1000 }), []);
+  const { data: allData, isLoading } = useLeads(ALL_PARAMS);
+  const leads = allData?.leads ?? [];
+
+  // ── Server-paginated query: powers the Table view ──────────────────────────
+  const tableParams = useMemo(() => {
+    const p = { page, limit: LIMIT };
+    if (activeTab === "Archived")      p.archived = "true";
+    else if (activeTab !== "All")      p.status = UI_TO_API_STATUS[activeTab] ?? activeTab.toLowerCase();
+    if (debouncedSearch)               p.search = debouncedSearch;
+    if (agentFilter)                   p.agentId = agentFilter;
+    if (SOURCE_TO_API[sourceFilter])   p.source = SOURCE_TO_API[sourceFilter];
+    return p;
+  }, [page, activeTab, debouncedSearch, agentFilter, sourceFilter]);
+
+  const { data: tableData, isFetching: isTableFetching } = useLeads(tableParams, { enabled: view === "table" });
+  const tableLeads = tableData?.leads ?? [];
+  const tablePagination = tableData?.pagination ?? { total: 0, page: 1, limit: LIMIT, pages: 1 };
 
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -173,14 +212,18 @@ export default function LeadsPage() {
     if (!priorityLead) return;
 
     const targetLead = priorityLead;
-    const previousLeads = queryClient.getQueryData(["leads"]);
+    const allKey = ["leads", ALL_PARAMS];
+    const previousAll = queryClient.getQueryData(allKey);
     const previousSelectedLead = selectedLead;
 
-    queryClient.setQueryData(["leads", "all"], (prev) => {
-      if (!Array.isArray(prev)) return prev;
-      return prev.map((lead) => (
-        isSameLead(lead, targetLead) ? { ...lead, priority: newPriority } : lead
-      ));
+    queryClient.setQueryData(allKey, (prev) => {
+      if (!prev?.leads) return prev;
+      return {
+        ...prev,
+        leads: prev.leads.map((lead) => (
+          isSameLead(lead, targetLead) ? { ...lead, priority: newPriority } : lead
+        )),
+      };
     });
 
     if (selectedLead && isSameLead(selectedLead, targetLead)) {
@@ -191,8 +234,8 @@ export default function LeadsPage() {
 
     try {
       await updateLeadPriority(targetLead.id, newPriority);
-    } catch (error) {
-      queryClient.setQueryData(["leads"], previousLeads);
+    } catch {
+      queryClient.setQueryData(allKey, previousAll);
       setSelectedLead(previousSelectedLead);
     } finally {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
@@ -200,14 +243,25 @@ export default function LeadsPage() {
   };
 
   // ── Derived data (must be before useReactTable) ────────────────────────────
+  // Counts come from the "load all" query. "All" excludes archived (it has its own tab).
   const tabCounts = useMemo(() => (
     leads.reduce((acc, l) => {
-      acc["All"]    = (acc["All"]    ?? 0) + 1;
+      if (l.status !== "Archived") acc["All"] = (acc["All"] ?? 0) + 1;
       acc[l.status] = (acc[l.status] ?? 0) + 1;
       return acc;
     }, {})
   ), [leads]);
 
+  // Table view: status/search/agent/archived/source/pagination are server-side.
+  // Priority has no API param, so it refines the current page client-side.
+  const tableRows = useMemo(() => (
+    tableLeads.filter((l) => {
+      if (priorityFilter && l.priority !== priorityFilter) return false;
+      return true;
+    })
+  ), [tableLeads, priorityFilter]);
+
+  // Kanban view: all filtering stays client-side over the full lead set.
   const filteredData = useMemo(() => {
     const q = globalFilter.trim().toLowerCase();
 
@@ -233,8 +287,8 @@ export default function LeadsPage() {
       cell: ({ row: { original: r } }) => (
         <div>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{r.name}</p>
-          {r.email && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8" }}>✉ {r.email}</p>}
-          {r.phone && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#94a3b8" }}>📞 {r.phone}</p>}
+          {r.email && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}><Mail size={10} /> {r.email}</p>}
+          {r.phone && <p style={{ margin: "1px 0 0", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}><Phone size={10} /> {r.phone}</p>}
         </div>
       ),
     }),
@@ -242,7 +296,7 @@ export default function LeadsPage() {
       header: "Property",
       cell: (info) => (
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#475569" }}>
-          <span style={{ color: "#94a3b8" }}>🏢</span>
+          <Building2 size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
           <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{info.getValue()}</span>
         </div>
       ),
@@ -251,12 +305,16 @@ export default function LeadsPage() {
       header: "Source / Intent",
       cell: ({ row: { original: r } }) => (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
-            {SOURCE_ICON[r.source] ?? "🔗"} {r.source}
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
-            {INTENT_ICON[r.intent] ?? "📌"} {r.intent}
-          </span>
+          {(() => { const SrcIcon = SOURCE_ICON[r.source] ?? SOURCE_ICON_FALLBACK; return (
+            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
+              <SrcIcon size={10} /> {r.source}
+            </span>
+          ); })()}
+          {(() => { const IntIcon = INTENT_ICON[r.intent] ?? INTENT_ICON_FALLBACK; return (
+            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "#f1f5f9", color: "#475569" }}>
+              <IntIcon size={10} /> {r.intent}
+            </span>
+          ); })()}
         </div>
       ),
     }),
@@ -312,14 +370,12 @@ export default function LeadsPage() {
   ], []);
 
   const table = useReactTable({
-    data: filteredData,
+    data: tableRows,
     columns,
     getRowId: (row, index) => row.id ?? row.email ?? row.phone ?? String(index),
-    getCoreRowModel:       getCoreRowModel(),
-    getFilteredRowModel:   getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel:     getSortedRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    getCoreRowModel:     getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel:   getSortedRowModel(),
   });
   const visibleRows = table.getRowModel().rows;
 
@@ -367,12 +423,12 @@ export default function LeadsPage() {
           <input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Search by name, email, phone, or property..."
+            placeholder="Search by name, email, phone, property, or location..."
             style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 9, paddingBottom: 9, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 13, color: "#000000", outline: "none", boxSizing: "border-box", background: "#fafafa" }}
           />
         </div>
         {[
-          { value: sourceFilter,   set: setSourceFilter,   label: "Source",   opts: ["Website", "App", "Whatsapp", "Call"] },
+          { value: sourceFilter,   set: setSourceFilter,   label: "Source",   opts: ["Website", "App"] },
           { value: priorityFilter, set: setPriorityFilter, label: "Priority", opts: ["High", "Medium", "Low", "Urgent"] },
         ].map(({ value, set, label, opts }) => (
           <div key={label} style={{ position: "relative" }}>
@@ -383,8 +439,16 @@ export default function LeadsPage() {
             <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
           </div>
         ))}
+        {/* Agent filter — server-side (admin/manager only) */}
+        <div style={{ position: "relative" }}>
+          <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)} disabled={isAgentsLoading} style={{ appearance: "none", paddingLeft: 12, paddingRight: 28, paddingTop: 9, paddingBottom: 9, border: "1px solid #e2e8f0", borderRadius: 9, fontSize: 13, color: "#64748b", background: "#fff", cursor: "pointer", outline: "none", minWidth: 130 }}>
+            <option value="">{isAgentsLoading ? "Loading agents…" : "Agent"}</option>
+            {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} />
+        </div>
         <button
-          onClick={() => { setGlobalFilter(""); setSourceFilter(""); setPriorityFilter(""); }}
+          onClick={() => { setGlobalFilter(""); setSourceFilter(""); setPriorityFilter(""); setAgentFilter(""); }}
           style={{ padding: "9px 14px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#fff", cursor: "pointer", color: "#64748b", fontSize: 13, whiteSpace: "nowrap" }}
         >
           Clear Filters
@@ -443,17 +507,19 @@ export default function LeadsPage() {
             </tbody>
           </table>
 
-          {/* Pagination */}
+          {/* Pagination — server-driven */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderTop: "1px solid #f1f5f9" }}>
             <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
-              Showing <strong style={{ color: "#475569" }}>{visibleRows.length}</strong> of <strong style={{ color: "#475569" }}>{filteredData.length}</strong> leads
+              {isTableFetching && <span style={{ marginRight: 8 }}>Updating…</span>}
+              Page <strong style={{ color: "#475569" }}>{tablePagination.page}</strong> of <strong style={{ color: "#475569" }}>{tablePagination.pages}</strong>
+              {" · "}<strong style={{ color: "#475569" }}>{tablePagination.total}</strong> leads
             </p>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed", opacity: table.getCanPreviousPage() ? 1 : 0.4 }}>Previous</button>
-              {Array.from({ length: table.getPageCount() }).map((_, i) => (
-                <button key={i} onClick={() => table.setPageIndex(i)} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: table.getState().pagination.pageIndex === i ? "none" : "1px solid #e2e8f0", background: table.getState().pagination.pageIndex === i ? "#2D368E" : "#fff", color: table.getState().pagination.pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}>{i + 1}</button>
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || isTableFetching} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page <= 1 || isTableFetching ? "not-allowed" : "pointer", opacity: page <= 1 || isTableFetching ? 0.4 : 1 }}>Previous</button>
+              {Array.from({ length: tablePagination.pages }).map((_, i) => (
+                <button key={i} onClick={() => setPage(i + 1)} disabled={isTableFetching} style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: page === i + 1 ? "none" : "1px solid #e2e8f0", background: page === i + 1 ? "#2D368E" : "#fff", color: page === i + 1 ? "#fff" : "#475569", cursor: isTableFetching ? "not-allowed" : "pointer" }}>{i + 1}</button>
               ))}
-              <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanNextPage() ? "pointer" : "not-allowed", opacity: table.getCanNextPage() ? 1 : 0.4 }}>Next</button>
+              <button onClick={() => setPage((p) => Math.min(tablePagination.pages, p + 1))} disabled={page >= tablePagination.pages || isTableFetching} style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page >= tablePagination.pages || isTableFetching ? "not-allowed" : "pointer", opacity: page >= tablePagination.pages || isTableFetching ? 0.4 : 1 }}>Next</button>
             </div>
           </div>
         </div>
@@ -505,8 +571,8 @@ export default function LeadsPage() {
                 <div style={{ opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
                   <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 14, boxShadow: "0 12px 32px rgba(0,0,0,0.18)", minWidth: 220 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000" }}>{activeLead.name}</p>
-                    {activeLead.email && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>✉ {activeLead.email}</p>}
-                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏢 {activeLead.property}</p>
+                    {activeLead.email && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 3 }}><Mail size={10} /> {activeLead.email}</p>}
+                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}><Building2 size={10} /> {activeLead.property}</p>
                   </div>
                 </div>
               ) : null}

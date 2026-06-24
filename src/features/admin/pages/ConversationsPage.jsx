@@ -18,6 +18,7 @@ import useChatPolling from "../hooks/useChatPolling";
 
 // ── Brand color ───────────────────────────────────────────────────────────────
 const NAVY = "#2D368E";
+const EMPTY = [];
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -118,6 +119,7 @@ export default function ConversationsPage() {
   const currentUserId = user?._id || user?.id || null;
 
   const [search,          setSearch]          = useState("");
+  const [searchQuery,     setSearchQuery]     = useState(""); // debounced → server
   const [statusFilter,    setStatusFilter]    = useState("");
   const [selectedConvId,  setSelectedConvId]  = useState(null);
   const [selectedThreadId,setSelectedThreadId]= useState(null);
@@ -129,6 +131,12 @@ export default function ConversationsPage() {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Debounce search before it hits the server.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // ── Polling (messages every 5 s, threads every 15 s, convs every 30 s) ──
   const {
@@ -142,9 +150,10 @@ export default function ConversationsPage() {
     conversationId: selectedConvId,
     threadId:       selectedThreadId,
     statusFilter,
+    search:         searchQuery,
   });
 
-  const conversations = convsData?.conversations ?? [];
+  const conversations = convsData?.conversations ?? EMPTY;
 
   // ── Auto scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,21 +174,14 @@ export default function ConversationsPage() {
   }, [selectedConvId]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const filteredConvs = useMemo(() => {
-    if (!search) return conversations;
-    const q = search.toLowerCase();
-    return conversations.filter((c) =>
-      c.clientName?.toLowerCase().includes(q) ||
-      c.clientEmail?.toLowerCase().includes(q)
-    );
-  }, [conversations, search]);
-
+  // Search + status are filtered server-side; we only re-order here so archived
+  // conversations sink to the bottom when no status filter is active.
   const sortedConvs = useMemo(() => {
-    if (statusFilter !== "") return filteredConvs;
-    const archived = filteredConvs.filter((c) => c.status === "archived");
-    const others   = filteredConvs.filter((c) => c.status !== "archived");
+    if (statusFilter !== "") return conversations;
+    const archived = conversations.filter((c) => c.status === "archived");
+    const others   = conversations.filter((c) => c.status !== "archived");
     return [...archived, ...others];
-  }, [filteredConvs, statusFilter]);
+  }, [conversations, statusFilter]);
 
   const selectedConv   = conversations.find((c) => c.id === selectedConvId);
   const selectedThread = threads.find((t)  => t.id === selectedThreadId);
