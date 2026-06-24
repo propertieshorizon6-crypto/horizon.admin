@@ -142,6 +142,22 @@ export const fetchUsers = async (params = {}) => {
   return users.filter((user) => isAllowedRole(user.role)).map(mapUser);
 };
 
+// Same endpoint, but preserves pagination metadata for server-side paging.
+export const fetchUsersPage = async (params = {}) => {
+  const { data } = await apiClient.get("/admin/users", { params });
+  const users = data?.data?.users ?? [];
+  const pg    = data?.data?.pagination ?? {};
+  return {
+    users: users.filter((user) => isAllowedRole(user.role)).map(mapUser),
+    pagination: {
+      page:  pg.page  ?? params.page  ?? 1,
+      limit: pg.limit ?? params.limit ?? 20,
+      total: pg.total ?? users.length,
+      pages: pg.pages ?? 1,
+    },
+  };
+};
+
 export const fetchUserStats = async () => {
   const { data } = await apiClient.get("/admin/users/stats");
   const stats = data?.data ?? {};

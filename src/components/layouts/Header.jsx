@@ -1,6 +1,5 @@
 // 📁 src/components/layouts/Header.jsx
 
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Settings, Menu } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -10,7 +9,6 @@ import useUnreadNotificationCount from "../../features/admin/hooks/useUnreadNoti
 export default function Header({ onMenuToggle }) {
   const { user }  = useAuthStore();
   const navigate  = useNavigate();
-  const [search, setSearch] = useState("");
   const { data: unreadCountData } = useUnreadNotificationCount({
     refetchInterval: 1000 * 60,
     refetchIntervalInBackground: false,
@@ -33,19 +31,6 @@ export default function Header({ onMenuToggle }) {
           <Menu size={20} className="text-slate-600" />
         </button>
 
-        {/* Search — hidden on smallest screens */}
-        <div className="relative hidden sm:block w-48 md:w-64 lg:w-80">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">
-            🔍
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search leads, properties, agents..."
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-[#2D368E] transition-colors"
-          />
-        </div>
       </div>
 
       {/* Right Side */}

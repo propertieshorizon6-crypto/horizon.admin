@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, flexRender, createColumnHelper } from "@tanstack/react-table";
-import { X, ChevronDown, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { X, ChevronDown, CheckCircle, AlertCircle, ArrowRight, User, Clock } from "lucide-react";
 import { assignTourAgent } from "../../admin/api/tourRequestsApi";
 import { fetchUsers, MOCK_MODE as USERS_MOCK_MODE, MOCK_USERS } from "../../admin/api/usersApi";
 
@@ -13,7 +13,7 @@ const PRIORITY = {
   low:    { bg:"bg-green-100", text:"text-green-700", label:"low"    },
 };
 const TABS     = ["unassigned","overdue","stale"];
-const TAB_ICON = { unassigned:"👤", overdue:"🕐", stale:"🕐" };
+const TAB_ICON = { unassigned: User, overdue: Clock, stale: Clock };
 const columnHelper = createColumnHelper();
 
 
@@ -96,7 +96,7 @@ export default function OperationalQueue({ queue = [] }) {
             return (
               <button key={tab} onClick={()=>setActiveTab(tab)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${isActive?"bg-[#2D368E] text-white":"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                <span>{TAB_ICON[tab]}</span>
+                {(() => { const TabIcon = TAB_ICON[tab]; return <TabIcon size={12} />; })()}
                 {tab.charAt(0).toUpperCase()+tab.slice(1)}
                 <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold min-w-[18px] text-center ${isActive?"bg-white text-[#2D368E]":"bg-slate-200 text-slate-600"}`}>
                   {counts[tab]??0}

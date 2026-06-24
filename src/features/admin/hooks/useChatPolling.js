@@ -9,10 +9,10 @@ const MSG_POLL_MS   = 5_000;
 const THREAD_POLL_MS = 15_000;
 const CONV_POLL_MS   = 30_000;
 
-export default function useChatPolling({ conversationId, threadId, statusFilter = "" }) {
+export default function useChatPolling({ conversationId, threadId, statusFilter = "", search = "" }) {
   const { data: convsData, isLoading: isConvsLoading } = useQuery({
-    queryKey: ["conversations", statusFilter],
-    queryFn:  () => fetchConversations({ status: statusFilter || undefined, limit: 50 }),
+    queryKey: ["conversations", statusFilter, search],
+    queryFn:  () => fetchConversations({ status: statusFilter || undefined, search: search || undefined, limit: 50 }),
     staleTime: CONV_POLL_MS,
     refetchInterval: CONV_POLL_MS,
     refetchIntervalInBackground: false,

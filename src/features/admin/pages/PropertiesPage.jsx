@@ -605,18 +605,19 @@ export default function PropertiesPage() {
     if (typeFilter)          p.type = typeFilter;
     if (purposeFilter)       p.purpose = purposeFilter;
     if (featuredFilter)      p.featured = featuredFilter;
+    if (compFilter)          p.compliance = compFilter;
     if (debouncedText.search)   p.search = debouncedText.search;
     if (debouncedText.city)     p.city = debouncedText.city;
     if (debouncedText.state)    p.state = debouncedText.state;
     if (debouncedText.minPrice !== "") p.minPrice = debouncedText.minPrice;
     if (debouncedText.maxPrice !== "") p.maxPrice = debouncedText.maxPrice;
     return p;
-  }, [currentPage, activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, sortBy, debouncedText]);
+  }, [currentPage, activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
   // Any filter change resets to the first page (page itself is excluded from deps).
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, sortBy, debouncedText]);
+  }, [activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
   const hasActiveFilters =
     !!(typeFilter || purposeFilter || approvalFilter || featuredFilter || compFilter ||
@@ -779,12 +780,8 @@ export default function PropertiesPage() {
     Inactive: metaCounts.inactive ?? 0,
   }), [metaCounts, pagination.total]);
 
-  // All filters except compliance are server-side; compliance is computed client-side.
-  const filteredData = useMemo(() => {
-    if (compFilter === "Compliant") return properties.filter((p) => p.compliance === "Compliant");
-    if (compFilter === "Issues")    return properties.filter((p) => p.compliance !== "Compliant");
-    return properties;
-  }, [properties, compFilter]);
+  // Compliance is now filtered server-side (derived from media completeness).
+  const filteredData = properties;
 
   const columns = useMemo(
     () => [

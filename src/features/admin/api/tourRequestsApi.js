@@ -43,7 +43,6 @@ const mapTour = (tour = {}) => {
   return {
     id:           tour._id,
     createdAt:    formatDateTime(tour.createdAt),
-    source:       "website",
     property: {
       name:     tour.property?.title || "Property",
       location: resolveLocation(tour.property),
@@ -53,7 +52,7 @@ const mapTour = (tour = {}) => {
       phone: tour.phone || tour.lead?.phone || "N/A",
       email: tour.email || tour.lead?.email || null,
     },
-    visitType:    "physical",
+    visitType:    String(tour.visitType || "in-person") === "virtual" ? "virtual" : "physical",
     preferredSlot,
     finalSlot,
     agent:        formatName(tour.agent),
@@ -71,26 +70,24 @@ const toToursPayload = (responseData = {}) => {
   return { tours, pagination };
 };
 
-// ── Fetch all tours ───────────────────────────────────────────────────────────
+// ── Fetch tours (server-side filter + pagination) ─────────────────────────────
+// Supports status, date, agentId, search, page, limit. Returns { tours, pagination }.
 export const fetchTourRequests = async (params = {}) => {
-  const allowed = ["status","date","agentId","page","limit"];
+  const allowed = ["status","date","agentId","search","visitType","page","limit"];
   const clean   = {};
   allowed.forEach((k) => { if (params[k] !== undefined && params[k] !== null && params[k] !== "") clean[k] = params[k]; });
 
-  const base = { ...clean, page: 1, limit: 100 };
-  const { data: first } = await apiClient.get("/tours", { params: base });
-  const firstPage  = toToursPayload(first);
-  const allTours   = [...firstPage.tours];
-  const totalPages = Number(firstPage.pagination?.pages) || 1;
-
-  if (totalPages > 1) {
-    const reqs = [];
-    for (let p = 2; p <= totalPages; p++) reqs.push(apiClient.get("/tours", { params: { ...base, page: p } }));
-    const responses = await Promise.all(reqs);
-    responses.forEach(({ data }) => { const { tours } = toToursPayload(data); allTours.push(...tours); });
-  }
-
-  return allTours.map(mapTour);
+  const { data } = await apiClient.get("/tours", { params: { page: 1, limit: 20, ...clean } });
+  const { tours, pagination } = toToursPayload(data);
+  return {
+    tours: tours.map(mapTour),
+    pagination: {
+      page:  pagination.page  ?? clean.page  ?? 1,
+      limit: pagination.limit ?? clean.limit ?? 20,
+      total: pagination.total ?? tours.length,
+      pages: pagination.pages ?? 1,
+    },
+  };
 };
 
 // ── Confirm tour ──────────────────────────────────────────────────────────────

@@ -1,19 +1,20 @@
 // 📁 src/features/admin/pages/InquiriesPage.jsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, SlidersHorizontal, Inbox, X, Mail, Phone, Building2, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Search, SlidersHorizontal, Inbox, X, Mail, Phone, Building2, Clock, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import useInquiries from "../hooks/useInquiries";
-import { updateInquiryStatus } from "../api/inquiriesApi";
+import { updateInquiryStatus, STATUS_TO_API } from "../api/inquiriesApi";
+
+const PAGE_SIZE = 10;
+const EMPTY = [];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const timeAgo = (date) => {
@@ -40,13 +41,6 @@ const STATUS_STYLE = {
   "Pending":     { bg: "#fee2e2", color: "#dc2626" },
   "Resolved":    { bg: "#dcfce7", color: "#15803d" },
   "Closed":      { bg: "#f1f5f9", color: "#475569" },
-};
-
-const SOURCE_ICON = {
-  Website:  "🌐",
-  App:      "📱",
-  Whatsapp: "💬",
-  Call:     "📞",
 };
 
 const STATUS_OPTIONS = ["Open", "In Progress", "Closed"];
@@ -259,13 +253,13 @@ function InquiryDetailModal({ inquiry, onClose, onStatusUpdate }) {
               })}
             </div>
             {inquiry.status === "In Progress" && (
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#94a3b8" }}>
-                ℹ️ Status can only move forward — cannot revert to Open
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+                <Info size={11} /> Status can only move forward — cannot revert to Open
               </p>
             )}
             {inquiry.status === "Closed" && (
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#94a3b8" }}>
-                ℹ️ This inquiry is closed and cannot be reopened
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+                <Info size={11} /> This inquiry is closed and cannot be reopened
               </p>
             )}
           </div>
@@ -299,30 +293,35 @@ const columnHelper = createColumnHelper();
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function InquiriesPage() {
-  const { data: inquiries = [], isLoading } = useInquiries();
   const [globalFilter,  setGlobalFilter]   = useState("");
+  const [searchQuery,   setSearchQuery]    = useState(""); // debounced
   const [showFilters,   setShowFilters]    = useState(false);
   const [statusFilter,  setStatusFilter]   = useState("");
-  const [sourceFilter,  setSourceFilter]   = useState("");
+  const [page,          setPage]           = useState(1);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
 
-  // ── Filtered data ──────────────────────────────────────────────────────
-  const filteredData = useMemo(() => {
-    let data = inquiries;
-    if (statusFilter) data = data.filter((i) => i.status === statusFilter);
-    if (sourceFilter) data = data.filter((i) => i.source === sourceFilter);
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      data = data.filter((i) =>
-        i.id.toLowerCase().includes(q)              ||
-        i.property.toLowerCase().includes(q)        ||
-        i.customer.name.toLowerCase().includes(q)   ||
-        i.customer.email?.toLowerCase().includes(q) ||
-        i.agent?.toLowerCase().includes(q)
-      );
-    }
-    return data;
-  }, [inquiries, globalFilter, statusFilter, sourceFilter]);
+  // Debounce the search box so we don't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(globalFilter.trim()), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+
+  // Any filter change resets to the first page.
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
+
+  // ── Server-side params ───────────────────────────────────────────────────
+  const apiParams = useMemo(() => ({
+    status: statusFilter ? STATUS_TO_API[statusFilter] : undefined,
+    search: searchQuery || undefined,
+    page,
+    limit: PAGE_SIZE,
+  }), [statusFilter, searchQuery, page]);
+
+  const { data, isLoading, isFetching } = useInquiries(apiParams);
+  const inquiries  = data?.inquiries  ?? EMPTY;
+  const pagination = data?.pagination ?? { page: 1, total: 0, pages: 1 };
+
+  const filteredData = inquiries;
 
   // ── Columns ────────────────────────────────────────────────────────────
   const columns = useMemo(() => [
@@ -336,22 +335,11 @@ export default function InquiriesPage() {
       header: "Created",
       cell: (info) => <span className="text-sm text-slate-500">{timeAgo(info.getValue())}</span>,
     }),
-    columnHelper.accessor("source", {
-      header: "Source",
-      cell: (info) => {
-        const s = info.getValue();
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-            <span>{SOURCE_ICON[s] ?? "🔗"}</span> {s}
-          </span>
-        );
-      },
-    }),
     columnHelper.accessor("property", {
       header: "Property",
       cell: (info) => (
         <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">🏢</span>
+          <Building2 size={14} className="text-slate-400 shrink-0" />
           <span className="text-sm text-slate-700 font-medium truncate max-w-[160px]">{info.getValue()}</span>
         </div>
       ),
@@ -405,13 +393,12 @@ export default function InquiriesPage() {
 
   // ── Table ──────────────────────────────────────────────────────────────
   const table = useReactTable({
-    data:                  filteredData,
+    data:              filteredData,
     columns,
-    getCoreRowModel:       getCoreRowModel(),
-    getFilteredRowModel:   getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel:     getSortedRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    getCoreRowModel:   getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(), // sorts the current page only
+    manualPagination:  true,
+    pageCount:         pagination.pages,
   });
 
   if (isLoading) {
@@ -479,13 +466,8 @@ export default function InquiriesPage() {
               <option value="">All Status</option>
               {["Open","In Progress","Closed"].map((s) => <option key={s}>{s}</option>)}
             </select>
-            <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}
-              className="px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 bg-white focus:outline-none cursor-pointer">
-              <option value="">All Sources</option>
-              {["Website","App","Whatsapp","Call"].map((s) => <option key={s}>{s}</option>)}
-            </select>
-            {(statusFilter || sourceFilter) && (
-              <button onClick={() => { setStatusFilter(""); setSourceFilter(""); }}
+            {statusFilter && (
+              <button onClick={() => setStatusFilter("")}
                 className="text-xs font-semibold text-red-500 hover:text-red-600">
                 Clear filters
               </button>
@@ -515,7 +497,7 @@ export default function InquiriesPage() {
             <tbody className="divide-y divide-slate-50">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center">
+                  <td colSpan={7} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <Inbox size={48} className="text-slate-300" strokeWidth={1.2} />
                       <p className="text-base font-semibold text-slate-600">No inquiries found</p>
@@ -542,28 +524,30 @@ export default function InquiriesPage() {
           </table>
         </div>
 
-        {table.getRowModel().rows.length > 0 && (
+        {pagination.total > 0 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
             <p className="text-sm text-slate-400">
-              Showing <span className="font-semibold text-slate-600">{table.getRowModel().rows.length}</span>{" "}
-              of <span className="font-semibold text-slate-600">{filteredData.length}</span> inquiries
+              Showing <span className="font-semibold text-slate-600">{filteredData.length}</span>{" "}
+              on page {pagination.page} of{" "}
+              <span className="font-semibold text-slate-600">{pagination.total}</span> inquiries
+              {isFetching && <span className="ml-2 text-slate-300">updating…</span>}
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 Previous
               </button>
-              {Array.from({ length: table.getPageCount() }).map((_, i) => (
-                <button key={i} onClick={() => table.setPageIndex(i)}
+              {Array.from({ length: pagination.pages }).map((_, i) => (
+                <button key={i} onClick={() => setPage(i + 1)}
                   className={`w-9 h-9 rounded-xl text-sm font-semibold transition-colors ${
-                    table.getState().pagination.pageIndex === i
+                    pagination.page === i + 1
                       ? "bg-slate-900 text-white"
                       : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}>
                   {i + 1}
                 </button>
               ))}
-              <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}
+              <button onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))} disabled={page >= pagination.pages}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 Next
               </button>

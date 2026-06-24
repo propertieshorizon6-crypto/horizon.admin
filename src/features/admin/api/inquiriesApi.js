@@ -7,7 +7,7 @@ const formatName = (user = {}) =>
   `${user.firstName || ""} ${user.lastName || ""}`.trim() || null;
 
 // Frontend label → backend status
-const STATUS_TO_API = {
+export const STATUS_TO_API = {
   "Open":        "new",
   "In Progress": "contacted",
   "Closed":      "closed",
@@ -39,7 +39,6 @@ const mapInquiry = (inquiry = {}) => {
     _id:      inquiry._id,
     id:       `INQ-${String(inquiry._id || "").slice(-6).toUpperCase()}`,
     createdAt: inquiry.createdAt,
-    source:   "Website",
     property: inquiry.property?.title || "Property",
     propertyId: inquiry.property?._id || inquiry.property || null,
     customer: {
@@ -56,10 +55,14 @@ const mapInquiry = (inquiry = {}) => {
 };
 
 // GET /api/v1/enquiries
+// Returns { inquiries, pagination } so callers can drive server-side paging.
 export const fetchInquiries = async (params = {}) => {
   const { data } = await apiClient.get("/enquiries", { params });
-  const enquiries = data?.data?.enquiries ?? [];
-  return enquiries.map(mapInquiry);
+  const enquiries  = data?.data?.enquiries  ?? [];
+  const pagination = data?.data?.pagination ?? {
+    page: 1, limit: enquiries.length, total: enquiries.length, pages: 1,
+  };
+  return { inquiries: enquiries.map(mapInquiry), pagination };
 };
 
 // PATCH /api/v1/enquiries/:id/status

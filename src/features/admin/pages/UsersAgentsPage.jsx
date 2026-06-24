@@ -1,10 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
@@ -24,7 +22,7 @@ import {
 import { useAuthStore } from "../../../store/useAuthStore";
 
 const columnHelper = createColumnHelper();
-const ALLOWED_ROLES = new Set(["Agent", "Manager", "Admin"]);
+const EMPTY = [];
 const ROLE_OPTIONS = ["Agent", "Manager", "Admin"];
 const STATUS_OPTIONS = ["Active", "Inactive", "Suspended"];
 
@@ -212,21 +210,38 @@ export default function UsersAgentsPage() {
   const isAdmin = currentUserRole === "admin";
   const queryClient = useQueryClient();
 
-  const { data: allUsers = [], isLoading } = useUsers();
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // debounced
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+
+  // Debounce the search box before it hits the server.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(globalFilter.trim()), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+
+  // Any server-driven filter change resets to the first page.
+  useEffect(() => { setPage(1); }, [searchQuery, roleFilter, statusFilter]);
+
+  const userParams = useMemo(() => ({
+    role: roleFilter ? roleFilter.toLowerCase() : undefined,
+    status: statusFilter ? statusFilter.toLowerCase() : undefined,
+    search: searchQuery || undefined,
+    page,
+    limit: 10,
+  }), [roleFilter, statusFilter, searchQuery, page]);
+
+  const { data, isLoading, isFetching } = useUsers(userParams);
+  const users = data?.users ?? EMPTY;
+  const pagination = data?.pagination ?? { page: 1, total: 0, pages: 1 };
+
   const { data: apiStats } = useQuery({
     queryKey: ["user-stats"],
     queryFn: fetchUserStats,
     staleTime: 1000 * 60 * 5,
   });
-
-  const users = useMemo(
-    () => allUsers.filter((user) => ALLOWED_ROLES.has(user.role)),
-    [allUsers],
-  );
-
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionStatus, setActionStatus] = useState(null);
   const [modal, setModal] = useState({ type: "", user: null });
@@ -361,36 +376,14 @@ export default function UsersAgentsPage() {
       setActionStatus({ type: "error", message: getErrorMessage(error, "Unable to verify agent.") }),
   });
 
-  const stats = useMemo(() => {
-    const local = {
-      total: users.length,
-      active: users.filter((user) => user.status === "Active").length,
-      agents: users.filter((user) => user.role === "Agent").length,
-      admins: users.filter((user) => user.role === "Admin" || user.role === "Manager").length,
-    };
-    return {
-      total: apiStats?.total ?? local.total,
-      active: local.active,
-      agents: apiStats?.agents ?? local.agents,
-      admins: apiStats?.adminsManagers ?? local.admins,
-    };
-  }, [users, apiStats]);
-
-  const filteredData = useMemo(() => {
-    let data = users;
-    if (roleFilter) data = data.filter((user) => user.role === roleFilter);
-    if (statusFilter) data = data.filter((user) => user.status === statusFilter);
-    if (globalFilter) {
-      const query = globalFilter.toLowerCase();
-      data = data.filter(
-        (user) =>
-          user.name?.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.role?.toLowerCase().includes(query),
-      );
-    }
-    return data;
-  }, [users, roleFilter, statusFilter, globalFilter]);
+  // Stats come from the dedicated /admin/users/stats endpoint so the counters
+  // stay accurate regardless of which page/filter is showing in the table.
+  const stats = useMemo(() => ({
+    total: apiStats?.total ?? pagination.total ?? 0,
+    active: apiStats?.active ?? 0,
+    agents: apiStats?.agents ?? 0,
+    admins: apiStats?.adminsManagers ?? 0,
+  }), [apiStats, pagination.total]);
 
   const columns = useMemo(() => [
     columnHelper.accessor("name", {
@@ -449,12 +442,11 @@ export default function UsersAgentsPage() {
   ], [currentUserRole, currentUserId, verifyMutation]);
 
   const table = useReactTable({
-    data: filteredData,
+    data: users,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    manualPagination: true,
+    pageCount: pagination.pages,
   });
 
   if (selectedUser) return <UserDetailPage user={selectedUser} onBack={() => setSelectedUser(null)} />;
@@ -569,29 +561,32 @@ export default function UsersAgentsPage() {
             )}
           </tbody>
         </table>
-        {table.getPageCount() > 1 && (
+        {pagination.pages > 1 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderTop: "1px solid #f1f5f9" }}>
             <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
-              Showing <strong style={{ color: "#475569" }}>{table.getRowModel().rows.length}</strong> of{" "}
-              <strong style={{ color: "#475569" }}>{filteredData.length}</strong> users
+              {isFetching && <span style={{ marginRight: 8 }}>Updating…</span>}
+              Page <strong style={{ color: "#475569" }}>{pagination.page}</strong> of{" "}
+              <strong style={{ color: "#475569" }}>{pagination.pages}</strong>
+              {" · "}<strong style={{ color: "#475569" }}>{pagination.total}</strong> users
             </p>
             <div style={{ display: "flex", gap: 6 }}>
               <button
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed", opacity: table.getCanPreviousPage() ? 1 : 0.4 }}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || isFetching}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page <= 1 || isFetching ? "not-allowed" : "pointer", opacity: page <= 1 || isFetching ? 0.4 : 1 }}
               >Previous</button>
-              {Array.from({ length: table.getPageCount() }).map((_, i) => (
+              {Array.from({ length: pagination.pages }).map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => table.setPageIndex(i)}
-                  style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: table.getState().pagination.pageIndex === i ? "none" : "1px solid #e2e8f0", background: table.getState().pagination.pageIndex === i ? "#2D368E" : "#fff", color: table.getState().pagination.pageIndex === i ? "#fff" : "#475569", cursor: "pointer" }}
+                  onClick={() => setPage(i + 1)}
+                  disabled={isFetching}
+                  style={{ width: 30, height: 30, borderRadius: 7, fontSize: 12, fontWeight: 700, border: page === i + 1 ? "none" : "1px solid #e2e8f0", background: page === i + 1 ? "#2D368E" : "#fff", color: page === i + 1 ? "#fff" : "#475569", cursor: isFetching ? "not-allowed" : "pointer" }}
                 >{i + 1}</button>
               ))}
               <button
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: table.getCanNextPage() ? "pointer" : "not-allowed", opacity: table.getCanNextPage() ? 1 : 0.4 }}
+                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                disabled={page >= pagination.pages || isFetching}
+                style={{ padding: "5px 14px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12, color: "#475569", background: "#fff", cursor: page >= pagination.pages || isFetching ? "not-allowed" : "pointer", opacity: page >= pagination.pages || isFetching ? 0.4 : 1 }}
               >Next</button>
             </div>
           </div>
