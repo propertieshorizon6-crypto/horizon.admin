@@ -1,6 +1,54 @@
 // 📁 src/features/admin/api/propertiesApi.js
 
+import axios from "axios";
 import apiClient from "../../../services/apiClient";
+
+// ── S3 presigned upload helper ──────────────────────────────────────────────
+// Requests a presigned PUT URL from the backend, uploads the file directly to
+// S3, and returns the persisted { url, key } reference.
+const EXT_BY_MIME = {
+  "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+  "image/webp": "webp", "image/heic": "heic", "image/heif": "heif",
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/x-msvideo": "avi",
+  "video/webm": "webm", "video/x-matroska": "mkv",
+};
+
+// Keep these in sync with the backend's MAX_IMAGE_SIZE / MAX_VIDEO_SIZE.
+export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+
+export const uploadViaPresign = async (file, scope) => {
+  const isVideo = scope === "video";
+  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  if (file.size > maxSize) {
+    const mb = Math.round(maxSize / (1024 * 1024));
+    throw new Error(
+      `${file.name || "File"} is too large. Maximum ${isVideo ? "video" : "image"} size is ${mb}MB.`,
+    );
+  }
+
+  const contentType = file.type || "application/octet-stream";
+  const ext =
+    EXT_BY_MIME[contentType] ||
+    (file.name?.includes(".") ? file.name.split(".").pop().toLowerCase() : "bin");
+
+  const { data } = await apiClient.post("/uploads/presign", {
+    scope,
+    contentType,
+    ext,
+    size: file.size,
+  });
+  const { key, uploadUrl, publicUrl } = data?.data ?? {};
+  if (!uploadUrl || !key) throw new Error("Failed to obtain upload URL");
+
+  // Direct PUT to S3 — bare axios so no auth header / baseURL is attached.
+  await axios.put(uploadUrl, file, { headers: { "Content-Type": contentType } });
+
+  return { url: publicUrl, key };
+};
+
+const uploadMany = (files, scope) =>
+  Promise.all(Array.from(files).map((f) => uploadViaPresign(f, scope)));
 
 export const MOCK_MODE = false;
 export const MOCK_PROPERTIES = [];
@@ -37,7 +85,7 @@ const formatAmenity = (amenity = "") =>
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const resolveImageUrl = (image = {}) =>
-  image.large?.url || image.medium?.url || image.original?.url || image.thumbnail?.url || null;
+  image?.url || image?.original?.url || null;
 
 const PURPOSE_TO_INTENT = { sale: "For Sale", rent: "For Rent" };
 
@@ -49,7 +97,7 @@ const formatPrice = (amount, currency = "USD") => {
 };
 
 const mapProperty = (property = {}) => {
-  const hasFeatured  = !!property.images?.featured?.original?.url;
+  const hasFeatured  = !!(property.images?.featured?.url || property.images?.featured?.original?.url);
   const galleryCount = Array.isArray(property.images?.gallery) ? property.images.gallery.length : 0;
   const photoCount   = (hasFeatured ? 1 : 0) + galleryCount;
   const issues       = [];
@@ -67,6 +115,7 @@ const mapProperty = (property = {}) => {
     beds:            property.details?.bedrooms  ?? null,
     baths:           property.details?.bathrooms ?? null,
     area:            property.details?.squareFeet ?? 0,
+    areaUnit:        property.details?.areaUnit || "sqft",
     status:          normalizeStatus(property.status, property.isDeleted),
     rawStatus:       property.status,
     media:           { photos: photoCount, docs: 0 },
@@ -135,6 +184,7 @@ const mapPropertyDetail = (property = {}) => {
     bedrooms:       property.details?.bedrooms  ?? null,
     bathrooms:      property.details?.bathrooms ?? null,
     area:           property.details?.squareFeet ?? 0,
+    areaUnit:       property.details?.areaUnit || "sqft",
     amenities,
     highlights,
     documents:      Array.isArray(property.documents) ? property.documents : [],
@@ -143,7 +193,7 @@ const mapPropertyDetail = (property = {}) => {
       ? property.videos.map((v) => ({
           _id:       v._id || v.id || null,
           url:       v.url,
-          publicId:  v.publicId,
+          key:       v.key || v.publicId || null,
           thumbnail: v.thumbnail || null,
           caption:   v.caption || "",
         }))
@@ -207,10 +257,20 @@ export const fetchPropertyDetail = async (propertyId) => {
   return property ? mapPropertyDetail(property) : null;
 };
 
-// POST /api/v1/properties  (multipart/form-data)
-export const createProperty = async (formData) => {
-  const { data } = await apiClient.post("/properties", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+// POST /api/v1/properties  (JSON; files are presigned-uploaded to S3 first)
+// payload: { body, featuredFile, galleryFiles }
+export const createProperty = async ({ body, featuredFile, galleryFiles = [] }) => {
+  const featuredImage = featuredFile
+    ? await uploadViaPresign(featuredFile, "featured")
+    : null;
+  const gallery = galleryFiles.length
+    ? await uploadMany(galleryFiles, "gallery")
+    : [];
+
+  const { data } = await apiClient.post("/properties", {
+    ...body,
+    featuredImage,
+    gallery,
   });
   return data;
 };
@@ -251,29 +311,19 @@ export const republishProperty = async (propertyId) => {
 };
 
 // PATCH /api/v1/admin/properties/:id
-// files = { featured?: File, gallery?: File[] } — when present, sends multipart/form-data
+// files = { featured?: File, gallery?: File[] } — uploaded to S3 via presign,
+// then their { url, key } refs are merged into the JSON body.
 export const editProperty = async (propertyId, body = {}, files = {}) => {
   if (!propertyId) return null;
   const hasFeatured = !!files.featured;
   const hasGallery  = files.gallery?.length > 0;
 
-  let payload;
-  if (hasFeatured || hasGallery) {
-    const fd = new FormData();
-    Object.entries(body).forEach(([k, v]) => {
-      if (v === undefined || v === null) return;
-      fd.append(k, typeof v === "object" && !Array.isArray(v) ? JSON.stringify(v) : v);
-    });
-    if (hasFeatured) fd.append("featured", files.featured);
-    if (hasGallery)  Array.from(files.gallery).forEach(f => fd.append("gallery", f));
-    payload = fd;
-    console.log("[editProperty] sending multipart", {
-      hasFeatured, hasGallery,
-      galleryCount: files.gallery?.length,
-      fdEntries: [...fd.entries()].map(([k]) => k),
-    });
-  } else {
-    payload = body;
+  const payload = { ...body };
+  if (hasFeatured) {
+    payload.featuredImage = await uploadViaPresign(files.featured, "featured");
+  }
+  if (hasGallery) {
+    payload.gallery = await uploadMany(files.gallery, "gallery");
   }
 
   const { data } = await apiClient.patch(
@@ -292,32 +342,36 @@ export const deleteProperty = async (propertyId) => {
   return data;
 };
 
-// POST /api/v1/admin/properties/:id/video  (multipart/form-data, field: "video")
-export const uploadPropertyVideo = async (propertyId, formData) => {
+// POST /api/v1/admin/properties/:id/video  (JSON; video presigned-uploaded to S3)
+// payload: { file, caption }
+export const uploadPropertyVideo = async (propertyId, { file, caption = "" }) => {
+  const video = await uploadViaPresign(file, "video");
   const { data } = await apiClient.post(
     `/admin/properties/${propertyId}/video`,
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+    { video, caption },
+    { timeout: 0 },
   );
   const property = data?.data?.property;
   return property ? mapPropertyDetail(property) : null;
 };
 
-// PUT /api/v1/admin/properties/:id/featured-image
-export const updateFeaturedImage = async (propertyId, formData) => {
+// PUT /api/v1/admin/properties/:id/featured-image  (JSON)
+export const updateFeaturedImage = async (propertyId, file) => {
+  const featuredImage = await uploadViaPresign(file, "featured");
   const { data } = await apiClient.put(
     `/admin/properties/${propertyId}/featured-image`,
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 },
+    { featuredImage },
+    { timeout: 0 },
   );
   return data;
 };
 
-// POST /api/v1/admin/properties/:id/gallery
-export const addGalleryImages = async (propertyId, formData) => {
+// POST /api/v1/admin/properties/:id/gallery  (JSON)
+export const addGalleryImages = async (propertyId, files) => {
+  const gallery = await uploadMany(files, "gallery");
   const { data } = await apiClient.post(
     `/admin/properties/${propertyId}/gallery`,
-    formData,
+    { gallery },
     { timeout: 0 },
   );
   return data;

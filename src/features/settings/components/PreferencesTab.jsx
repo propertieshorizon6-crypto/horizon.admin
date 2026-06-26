@@ -1,25 +1,25 @@
 // 📁 src/features/settings/components/PreferencesTab.jsx
 
-import { useState, useEffect } from "react";
-import { useMutation }         from "@tanstack/react-query";
-import { useAuthStore }        from "../../../store/useAuthStore";
-import { updateNotificationPrefs } from "../api/settingsApi";
+import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { updateNotificationPrefs } from '../api/settingsApi';
 
 const NOTIFICATIONS = [
   {
-    key:   "inApp",
-    title: "In-App Notifications",
-    desc:  "Receive notifications within the admin portal",
+    key: 'inApp',
+    title: 'In-App Notifications',
+    desc: 'Receive notifications within the admin portal',
   },
   {
-    key:   "email",
-    title: "Email Notifications",
-    desc:  "Receive important updates via email",
+    key: 'email',
+    title: 'Email Notifications',
+    desc: 'Receive important updates via email',
   },
   {
-    key:   "push",
-    title: "Push Notifications",
-    desc:  "Receive push notifications on this device",
+    key: 'push',
+    title: 'Push Notifications',
+    desc: 'Receive push notifications on this device',
   },
 ];
 
@@ -29,12 +29,12 @@ function Toggle({ enabled, onChange, disabled }) {
       onClick={() => !disabled && onChange(!enabled)}
       disabled={disabled}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none shrink-0 ${
-        enabled ? "bg-slate-800" : "bg-slate-200"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+        enabled ? 'bg-slate-800' : 'bg-slate-200'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-          enabled ? "translate-x-6" : "translate-x-1"
+          enabled ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
     </button>
@@ -47,35 +47,37 @@ export default function PreferencesTab() {
   const [prefs, setPrefs] = useState({
     inApp: user?.notificationPreferences?.inApp ?? true,
     email: user?.notificationPreferences?.email ?? true,
-    push:  user?.notificationPreferences?.push  ?? false,
+    push: user?.notificationPreferences?.push ?? false,
   });
 
   // Keep in sync if user changes (e.g. profile refresh)
   useEffect(() => {
     if (user?.notificationPreferences) {
-      setPrefs({
-        inApp: user.notificationPreferences.inApp ?? true,
-        email: user.notificationPreferences.email ?? true,
-        push:  user.notificationPreferences.push  ?? false,
-      });
+      // setPrefs({
+      //   inApp: user.notificationPreferences.inApp ?? true,
+      //   email: user.notificationPreferences.email ?? true,
+      //   push: user.notificationPreferences.push ?? false,
+      // });
     }
   }, [user?.notificationPreferences]);
 
   const [dirty, setDirty] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [saveError, setSaveError] = useState('');
 
   const mutation = useMutation({
     mutationFn: updateNotificationPrefs,
     onSuccess: (updatedUser) => {
       if (updatedUser?.notificationPreferences) {
-        updateUser({ notificationPreferences: updatedUser.notificationPreferences });
+        updateUser({
+          notificationPreferences: updatedUser.notificationPreferences,
+        });
       }
       setDirty(false);
-      setSaveError("");
+      setSaveError('');
     },
     onError: (err) => {
       const apiErr = err?.response?.data?.error;
-      setSaveError(apiErr?.message ?? "Failed to save preferences.");
+      setSaveError(apiErr?.message ?? 'Failed to save preferences.');
     },
   });
 
@@ -85,7 +87,7 @@ export default function PreferencesTab() {
   };
 
   const handleSave = () => {
-    setSaveError("");
+    setSaveError('');
     mutation.mutate(prefs);
   };
 
@@ -95,8 +97,12 @@ export default function PreferencesTab() {
       <div className="flex items-center gap-3 mb-6">
         <span className="text-2xl">🔔</span>
         <div>
-          <h3 className="text-base font-bold text-slate-900">Notification Preferences</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Choose how you want to receive notifications</p>
+          <h3 className="text-base font-bold text-slate-900">
+            Notification Preferences
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Choose how you want to receive notifications
+          </p>
         </div>
       </div>
 
@@ -122,7 +128,9 @@ export default function PreferencesTab() {
                 disabled={mutation.isPending}
               />
             </div>
-            {i < NOTIFICATIONS.length - 1 && <div className="h-px bg-slate-50" />}
+            {i < NOTIFICATIONS.length - 1 && (
+              <div className="h-px bg-slate-50" />
+            )}
           </div>
         ))}
       </div>
@@ -134,7 +142,11 @@ export default function PreferencesTab() {
           disabled={!dirty || mutation.isPending}
           className="flex-1 py-3 bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors"
         >
-          {mutation.isPending ? "Saving…" : mutation.isSuccess && !dirty ? "✅ Saved!" : "Save Preferences"}
+          {mutation.isPending
+            ? 'Saving…'
+            : mutation.isSuccess && !dirty
+              ? `Saved!`
+              : 'Save Preferences'}
         </button>
       </div>
     </div>
