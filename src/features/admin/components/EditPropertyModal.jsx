@@ -1,5 +1,5 @@
 // 📁 src/features/admin/components/EditPropertyModal.jsx
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   editProperty,
@@ -8,6 +8,7 @@ import {
   uploadPropertyVideo,
   deletePropertyVideo,
 } from "../api/propertiesApi";
+import { mapApiFieldErrors } from "../utils/propertyFormErrors";
 import PhoneInput from "./PhoneInput";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
@@ -40,13 +41,6 @@ const CURRENCIES = [
   { code:"CAD", name:"Canadian Dollar"        },
 ];
 
-const FRIENDLY_ERRORS = {
-  INVALID_FILE_TYPE:  "One of the images has an unsupported format. Use JPG, PNG, WebP, or HEIC.",
-  FILE_TOO_LARGE:     "One of the images is too large. Keep each file under 10MB.",
-  UNAUTHORIZED:       "You don't have permission to edit this property.",
-  UNAUTHENTICATED:    "Your session has expired. Please log in again.",
-};
-
 const formatAmenity = (a) =>
   a.replace(/([A-Z])/g," $1").replace(/[-_]/g," ").trim()
    .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -57,7 +51,6 @@ const inputStyle = {
   fontSize:13, color:"#000000", background:"#fff", outline:"none", boxSizing:"border-box",
 };
 const grid2 = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 };
-const grid3 = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 };
 const sectionLabel = {
   fontSize:11, fontWeight:800, color:"#94a3b8", textTransform:"uppercase",
   letterSpacing:"0.06em", margin:"18px 0 10px",
@@ -81,6 +74,7 @@ const toEditState = (p) => ({
   bedrooms:      p?.bedrooms  ?? p?.beds  ?? "",
   bathrooms:     p?.bathrooms ?? p?.baths ?? "",
   squareFeet:    p?.squareFeet ?? p?.area ?? "",
+  areaUnit:      p?.areaUnit === "acres" ? "acres" : "sqft",
   parking:       p?.parking    ?? "",
   yearBuilt:     p?.yearBuilt  ?? "",
   lotSize:       p?.lotSize    ?? "",
@@ -154,12 +148,8 @@ function MediaTab({ property: initialProperty, onMutation }) {
   });
 
   const videoMutation = useMutation({
-    mutationFn: ({ file, caption }) => {
-      const fd = new FormData();
-      fd.append("video", file);
-      if (caption) fd.append("caption", caption);
-      return uploadPropertyVideo(property.id, fd);
-    },
+    mutationFn: ({ file, caption }) =>
+      uploadPropertyVideo(property.id, { file, caption: caption || "" }),
     onSuccess: async (updated) => {
       if (updated) queryClient.setQueryData(cacheKey, updated);
       queryClient.invalidateQueries({ queryKey: ["properties"] });
@@ -275,7 +265,7 @@ function MediaTab({ property: initialProperty, onMutation }) {
       {Array.isArray(property.videos) && property.videos.length > 0 ? (
         <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginBottom:12 }}>
           {property.videos.map((v, i) => (
-            <div key={v._id || v.publicId || i}
+            <div key={v._id || v.key || i}
               style={{ position:"relative", width:140, height:90, borderRadius:8,
                 overflow:"hidden", border:"1px solid #e2e8f0", flexShrink:0 }}>
               <a href={v.url} target="_blank" rel="noopener noreferrer"
@@ -358,6 +348,7 @@ export default function EditPropertyModal({ property, onClose }) {
   const [activeTab, setActiveTab] = useState("details");
   const [form, setForm]           = useState(toEditState(property));
   const [submitError, setSubmitError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
 
   useLayoutEffect(() => {
@@ -366,9 +357,22 @@ export default function EditPropertyModal({ property, onClose }) {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  useEffect(() => { setForm(toEditState(property)); setSubmitError(""); }, [property]);
+  // Form state is initialized from `property` on mount. The parent renders this
+  // modal with `key={property.id}`, so selecting a different property remounts
+  // and re-initializes — no reset effect needed (avoids set-state-in-effect).
 
-  const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const set = (key, val) => {
+    setForm((f) => ({ ...f, [key]: val }));
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+  };
+
+  // Shared field styles + inline error, mirroring the create form.
+  const errInput = (key) =>
+    fieldErrors[key] ? { ...inputStyle, borderColor: "#fca5a5", background: "#fff7f7" } : inputStyle;
+  const fieldErr = (key) =>
+    fieldErrors[key] ? (
+      <span style={{ fontSize: 11, color: "#b91c1c", marginTop: 3, display: "block" }}>{fieldErrors[key]}</span>
+    ) : null;
 
   const toggleAmenity = (a) =>
     setForm((f) => ({
@@ -385,26 +389,16 @@ export default function EditPropertyModal({ property, onClose }) {
       onClose();
     },
     onError: (err) => {
-      const errObj  = err?.response?.data?.error;
-      const details = errObj?.details;
-      if (Array.isArray(details) && details.length) {
-        const msgs = details.map(d => d?.message || d?.msg).filter(Boolean).join(" • ");
-        setSubmitError(msgs || "Please fix the errors and try again.");
-      } else {
-        const code = typeof details === "string" ? details : null;
-        setSubmitError(
-          FRIENDLY_ERRORS[code] ||
-          errObj?.message ||
-          err?.response?.data?.message ||
-          "Could not update property. Please try again."
-        );
-      }
+      const { fieldErrors: fe, generalMessage } = mapApiFieldErrors(err);
+      setFieldErrors(fe);
+      setSubmitError(generalMessage);
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitError("");
+    setFieldErrors({});
 
     const num = (v) => (v !== "" && v !== undefined ? Number(v) : undefined);
     const str = (v) => (v?.trim() ? v.trim() : undefined);
@@ -432,6 +426,7 @@ export default function EditPropertyModal({ property, onClose }) {
       bedrooms:      num(form.bedrooms),
       bathrooms:     num(form.bathrooms),
       squareFeet:    num(form.squareFeet),
+      areaUnit:      form.areaUnit || "sqft",
       parking:       num(form.parking),
       yearBuilt:     num(form.yearBuilt),
       lotSize:       num(form.lotSize),
@@ -508,13 +503,15 @@ export default function EditPropertyModal({ property, onClose }) {
               <p style={sectionLabel}>Basic Information</p>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Title</label>
-                <input style={inputStyle} value={form.title}
+                <input style={errInput("title")} value={form.title}
                   onChange={e => set("title", e.target.value)} />
+                {fieldErr("title")}
               </div>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Description</label>
-                <textarea style={{ ...inputStyle, minHeight:80, resize:"vertical" }}
+                <textarea style={{ ...errInput("description"), minHeight:80, resize:"vertical" }}
                   value={form.description} onChange={e => set("description", e.target.value)} />
+                {fieldErr("description")}
               </div>
 
               {/* Category & Status */}
@@ -522,7 +519,8 @@ export default function EditPropertyModal({ property, onClose }) {
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>Type</label>
-                  <select style={inputStyle} value={form.type} onChange={e => set("type", e.target.value)}>
+                  <select style={inputStyle} value={form.type}
+                    onChange={e => { const t = e.target.value; set("type", t); set("areaUnit", t === "land" ? "acres" : "sqft"); }}>
                     {TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
                   </select>
                 </div>
@@ -536,11 +534,12 @@ export default function EditPropertyModal({ property, onClose }) {
                 {form.purpose === "rent" && (
                   <div>
                     <label style={labelStyle}>Rent Frequency</label>
-                    <select style={inputStyle} value={form.rentFrequency} onChange={e => set("rentFrequency", e.target.value)}>
+                    <select style={errInput("rentFrequency")} value={form.rentFrequency} onChange={e => set("rentFrequency", e.target.value)}>
                       {["monthly","yearly","weekly","daily"].map(f => (
                         <option key={f} value={f}>{f.charAt(0).toUpperCase()+f.slice(1)}</option>
                       ))}
                     </select>
+                    {fieldErr("rentFrequency")}
                   </div>
                 )}
                 <div>
@@ -576,9 +575,10 @@ export default function EditPropertyModal({ property, onClose }) {
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>Price</label>
-                  <input type="number" min="0" style={inputStyle}
+                  <input type="number" min="0" style={errInput("price")}
                     value={form.price} onChange={e => set("price", e.target.value)}
                     onWheel={e => e.currentTarget.blur()} />
+                  {fieldErr("price")}
                 </div>
                 <div>
                   <label style={labelStyle}>Currency</label>
@@ -594,24 +594,29 @@ export default function EditPropertyModal({ property, onClose }) {
               <p style={sectionLabel}>Location</p>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Street Address</label>
-                <input style={inputStyle} value={form.address} onChange={e => set("address", e.target.value)} />
+                <input style={errInput("address")} value={form.address} onChange={e => set("address", e.target.value)} />
+                {fieldErr("address")}
               </div>
               <div style={{ ...grid2, marginBottom:12 }}>
                 <div>
                   <label style={labelStyle}>City</label>
-                  <input style={inputStyle} value={form.city} onChange={e => set("city", e.target.value)} />
+                  <input style={errInput("city")} value={form.city} onChange={e => set("city", e.target.value)} />
+                  {fieldErr("city")}
                 </div>
                 <div>
                   <label style={labelStyle}>State / Province</label>
-                  <input style={inputStyle} value={form.state} onChange={e => set("state", e.target.value)} />
+                  <input style={errInput("state")} value={form.state} onChange={e => set("state", e.target.value)} />
+                  {fieldErr("state")}
                 </div>
                 <div>
                   <label style={labelStyle}>Zip / Postal Code</label>
-                  <input style={inputStyle} value={form.zipCode} onChange={e => set("zipCode", e.target.value)} />
+                  <input style={errInput("zipCode")} value={form.zipCode} onChange={e => set("zipCode", e.target.value)} />
+                  {fieldErr("zipCode")}
                 </div>
                 <div>
                   <label style={labelStyle}>Country</label>
-                  <input style={inputStyle} value={form.country} onChange={e => set("country", e.target.value)} />
+                  <input style={errInput("country")} value={form.country} onChange={e => set("country", e.target.value)} />
+                  {fieldErr("country")}
                 </div>
               </div>
 
@@ -621,15 +626,29 @@ export default function EditPropertyModal({ property, onClose }) {
                 {[
                   { key:"bedrooms",   label:"Bedrooms",        min:0 },
                   { key:"bathrooms",  label:"Bathrooms",       min:0 },
-                  { key:"squareFeet", label:"Area (sq ft)",    min:0 },
+                  { key:"squareFeet", label:"Area", min:0 },
                   { key:"parking",    label:"Parking Spaces",  min:0 },
-                  { key:"stories",    label:"Stories",         min:1 },
+                  { key:"stories",    label:"Stories",         min:0 },
                 ].map(({ key, label, min }) => (
                   <div key={key}>
                     <label style={labelStyle}>{label}</label>
-                    <input type="number" min={min} style={inputStyle}
-                      value={form[key]} onChange={e => set(key, e.target.value)}
-                      onWheel={e => e.currentTarget.blur()} />
+                    {key === "squareFeet" ? (
+                      <div style={{ display:"flex", gap:8 }}>
+                        <input type="number" min={min} style={{ ...errInput(key), flex:1 }}
+                          value={form[key]} onChange={e => set(key, e.target.value)}
+                          onWheel={e => e.currentTarget.blur()} />
+                        <select style={{ ...inputStyle, width:110 }}
+                          value={form.areaUnit} onChange={e => set("areaUnit", e.target.value)}>
+                          <option value="sqft">sq ft</option>
+                          <option value="acres">acres</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <input type="number" min={min} style={errInput(key)}
+                        value={form[key]} onChange={e => set(key, e.target.value)}
+                        onWheel={e => e.currentTarget.blur()} />
+                    )}
+                    {fieldErr(key)}
                   </div>
                 ))}
               </div>
@@ -681,9 +700,10 @@ export default function EditPropertyModal({ property, onClose }) {
               </div>
               <div style={{ marginBottom:12 }}>
                 <label style={labelStyle}>Email</label>
-                <input type="email" style={inputStyle} value={form.email}
+                <input type="email" style={errInput("email")} value={form.email}
                   onChange={e => set("email", e.target.value)}
                   placeholder="agent@example.com" />
+                {fieldErr("email")}
               </div>
 
               {/* Error */}

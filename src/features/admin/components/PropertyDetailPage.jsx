@@ -181,7 +181,7 @@ function DetailsTab({ property }) {
           ))}
       </div>
       <div style={{ display:"flex", gap:28, flexWrap:"wrap" }}>
-        {[`${property.bedrooms??property.beds??0} Bedrooms`,`${property.bathrooms??property.baths??0} Bathrooms`,`${property.area??0} sqft`]
+        {[`${property.bedrooms??property.beds??0} Bedrooms`,`${property.bathrooms??property.baths??0} Bathrooms`,`${property.area??0} ${property.areaUnit==="acres"?"acres":"sqft"}`]
           .map(label=><span key={label} style={{ fontSize:13, color:"#475569", fontWeight:600 }}>{label}</span>)}
       </div>
       {property.amenities?.length>0&&(
@@ -256,12 +256,11 @@ function VideosTab({ propertyId, videos = [], onUploadSuccess, onDeleteSuccess, 
   };
 
   const uploadMutation = useMutation({
-    mutationFn: () => {
-      const fd = new FormData();
-      fd.append("video", selectedFile);
-      if (caption.trim()) fd.append("caption", caption.trim());
-      return uploadPropertyVideo(propertyId, fd);
-    },
+    mutationFn: () =>
+      uploadPropertyVideo(propertyId, {
+        file: selectedFile,
+        caption: caption.trim(),
+      }),
     onSuccess: () => { setSelectedFile(null); setCaption(""); onUploadSuccess(); },
     onError: (e) => onError(e?.response?.data?.message || "Video upload failed"),
   });
@@ -335,7 +334,7 @@ function VideosTab({ propertyId, videos = [], onUploadSuccess, onDeleteSuccess, 
       {uploadMutation.isPending && (
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#eef0fb", border:"1px solid #c7cdf4", borderRadius:10, marginBottom:14, fontSize:13, color:"#2D368E", fontWeight:600 }}>
           <div style={{ width:16, height:16, border:"2px solid #2D368E", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
-          Uploading video to Cloudinary…
+          Uploading video…
         </div>
       )}
 
@@ -343,7 +342,7 @@ function VideosTab({ propertyId, videos = [], onUploadSuccess, onDeleteSuccess, 
       {videos.length > 0 ? (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12 }}>
           {videos.map((v, i) => (
-            <div key={v._id || v.publicId || i} style={{ borderRadius:10, overflow:"hidden", border:"1px solid #e2e8f0", background:"#f8fafc" }}>
+            <div key={v._id || v.key || i} style={{ borderRadius:10, overflow:"hidden", border:"1px solid #e2e8f0", background:"#f8fafc" }}>
               <div style={{ position:"relative", aspectRatio:"16/9", background:"#e2e8f0", overflow:"hidden" }}>
                 {v.thumbnail
                   ? <img src={v.thumbnail} alt="video thumbnail" style={{ width:"100%", height:"100%", objectFit:"cover" }} />

@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Upload, X, Plus, Images, Video } from "lucide-react";
-import { createProperty, uploadPropertyVideo } from "../api/propertiesApi";
+import { createProperty, uploadPropertyVideo, MAX_IMAGE_SIZE } from "../api/propertiesApi";
+import { mapApiFieldErrors } from "../utils/propertyFormErrors";
 import PhoneInput from "../components/PhoneInput";
 
 const TYPES = ["apartment","house","villa","townhouse","condo","land","commercial"];
@@ -145,7 +146,7 @@ export default function AddPropertyPage({ onBack }) {
     title:"", description:"", type:"apartment", purpose:"sale",
     price:"", currency:"ZMW", rentFrequency:"monthly",
     address:"", city:"", state:"", zipCode:"", country:"Zambia",
-    bedrooms:"", bathrooms:"", squareFeet:"", parking:"",
+    bedrooms:"", bathrooms:"", squareFeet:"", areaUnit:"sqft", parking:"",
     yearBuilt:"", lotSize:"", stories:"", garage:"",
     isFeatured: false,
     amenities:[],
@@ -164,7 +165,10 @@ export default function AddPropertyPage({ onBack }) {
   const [submitError,     setSubmitError]     = useState("");
   const [videoUploading,  setVideoUploading]  = useState(false);
 
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const set = (key, val) => {
+    setForm(f => ({ ...f, [key]: val }));
+    setErrors(prev => (prev[key] ? { ...prev, [key]: "" } : prev));
+  };
 
   const toggleAmenity = (a) =>
     setForm(f => ({
@@ -174,10 +178,17 @@ export default function AddPropertyPage({ onBack }) {
         : [...f.amenities, a],
     }));
 
+  const IMAGE_MAX_MB = Math.round(MAX_IMAGE_SIZE / (1024 * 1024));
+
   // ── Featured image handler ────────────────────────────────────────────────
   const onFeaturedChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE) {
+      setErrors(prev => ({ ...prev, featured: `Image must be under ${IMAGE_MAX_MB}MB` }));
+      e.target.value = "";
+      return;
+    }
     setFeaturedFile(file);
     setFeaturedPreview(URL.createObjectURL(file));
     setErrors(prev => ({ ...prev, featured: "" }));
@@ -190,13 +201,19 @@ export default function AddPropertyPage({ onBack }) {
     if (!files.length) return;
 
     const remaining = 20 - galleryFiles.length;
-    const toAdd = files.slice(0, remaining).map(file => ({
+    const oversized = files.filter(f => f.size > MAX_IMAGE_SIZE);
+    const valid = files.filter(f => f.size <= MAX_IMAGE_SIZE);
+
+    const toAdd = valid.slice(0, remaining).map(file => ({
       file,
       preview: URL.createObjectURL(file),
       id: `${file.name}-${Date.now()}-${Math.random()}`,
     }));
 
     setGalleryFiles(prev => [...prev, ...toAdd]);
+    if (oversized.length) {
+      setErrors(prev => ({ ...prev, gallery: `${oversized.length} image(s) skipped — each must be under ${IMAGE_MAX_MB}MB` }));
+    }
     e.target.value = "";
   };
 
@@ -246,37 +263,9 @@ export default function AddPropertyPage({ onBack }) {
   };
 
   // ── Mutation ──────────────────────────────────────────────────────────────
-  const KNOWN_FIELDS = new Set([
-    "title","description","type","purpose","rentFrequency",
-    "price","currency",
-    "address","city","state","zipCode","country",
-    "bedrooms","bathrooms","squareFeet","parking","yearBuilt","lotSize","stories","garage",
-    "featured","isFeatured",
-    "phone","whatsapp","email",
-  ]);
-
-  const FIELD_ALIAS = {
-    "location.address": "address", "location.city": "city",
-    "location.state": "state",     "location.zipCode": "zipCode",
-    "location.country": "country",
-    "details.bedrooms": "bedrooms",   "details.bathrooms": "bathrooms",
-    "details.squareFeet": "squareFeet","details.parking": "parking",
-    "details.yearBuilt": "yearBuilt",  "details.lotSize": "lotSize",
-    "details.stories": "stories",      "details.garage": "garage",
-    "images.featured": "featured",
-    "contact.phone": "phone", "contact.whatsapp": "whatsapp", "contact.email": "email",
-  };
-
-  const normalizeFieldKey = (raw = "") => {
-    const dotted = raw
-      .replace(/^body\./, "")
-      .replace(/\[(\w+)\]/g, ".$1");
-    return FIELD_ALIAS[dotted] ?? dotted.split(".").pop();
-  };
-
   const mutation = useMutation({
     // Step 1: only create the property (no video here)
-    mutationFn: (fd) => createProperty(fd),
+    mutationFn: (payload) => createProperty(payload),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["properties"] });
       const propertyId = result?.data?.property?._id;
@@ -285,10 +274,10 @@ export default function AddPropertyPage({ onBack }) {
       if (videoFile && propertyId) {
         setVideoUploading(true);
         try {
-          const vfd = new FormData();
-          vfd.append("video", videoFile);
-          if (videoCaption.trim()) vfd.append("caption", videoCaption.trim());
-          await uploadPropertyVideo(propertyId, vfd);
+          await uploadPropertyVideo(propertyId, {
+            file: videoFile,
+            caption: videoCaption.trim(),
+          });
         } catch {
           setVideoUploading(false);
           setSubmitError("Property created! Video upload failed — upload it from the Edit page.");
@@ -300,46 +289,9 @@ export default function AddPropertyPage({ onBack }) {
       onBack();
     },
     onError: (err) => {
-      const details = err?.response?.data?.error?.details;
-      if (Array.isArray(details) && details.length) {
-        const fieldErrors = {};
-        const unmapped = [];
-        details.forEach((item) => {
-          const raw = item?.field ?? item?.path ?? item?.param ?? "";
-          const msg = item?.message ?? item?.msg ?? "";
-          if (!msg) return;
-          const key = normalizeFieldKey(String(raw));
-          if (KNOWN_FIELDS.has(key)) {
-            fieldErrors[key] = msg;
-          } else {
-            unmapped.push(msg);
-          }
-        });
-        setErrors(prev => ({ ...prev, ...fieldErrors }));
-        const hasHighlighted = Object.keys(fieldErrors).length > 0;
-        setSubmitError(
-          hasHighlighted
-            ? `Please fix the highlighted errors.${unmapped.length ? " " + unmapped.join(" ") : ""}`
-            : unmapped.join(" ") || "Please review and fix the errors below."
-        );
-      } else {
-        const ERROR_MESSAGES = {
-          INVALID_FILE_TYPE:  "One of your images is not a supported format. Please upload JPG, PNG, WebP, or HEIC files only.",
-          FILE_TOO_LARGE:     "One of your images is too large. Please keep each file under 10MB.",
-          TOO_MANY_FILES:     "Too many images uploaded. Maximum is 20 gallery images.",
-          UNAUTHORIZED:       "You don't have permission to create properties.",
-          UNAUTHENTICATED:    "Your session has expired. Please log in again.",
-          DUPLICATE_PROPERTY: "A property with this title already exists.",
-        };
-        const code = err?.response?.data?.error?.details;
-        const friendly = typeof code === "string" ? ERROR_MESSAGES[code] : null;
-        setSubmitError(
-          friendly ||
-          err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          "Something went wrong. Please try again."
-        );
-      }
+      const { fieldErrors, generalMessage } = mapApiFieldErrors(err);
+      setErrors(prev => ({ ...prev, ...fieldErrors }));
+      setSubmitError(generalMessage);
     },
   });
 
@@ -350,50 +302,55 @@ export default function AddPropertyPage({ onBack }) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({}); setSubmitError("");
 
-    const fd = new FormData();
-
-    // Featured image
-    fd.append("featured", featuredFile);
-
-    // Gallery images (max 20)
-    galleryFiles.forEach(({ file }) => fd.append("gallery", file));
-
     // Basic
-    fd.append("title",       form.title.trim());
-    fd.append("description", form.description.trim());
-    fd.append("type",        form.type);
-    fd.append("purpose",     form.purpose);
-    fd.append("price",       Number(form.price));
-    fd.append("currency",    form.currency);
-    fd.append("featured",    String(form.isFeatured));
-    if (form.purpose === "rent") fd.append("rentFrequency", form.rentFrequency);
+    const body = {
+      title:       form.title.trim(),
+      description: form.description.trim(),
+      type:        form.type,
+      purpose:     form.purpose,
+      price:       Number(form.price),
+      currency:    form.currency,
+      featured:    Boolean(form.isFeatured),
+    };
+    if (form.purpose === "rent") body.rentFrequency = form.rentFrequency;
 
-    // Location — bracket notation
-    fd.append("location[address]", form.address.trim());
-    fd.append("location[city]",    form.city.trim());
-    fd.append("location[country]", form.country.trim());
-    if (form.state)   fd.append("location[state]",   form.state.trim());
-    if (form.zipCode) fd.append("location[zipCode]", form.zipCode.trim());
+    // Location
+    body.location = {
+      address: form.address.trim(),
+      city:    form.city.trim(),
+      country: form.country.trim(),
+    };
+    if (form.state)   body.location.state   = form.state.trim();
+    if (form.zipCode) body.location.zipCode = form.zipCode.trim();
 
-    // Details — bracket notation
-    if (form.bedrooms   !== "") fd.append("details[bedrooms]",   Number(form.bedrooms));
-    if (form.bathrooms  !== "") fd.append("details[bathrooms]",  Number(form.bathrooms));
-    if (form.squareFeet !== "") fd.append("details[squareFeet]", Number(form.squareFeet));
-    if (form.parking    !== "") fd.append("details[parking]",    Number(form.parking));
-    if (form.yearBuilt  !== "") fd.append("details[yearBuilt]",  Number(form.yearBuilt));
-    if (form.lotSize    !== "") fd.append("details[lotSize]",    Number(form.lotSize));
-    if (form.stories    !== "") fd.append("details[stories]",    Number(form.stories));
-    if (form.garage     !== "") fd.append("details[garage]",     Number(form.garage));
+    // Details
+    const details = {};
+    if (form.bedrooms   !== "") details.bedrooms   = Number(form.bedrooms);
+    if (form.bathrooms  !== "") details.bathrooms  = Number(form.bathrooms);
+    if (form.squareFeet !== "") details.squareFeet = Number(form.squareFeet);
+    if (form.parking    !== "") details.parking    = Number(form.parking);
+    if (form.yearBuilt  !== "") details.yearBuilt  = Number(form.yearBuilt);
+    if (form.lotSize    !== "") details.lotSize    = Number(form.lotSize);
+    if (form.stories    !== "") details.stories    = Number(form.stories);
+    if (form.garage     !== "") details.garage     = Number(form.garage);
+    details.areaUnit = form.areaUnit || "sqft";
+    body.details = details;
 
     // Amenities
-    form.amenities.forEach((a) => fd.append("amenities", a));
+    body.amenities = form.amenities;
 
     // Contact
-    if (form.whatsapp.trim()) fd.append("contact[whatsapp]", `${form.whatsappCode}${form.whatsapp.trim()}`);
-    if (form.phone.trim())    fd.append("contact[phone]",    `${form.phoneCode}${form.phone.trim()}`);
-    if (form.email.trim())    fd.append("contact[email]",    form.email.trim());
+    const contact = {};
+    if (form.whatsapp.trim()) contact.whatsapp = `${form.whatsappCode}${form.whatsapp.trim()}`;
+    if (form.phone.trim())    contact.phone    = `${form.phoneCode}${form.phone.trim()}`;
+    if (form.email.trim())    contact.email    = form.email.trim();
+    if (Object.keys(contact).length) body.contact = contact;
 
-    mutation.mutate(fd);
+    mutation.mutate({
+      body,
+      featuredFile,
+      galleryFiles: galleryFiles.map(({ file }) => file),
+    });
   };
 
   const fieldErr = (key) =>
@@ -443,7 +400,8 @@ export default function AddPropertyPage({ onBack }) {
             <div style={grid3}>
               <div>
                 <label style={labelStyle}>Type *</label>
-                <select style={inputStyle} value={form.type} onChange={e => set("type", e.target.value)}>
+                <select style={inputStyle} value={form.type}
+                  onChange={e => { const t = e.target.value; set("type", t); set("areaUnit", t === "land" ? "acres" : "sqft"); }}>
                   {TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
                 </select>
               </div>
@@ -456,12 +414,14 @@ export default function AddPropertyPage({ onBack }) {
               </div>
               {form.purpose === "rent" && (
                 <div>
-                  <label style={labelStyle}>Rent Frequency</label>
-                  <select style={inputStyle} value={form.rentFrequency} onChange={e => set("rentFrequency", e.target.value)}>
+                  <label style={labelStyle}>Rent Frequency *</label>
+                  <select style={{ ...inputStyle, borderColor: errors.rentFrequency?"#fca5a5":"#e2e8f0" }}
+                    value={form.rentFrequency} onChange={e => set("rentFrequency", e.target.value)}>
                     {["monthly","yearly","weekly","daily"].map(f => (
                       <option key={f} value={f}>{f.charAt(0).toUpperCase()+f.slice(1)}</option>
                     ))}
                   </select>
+                  {fieldErr("rentFrequency")}
                 </div>
               )}
             </div>
@@ -538,18 +498,33 @@ export default function AddPropertyPage({ onBack }) {
               {[
                 { key:"bedrooms",   label:"Bedrooms",       min:0, isRequired: RESIDENTIAL_TYPES.has(form.type) },
                 { key:"bathrooms",  label:"Bathrooms",      min:0, isRequired: RESIDENTIAL_TYPES.has(form.type) },
-                { key:"squareFeet", label:"Area (sq ft)",   min:0, isRequired: false },
+                { key:"squareFeet", label:"Area", min:0, isRequired: false },
                 { key:"parking",    label:"Parking Spaces", min:0, isRequired: false },
-                { key:"stories",    label:"Stories",        min:1, isRequired: false },
+                { key:"stories",    label:"Stories",        min:0, isRequired: false },
               ].map(({ key, label, min, isRequired }) => (
                 <div key={key}>
                   <label style={labelStyle}>{label} {isRequired && <span style={{ color:"#dc2626" }}>*</span>}</label>
-                  <input type="number" min={min}
-                    style={{ ...inputStyle, borderColor: errors[key]?"#fca5a5":"#e2e8f0" }}
-                    value={form[key]}
-                    onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]:"" })); }}
-                    onWheel={e => e.currentTarget.blur()}
-                    placeholder={key === "yearBuilt" ? "e.g. 2018" : "0"} />
+                  {key === "squareFeet" ? (
+                    <div style={{ display:"flex", gap:8 }}>
+                      <input type="number" min={min}
+                        style={{ ...inputStyle, borderColor: errors[key]?"#fca5a5":"#e2e8f0", flex:1 }}
+                        value={form[key]}
+                        onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]:"" })); }}
+                        onWheel={e => e.currentTarget.blur()} placeholder="0" />
+                      <select style={{ ...inputStyle, width:120 }}
+                        value={form.areaUnit} onChange={e => set("areaUnit", e.target.value)}>
+                        <option value="sqft">sq ft</option>
+                        <option value="acres">acres</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <input type="number" min={min}
+                      style={{ ...inputStyle, borderColor: errors[key]?"#fca5a5":"#e2e8f0" }}
+                      value={form[key]}
+                      onChange={e => { set(key, e.target.value); setErrors(prev => ({ ...prev, [key]:"" })); }}
+                      onWheel={e => e.currentTarget.blur()}
+                      placeholder={key === "yearBuilt" ? "e.g. 2018" : "0"} />
+                  )}
                   {errors[key] && <span style={{ fontSize:11, color:"#b91c1c", marginTop:3, display:"block" }}>{errors[key]}</span>}
                 </div>
               ))}
@@ -708,6 +683,7 @@ export default function AddPropertyPage({ onBack }) {
                 Maximum 20 gallery images reached
               </p>
             )}
+            {fieldErr("gallery")}
           </div>
 
           {/* ── Property Video (optional) ── */}

@@ -1,23 +1,26 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Eye, EyeOff, CheckCircle2, AlertTriangle } from "lucide-react";
-import useResetPassword from "../hooks/useResetPassword";
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import useResetPassword from '../hooks/useResetPassword';
 
 export default function ResetPasswordForm() {
   const { token } = useParams();
   const navigate = useNavigate();
 
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [matchError, setMatchError] = useState("");
+  const [matchError, setMatchError] = useState('');
 
   const mutation = useResetPassword();
 
   useEffect(() => {
     if (mutation.isSuccess) {
-      const timer = setTimeout(() => navigate("/auth", { replace: true }), 2000);
+      const timer = setTimeout(
+        () => navigate('/auth', { replace: true }),
+        2000,
+      );
       return () => clearTimeout(timer);
     }
   }, [mutation.isSuccess, navigate]);
@@ -29,9 +32,12 @@ export default function ResetPasswordForm() {
           <AlertTriangle className="w-7 h-7 text-amber-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Invalid reset link</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">
+            Invalid reset link
+          </h4>
           <p className="text-sm text-[#64748B]">
-            This password reset link is missing or invalid. Please request a new one.
+            This password reset link is missing or invalid. Please request a new
+            one.
           </p>
         </div>
         <Link
@@ -51,7 +57,9 @@ export default function ResetPasswordForm() {
           <CheckCircle2 className="w-7 h-7 text-green-500" />
         </div>
         <div>
-          <h4 className="text-base font-semibold text-[#2D368E] mb-1">Password reset!</h4>
+          <h4 className="text-base font-semibold text-[#2D368E] mb-1">
+            Password reset!
+          </h4>
           <p className="text-sm text-[#64748B]">
             Your password has been updated. Redirecting you to login…
           </p>
@@ -63,28 +71,33 @@ export default function ResetPasswordForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setMatchError("Passwords do not match.");
+      setMatchError('Passwords do not match.');
       return;
     }
-    setMatchError("");
+    setMatchError('');
     mutation.mutate({ token, newPassword });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5"
+    >
       <p className="text-sm text-[#64748B] -mt-2">
         Choose a strong new password for your account.
       </p>
 
       {/* New Password */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#2D368E]">New Password</label>
+        <label className="text-sm font-medium text-[#2D368E]">
+          New Password
+        </label>
         <div className="relative">
           <input
-            type={showNew ? "text" : "password"}
+            type={showNew ? 'text' : 'password'}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Enter Your New Password"
             required
             minLength={8}
             className="h-11 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 pr-12 text-sm outline-none transition focus:border-[#1A2744] focus:ring-2 focus:ring-[#1A2744]/20"
@@ -101,13 +114,15 @@ export default function ResetPasswordForm() {
 
       {/* Confirm Password */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-[#2D368E]">Confirm Password</label>
+        <label className="text-sm font-medium text-[#2D368E]">
+          Confirm Password
+        </label>
         <div className="relative">
           <input
-            type={showConfirm ? "text" : "password"}
+            type={showConfirm ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Confirm Your New Password"
             required
             className="h-11 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 pr-12 text-sm outline-none transition focus:border-[#1A2744] focus:ring-2 focus:ring-[#1A2744]/20"
           />
@@ -121,21 +136,20 @@ export default function ResetPasswordForm() {
         </div>
       </div>
 
-      {matchError && (
-        <p className="text-red-500 text-sm">{matchError}</p>
-      )}
+      {matchError && <p className="text-red-500 text-sm">{matchError}</p>}
 
       <button
         type="submit"
         disabled={mutation.isPending}
         className="w-full h-11 bg-[#1A2744] text-white rounded-lg text-sm font-semibold hover:bg-[#1A2744]/90 active:scale-[0.98] transition-all"
       >
-        {mutation.isPending ? "Resetting..." : "Reset Password"}
+        {mutation.isPending ? 'Resetting...' : 'Reset Password'}
       </button>
 
       {mutation.isError && (
         <p className="text-red-500 text-sm text-center">
-          {mutation.error?.response?.data?.message || "Reset failed. The link may have expired."}
+          {mutation.error?.response?.data?.message ||
+            'Reset failed. The link may have expired.'}
         </p>
       )}
     </form>

@@ -850,7 +850,7 @@ export default function PropertiesPage() {
                 </span>
               ) : null}
               <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <AreaIcon /> {property.area} sqm
+                <AreaIcon /> {property.area} {property.areaUnit === "acres" ? "acres" : "sqft"}
               </span>
             </div>
           );
@@ -946,6 +946,7 @@ export default function PropertiesPage() {
         />
         {editingProperty && (
           <EditPropertyModal
+            key={editingProperty.id}
             property={editingProperty}
             onClose={() => setEditingProperty(null)}
           />
