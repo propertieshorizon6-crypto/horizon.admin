@@ -30,7 +30,7 @@ export default function useLogin() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       const authData = data?.data || {};
       const user = authData.user ?? {};
       if (!user.name && (user.firstName || user.lastName)) {

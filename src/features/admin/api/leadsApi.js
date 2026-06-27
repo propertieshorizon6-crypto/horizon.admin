@@ -30,7 +30,7 @@ const API_TO_UI_PRIORITY = {
   urgent: 'Urgent',
 };
 
-const UI_TO_API_PRIORITY = {
+export const UI_TO_API_PRIORITY = {
   Low: 'low',
   Medium: 'medium',
   High: 'high',

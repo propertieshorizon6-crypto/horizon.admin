@@ -11,7 +11,7 @@ import {
 import { Search, ChevronDown, LayoutList, LayoutGrid, Mail, Phone, Building2 } from "lucide-react";
 
 import useLeads            from "../hooks/useLeads";
-import { updateLeadPriority, assignLead, updateLeadStatus, archiveLead, unarchiveLead, UI_TO_API_STATUS } from "../api/leadsApi";
+import { updateLeadPriority, assignLead, updateLeadStatus, archiveLead, unarchiveLead, UI_TO_API_STATUS, UI_TO_API_PRIORITY } from "../api/leadsApi";
 import {
   fetchUsers,
   MOCK_MODE as USERS_MOCK_MODE,
@@ -65,7 +65,7 @@ export default function LeadsPage() {
   // Any server-driven filter change resets to the first page.
   useEffect(() => {
     setPage(1);
-  }, [activeTab, debouncedSearch, agentFilter, sourceFilter]);
+  }, [activeTab, debouncedSearch, agentFilter, sourceFilter, priorityFilter]);
 
   // ── "Load all" query: powers Kanban, tab counts, DnD, and optimistic updates ──
   const ALL_PARAMS = useMemo(() => ({ archived: "all", limit: 1000 }), []);
@@ -80,8 +80,9 @@ export default function LeadsPage() {
     if (debouncedSearch)               p.search = debouncedSearch;
     if (agentFilter)                   p.agentId = agentFilter;
     if (SOURCE_TO_API[sourceFilter])   p.source = SOURCE_TO_API[sourceFilter];
+    if (priorityFilter)                p.priority = UI_TO_API_PRIORITY[priorityFilter] ?? priorityFilter.toLowerCase();
     return p;
-  }, [page, activeTab, debouncedSearch, agentFilter, sourceFilter]);
+  }, [page, activeTab, debouncedSearch, agentFilter, sourceFilter, priorityFilter]);
 
   const { data: tableData, isFetching: isTableFetching } = useLeads(tableParams, { enabled: view === "table" });
   const tableLeads = tableData?.leads ?? [];
@@ -252,14 +253,9 @@ export default function LeadsPage() {
     }, {})
   ), [leads]);
 
-  // Table view: status/search/agent/archived/source/pagination are server-side.
-  // Priority has no API param, so it refines the current page client-side.
-  const tableRows = useMemo(() => (
-    tableLeads.filter((l) => {
-      if (priorityFilter && l.priority !== priorityFilter) return false;
-      return true;
-    })
-  ), [tableLeads, priorityFilter]);
+  // Table view: status/search/agent/archived/source/priority/pagination are all
+  // server-side, so the rows come straight from the paginated query.
+  const tableRows = tableLeads;
 
   // Kanban view: all filtering stays client-side over the full lead set.
   const filteredData = useMemo(() => {

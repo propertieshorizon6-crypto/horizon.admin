@@ -180,7 +180,7 @@ function OverviewTab({ user, onViewAssignedProperties }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8">
               <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
             </svg>
-            {user.assignedProperties ?? 0} properties assigned
+            {user.assignedProperties ?? 0} active listings
           </span>
           <button
             type="button"
@@ -479,7 +479,7 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
   } = useQuery({
     queryKey: ["admin-user-assigned-properties", user?.id, user?.name],
     queryFn: async () => {
-      const properties = await fetchProperties({ page: 1, limit: 200 });
+      const { properties } = await fetchProperties({ agentId: user.id, page: 1, limit: 100 });
       return properties.filter((property) => isPropertyAssignedToUser(property, user));
     },
     enabled: shouldFetchAssignedProperties,

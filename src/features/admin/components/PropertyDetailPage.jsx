@@ -432,21 +432,29 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
                   || mappedStatus === "rejected"
                   || approvalStatus === "rejected";
 
-  if (!isPending && !isActive && !isInactive && !isRejected) return null;
+  // Collapse to a single state with priority so conflicting buttons never co-render
+  // (e.g. a draft-pending property must not show Approve&Publish AND Republish).
+  const state = isPending ? "pending"
+              : isActive  ? "active"
+              : isRejected ? "rejected"
+              : isInactive ? "inactive"
+              : null;
+
+  if (!state) return null;
 
   return (
     <div style={{ background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:"16px 20px", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
       <div>
         <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#000000" }}>Admin Actions</p>
         <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>
-          {isPending  && "This property is awaiting your approval"}
-          {isActive   && "This property is currently live and visible to users"}
-          {isInactive && "This property is currently hidden"}
-          {isRejected && "This property has been rejected"}
+          {state === "pending"  && "This property is awaiting your approval"}
+          {state === "active"   && "This property is currently live and visible to users"}
+          {state === "inactive" && "This property is currently hidden"}
+          {state === "rejected" && "This property has been rejected"}
         </p>
       </div>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-        {isPending && (
+        {state === "pending" && (
           <>
             <button type="button" onClick={onReject} disabled={isLoading}
               style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"1px solid #fecaca", background:"#fef2f2", color:"#dc2626", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
@@ -458,7 +466,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
             </button>
           </>
         )}
-        {isActive && (
+        {state === "active" && (
           <>
             <button type="button" onClick={onMarkSold} disabled={isLoading}
               style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"1px solid #bbf7d0", background:"#dcfce7", color:"#15803d", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
@@ -470,7 +478,7 @@ function AdminActionBar({ property, onApprove, onReject, onUnpublish, onRepublis
             </button>
           </>
         )}
-        {(isInactive||isRejected) && (
+        {(state === "inactive" || state === "rejected") && (
           <button type="button" onClick={onRepublish} disabled={isLoading}
             style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 18px", borderRadius:9, border:"none", background:"#2D368E", color:"#fff", fontSize:13, fontWeight:700, cursor:isLoading?"not-allowed":"pointer", opacity:isLoading?0.6:1 }}>
             <Eye size={15}/> Republish

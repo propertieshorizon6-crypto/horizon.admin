@@ -13,12 +13,11 @@ import {
 function StatusBadge({ status }) {
   const map = {
     Requested: { bg: "#dbeafe", color: "#1d4ed8" },
-    Proposed:  { bg: "#f1f5f9", color: "#475569"  },
     Confirmed: { bg: "#dcfce7", color: "#15803d"  },
     Completed: { bg: "#dcfce7", color: "#15803d"  },
     Cancelled: { bg: "#fee2e2", color: "#dc2626"  },
   };
-  const s = map[status] ?? map.Proposed;
+  const s = map[status] ?? map.Requested;
   return (
     <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:99, background:s.bg, color:s.color }}>
       {status}
@@ -61,7 +60,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
-      <div style={{ background:"#fff", borderRadius:16, padding:24, width:380, boxShadow:"0 20px 60px rgba(0,0,0,0.15)" }}
+      <div style={{ background:"#fff", borderRadius:16, padding:24, width:380, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.15)" }}
         onClick={(e)=>e.stopPropagation()}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
           <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:"#000000" }}>Propose Schedule</h3>
@@ -85,7 +84,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
         <div style={{ display:"flex", gap:8, marginTop:20 }}>
           <button onClick={onClose} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:10, fontSize:13, fontWeight:600, color:"#475569", background:"#fff", cursor:"pointer" }}>Cancel</button>
           <button onClick={() => onConfirm(slots.filter(Boolean))} disabled={!slots[0]}
-            style={{ flex:1, padding:"10px", border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", background:slots[0]?"#2D368E":"#e2e8f0", cursor:slots[0]?"pointer":"not-allowed" }}>
+            style={{ flex:1, padding:"10px", border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:slots[0]?"#fff":"#94a3b8", background:slots[0]?"#2D368E":"#e2e8f0", cursor:slots[0]?"pointer":"not-allowed" }}>
             Send Proposal
           </button>
         </div>
@@ -95,7 +94,7 @@ function ProposeScheduleModal({ onConfirm, onClose }) {
 }
 
 // ── Cancel Confirm Modal ──────────────────────────────────────────────────────
-function CancelConfirmModal({ tourId, onConfirm, onClose }) {
+function CancelConfirmModal({ onConfirm, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
@@ -138,7 +137,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
     if (!tour || isSubmitting) return;
     setIsSubmitting(true);
     try { await fn(); }
-    catch (err) { showError(err?.response?.data?.message || err?.message || "Unable to update tour."); }
+    catch (err) { showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || "Unable to update tour."); }
     finally { setIsSubmitting(false); }
   };
 
@@ -156,7 +155,7 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
         preferredTime,
         reason: "Schedule proposed from admin panel",
       });
-      onUpdate({ ...updatedTour, proposedSlots: slots, status: "Proposed" });
+      onUpdate({ ...updatedTour, proposedSlots: slots });
       setShowSchedule(false);
       showSuccess("Schedule proposed successfully");
     });
@@ -329,12 +328,16 @@ export default function TourDetailDrawer({ tour, onClose, onUpdate }) {
                 <CheckCircle size={15}/> Mark Confirmed
               </button>
 
-              {/* Mark Completed */}
-              <button onClick={handleComplete}
-                disabled={isSubmitting || ["Completed","Cancelled"].includes(tour.status)}
-                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"9px", border:"none", borderRadius:11, fontSize:13, fontWeight:600, color:isSubmitting||["Completed","Cancelled"].includes(tour.status)?"#cbd5e1":"#475569", background:"transparent", cursor:isSubmitting||["Completed","Cancelled"].includes(tour.status)?"not-allowed":"pointer" }}>
-                Mark Completed
-              </button>
+              {/* Mark Completed — only a confirmed tour can be completed */}
+              {(() => {
+                const canComplete = !isSubmitting && tour.status === "Confirmed";
+                return (
+                  <button onClick={handleComplete} disabled={!canComplete}
+                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"11px", border:`1.5px solid ${canComplete?"#bbf7d0":"#e2e8f0"}`, borderRadius:11, fontSize:13, fontWeight:700, color:canComplete?"#15803d":"#94a3b8", background:"#fff", cursor:canComplete?"pointer":"not-allowed" }}>
+                    <CheckCircle size={15}/> Mark Completed
+                  </button>
+                );
+              })()}
 
               {/* Cancel Tour */}
               <button onClick={() => setShowCancel(true)}

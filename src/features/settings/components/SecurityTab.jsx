@@ -75,7 +75,7 @@ export default function SecurityTab() {
         )}
         {mutation.isSuccess && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-600">
-            <Tick /> Password updated successfully.
+            Password updated successfully.
           </div>
         )}
 

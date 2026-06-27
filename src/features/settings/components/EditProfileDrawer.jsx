@@ -16,17 +16,21 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
   });
   const [error, setError] = useState('');
 
-  // Sync form when drawer opens
-  useEffect(() => {
+  // Sync the form and clear the error when the drawer opens — done during render
+  // (React's "reset state when a prop changes" pattern) rather than in an effect,
+  // which avoids the cascading setState-in-effect warning.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
     if (isOpen) {
-      // setForm({
-      //   firstName: user?.firstName ?? '',
-      //   lastName: user?.lastName ?? '',
-      //   phone: user?.phone ?? '',
-      // });
-      // setError('');
+      setForm({
+        firstName: user?.firstName ?? '',
+        lastName: user?.lastName ?? '',
+        phone: user?.phone ?? '',
+      });
+      setError('');
     }
-  }, [isOpen, user]);
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -58,6 +62,14 @@ export default function EditProfileDrawer({ isOpen, onClose }) {
       setError(detail ?? fallback);
     },
   });
+
+  // Clear any prior save result when the drawer opens so the Save button returns to its
+  // normal state instead of staying "Saved!"/disabled (reset() syncs react-query, an
+  // external system — a valid effect use).
+  useEffect(() => {
+    if (isOpen) mutation.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Normalize phone to E.164 — strips spaces/dashes/parens, keeps leading +
   const normalizePhone = (raw) => raw.replace(/[\s\-().]/g, '');
