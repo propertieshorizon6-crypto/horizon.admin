@@ -751,6 +751,7 @@ export default function PropertiesPage() {
   const clearSelection = () => setSelectedIds(new Set());
   const [bulkModal, setBulkModal] = useState(null); // { action } | null
   const [bulkReason, setBulkReason] = useState("");
+  const [bulkErrors, setBulkErrors] = useState(null); // { action, failed: [{ id, title, message }] } | null
   const [fbPostBatchId, setFbPostBatchId] = useState(null); // FB posting progress dialog
   const [pendingPage, setPendingPage] = useState(null); // page-change confirm target
 
@@ -867,6 +868,8 @@ export default function PropertiesPage() {
         failed ? "error" : "success",
         `${ok} ${BULK_PAST[action]}${failed ? `, ${failed} skipped` : ""}`,
       );
+      // Surface which properties failed and why (e.g. missing image/url, validation).
+      setBulkErrors(failed ? { action, failed: result.failed } : null);
       setBulkModal(null);
       setBulkReason("");
       // If approve queued Facebook posts, open the live progress dialog.
@@ -1210,6 +1213,39 @@ export default function PropertiesPage() {
           batchId={fbPostBatchId}
           onClose={() => setFbPostBatchId(null)}
         />
+      )}
+
+      {bulkErrors && (
+        <div
+          onClick={() => setBulkErrors(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 480, background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#000" }}>
+              {bulkErrors.failed.length} propert{bulkErrors.failed.length === 1 ? "y" : "ies"} couldn’t be {BULK_PAST[bulkErrors.action]}
+            </h3>
+            <p style={{ margin: "6px 0 14px", fontSize: 13, color: "#64748b" }}>
+              These were skipped — fix the issue below and try again.
+            </p>
+            <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {bulkErrors.failed.map((f) => (
+                <div key={f.id} style={{ border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 10, padding: "10px 12px" }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>
+                    {f.title || `Property ${String(f.id).slice(-6)}`}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#b91c1c" }}>{f.message}</p>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={() => setBulkErrors(null)}
+                style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#475569" }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {bulkModal && (
