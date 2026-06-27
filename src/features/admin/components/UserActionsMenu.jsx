@@ -82,7 +82,7 @@ export default function UserActionsMenu({
   const roleKey = String(currentUserRole || "").toLowerCase();
   const isAdmin = roleKey === "admin";
   const isSelf = Boolean(currentUserId) && String(currentUserId) === String(user?.id);
-  const canVerifyAgent = user?.role === "Agent" && !isSelf;
+  const canVerifyAgent = user?.role === "Agent" && !isSelf && !user?.isVerified;
 
   const actionCount = useMemo(
     () =>

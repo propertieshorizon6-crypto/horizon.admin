@@ -7,6 +7,8 @@ import {
   removeGalleryImage,
   uploadPropertyVideo,
   deletePropertyVideo,
+  MAX_IMAGE_SIZE,
+  MAX_VIDEO_SIZE,
 } from "../api/propertiesApi";
 import { mapApiFieldErrors } from "../utils/propertyFormErrors";
 import PhoneInput from "./PhoneInput";
@@ -40,6 +42,10 @@ const CURRENCIES = [
   { code:"AUD", name:"Australian Dollar"      },
   { code:"CAD", name:"Canadian Dollar"        },
 ];
+
+const IMAGE_MB = Math.round(MAX_IMAGE_SIZE / (1024 * 1024));
+const VIDEO_MB = Math.round(MAX_VIDEO_SIZE / (1024 * 1024));
+const RESIDENTIAL_TYPES = new Set(["apartment", "house", "villa", "townhouse", "condo"]);
 
 const formatAmenity = (a) =>
   a.replace(/([A-Z])/g," $1").replace(/[-_]/g," ").trim()
@@ -199,7 +205,13 @@ function MediaTab({ property: initialProperty, onMutation }) {
         }
         <div>
           <input ref={featuredInputRef} type="file" accept="image/*" style={{ display:"none" }}
-            onChange={(e) => { if (e.target.files?.[0]) featuredMutation.mutate(e.target.files[0]); e.target.value=""; }} />
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              if (file.size > MAX_IMAGE_SIZE) { showToast("error", `Image must be under ${IMAGE_MB}MB`); return; }
+              featuredMutation.mutate(file);
+            }} />
           <button type="button" disabled={anyPending}
             onClick={() => featuredInputRef.current?.click()}
             style={{ padding:"8px 16px", borderRadius:8, border:"1px solid #2D368E",
@@ -243,11 +255,13 @@ function MediaTab({ property: initialProperty, onMutation }) {
       <div style={{ marginBottom:20 }}>
         <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display:"none" }}
           onChange={(e) => {
-            if (e.target.files?.length) {
-              const snapshot = Array.from(e.target.files);
-              e.target.value = "";
-              galleryAddMutation.mutate(snapshot);
-            }
+            const picked = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            if (!picked.length) return;
+            const valid = picked.filter((f) => f.size <= MAX_IMAGE_SIZE);
+            const oversized = picked.length - valid.length;
+            if (oversized > 0) showToast("error", `${oversized} image(s) skipped — each must be under ${IMAGE_MB}MB`);
+            if (valid.length) galleryAddMutation.mutate(valid);
           }} />
         <button type="button" disabled={anyPending || (property.galleryImages?.length ?? 0) >= 20}
           onClick={() => galleryInputRef.current?.click()}
@@ -326,7 +340,13 @@ function MediaTab({ property: initialProperty, onMutation }) {
       ) : (
         <div>
           <input ref={videoInputRef} type="file" accept="video/*" style={{ display:"none" }}
-            onChange={(e) => { if (e.target.files?.[0]) { setPendingVideo(e.target.files[0]); setVideoCaption(""); } e.target.value=""; }} />
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              if (file.size > MAX_VIDEO_SIZE) { showToast("error", `Video must be under ${VIDEO_MB}MB`); return; }
+              setPendingVideo(file); setVideoCaption("");
+            }} />
           <button type="button" disabled={anyPending}
             onClick={() => videoInputRef.current?.click()}
             style={{ padding:"8px 16px", borderRadius:8, border:"1px solid #2D368E",
@@ -395,10 +415,29 @@ export default function EditPropertyModal({ property, onClose }) {
     },
   });
 
+  // Client-side checks mirroring the create form + editPropertySchema, limited to
+  // the fields the Details tab actually renders.
+  const validate = () => {
+    const er = {};
+    if (!form.title.trim())                        er.title       = "Title is required";
+    else if (form.title.trim().length < 5)         er.title       = "Title must be at least 5 characters";
+    if (!form.description.trim())                  er.description = "Description is required";
+    else if (form.description.trim().length < 20)  er.description = "Description must be at least 20 characters";
+    if (form.price === "" || isNaN(Number(form.price)) || Number(form.price) < 0) er.price = "Valid price is required";
+    if (RESIDENTIAL_TYPES.has(form.type)) {
+      if (form.bedrooms  === "" || isNaN(Number(form.bedrooms)))  er.bedrooms  = "Bedrooms is required for this property type";
+      if (form.bathrooms === "" || isNaN(Number(form.bathrooms))) er.bathrooms = "Bathrooms is required for this property type";
+    }
+    return er;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitError("");
     setFieldErrors({});
+
+    const errs = validate();
+    if (Object.keys(errs).length) { setFieldErrors(errs); return; }
 
     const num = (v) => (v !== "" && v !== undefined ? Number(v) : undefined);
     const str = (v) => (v?.trim() ? v.trim() : undefined);

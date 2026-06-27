@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export const COUNTRY_CODES = [
+const COUNTRY_CODES = [
   { code:"+260", flag:"🇿🇲", name:"Zambia"               },
   { code:"+263", flag:"🇿🇼", name:"Zimbabwe"             },
   { code:"+27",  flag:"🇿🇦", name:"South Africa"         },

@@ -101,7 +101,6 @@ const mapProperty = (property = {}) => {
   const galleryCount = Array.isArray(property.images?.gallery) ? property.images.gallery.length : 0;
   const photoCount   = (hasFeatured ? 1 : 0) + galleryCount;
   const issues       = [];
-  if (!hasFeatured)       issues.push("Missing featured image");
   if (galleryCount === 0) issues.push("No gallery images");
   const location     = [property.location?.city, property.location?.state].filter(Boolean).join(", ");
   const agentName    = formatName(property.agent);
@@ -284,6 +283,26 @@ export const assignPropertyAgent = async (propertyId, agentId = null) => {
   );
   const property = data?.data?.property;
   return property ? mapProperty(property) : null;
+};
+
+// POST /api/v1/admin/properties/bulk
+// action: "approve" | "reject" | "archive"; reason required for "reject"
+export const bulkUpdateProperties = async (action, ids, reason) => {
+  const { data } = await apiClient.post("/admin/properties/bulk", {
+    action,
+    ids,
+    ...(reason ? { reason } : {}),
+  });
+  return data?.data ?? { succeeded: [], failed: [] };
+};
+
+// GET /api/v1/admin/properties/fb-post-status?batchId=&page=&limit=
+// Polls the progress of the background Facebook-posting batch from a bulk approve.
+export const fetchBulkPostStatus = async (batchId, params = {}) => {
+  const { data } = await apiClient.get("/admin/properties/fb-post-status", {
+    params: { batchId, ...params },
+  });
+  return data?.data ?? { jobs: [], counts: {}, pagination: { total: 0 } };
 };
 
 // POST /api/v1/admin/properties/:id/approve

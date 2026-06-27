@@ -1,7 +1,6 @@
 // 📁 src/features/dashboard/components/OperationalQueue.jsx
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -18,9 +17,7 @@ import {
   User,
   Clock,
 } from 'lucide-react';
-import { assignTourAgent } from '../../admin/api/tourRequestsApi';
 import {
-  fetchUsers,
   MOCK_MODE as USERS_MOCK_MODE,
   MOCK_USERS,
 } from '../../admin/api/usersApi';

@@ -24,8 +24,7 @@ import TourDetailDrawer from "../components/TourDetailDrawer";
 const PAGE_SIZE = 20;
 const EMPTY = [];
 
-// UI status label → backend status (mapTour produces these labels). "Proposed"
-// has no backend equivalent, so it's left for the client-side refinement only.
+// UI status label → backend status (mapTour produces these labels).
 const STATUS_TO_API = {
   Requested: "pending",
   Confirmed: "confirmed",
@@ -51,12 +50,11 @@ function VisitBadge({ type }) {
 function StatusBadge({ status }) {
   const styles = {
     "Requested": { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" },
-    "Proposed":  { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
     "Confirmed": { bg: "transparent", color: "#16a34a", border: "transparent" },
     "Completed": { bg: "transparent", color: "#16a34a", border: "transparent" },
     "Cancelled": { bg: "#fef2f2", color: "#dc2626", border: "#fecaca" },
   };
-  const s = styles[status] ?? styles["Proposed"];
+  const s = styles[status] ?? styles["Requested"];
   return (
     <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, whiteSpace: "nowrap", background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
       {status}
@@ -277,7 +275,7 @@ export default function TourRequestsPage() {
           />
         </div>
         {[
-          { value: statusFilter, set: setStatusFilter, label: "All Status",  opts: ["Requested","Proposed","Confirmed","Completed","Cancelled"] },
+          { value: statusFilter, set: setStatusFilter, label: "All Status",  opts: ["Requested","Confirmed","Completed","Cancelled"] },
           { value: typeFilter,   set: setTypeFilter,   label: "All Types",   opts: ["virtual","physical"] },
         ].map(({ value, set, label, opts }) => (
           <div key={label} style={{ position: "relative" }}>

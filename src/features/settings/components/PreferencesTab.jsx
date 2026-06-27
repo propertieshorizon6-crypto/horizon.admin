@@ -1,6 +1,6 @@
 // 📁 src/features/settings/components/PreferencesTab.jsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { updateNotificationPrefs } from '../api/settingsApi';
@@ -49,17 +49,6 @@ export default function PreferencesTab() {
     email: user?.notificationPreferences?.email ?? true,
     push: user?.notificationPreferences?.push ?? false,
   });
-
-  // Keep in sync if user changes (e.g. profile refresh)
-  useEffect(() => {
-    if (user?.notificationPreferences) {
-      // setPrefs({
-      //   inApp: user.notificationPreferences.inApp ?? true,
-      //   email: user.notificationPreferences.email ?? true,
-      //   push: user.notificationPreferences.push ?? false,
-      // });
-    }
-  }, [user?.notificationPreferences]);
 
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState('');

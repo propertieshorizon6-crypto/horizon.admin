@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,7 +11,7 @@ import { Search, ChevronDown, Plus, Download, X } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
-import { assignPropertyAgent, markPropertySold } from "../api/propertiesApi";
+import { assignPropertyAgent, markPropertySold, bulkUpdateProperties, fetchBulkPostStatus } from "../api/propertiesApi";
 import { fetchFacebookImport, fetchImportStatus, cancelImportBatch } from "../api/facebookApi";
 import { fetchUsers, MOCK_MODE as USERS_MOCK_MODE, MOCK_USERS } from "../api/usersApi";
 import AddPropertyPage from "./AddPropertyPage";
@@ -421,6 +421,77 @@ function FacebookImportDialog({ batchId, onClose }) {
   );
 }
 
+// Live progress for the background Facebook-posting batch kicked off by a bulk approve.
+function BulkFacebookPostDialog({ batchId, onClose }) {
+  const { data } = useQuery({
+    queryKey: ["fb-post-status", batchId],
+    queryFn: () => fetchBulkPostStatus(batchId, { limit: 100 }),
+    enabled: !!batchId,
+    refetchInterval: (query) => {
+      const c = query.state.data?.counts;
+      if (!c) return 2000; // keep polling until the first counts arrive
+      const running = (c.queued ?? 0) + (c.processing ?? 0);
+      return running > 0 ? 2000 : false;
+    },
+  });
+
+  const counts = data?.counts ?? {};
+  const total  = data?.pagination?.total ?? 0;
+  const posted = counts.posted ?? 0;
+  const failed = counts.failed ?? 0;
+  const running = (counts.queued ?? 0) + (counts.processing ?? 0);
+  const done = total > 0 && running === 0;
+  const jobs = Array.isArray(data?.jobs) ? data.jobs : [];
+  const failedJobs = jobs.filter((j) => j.status === "failed");
+  const pct = total ? Math.round(((posted + failed) / total) * 100) : 0;
+
+  return (
+    <div onClick={onClose}
+      style={{ position:"fixed", inset:0, zIndex:4000, background:"rgba(15,23,42,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ width:"100%", maxWidth:480, maxHeight:"80vh", display:"flex", flexDirection:"column", background:"#fff", borderRadius:16, border:"1px solid #e2e8f0", boxShadow:"0 20px 60px rgba(0,0,0,0.18)", overflow:"hidden" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", borderBottom:"1px solid #f1f5f9" }}>
+          <div>
+            <p style={{ margin:0, fontSize:16, fontWeight:800, color:"#000" }}>Posting to Facebook</p>
+            <p style={{ margin:"2px 0 0", fontSize:12, color:"#94a3b8" }}>
+              {done ? `Done · ${posted} posted${failed ? `, ${failed} failed` : ""}` : `Posted ${posted} of ${total}…`}
+            </p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {!done && <span style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e", display:"inline-block", animation:"pulse 1.5s infinite" }} />}
+            <button onClick={onClose}
+              style={{ border:"1px solid #e2e8f0", background:"#fff", borderRadius:8, color:"#475569", padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer" }}>Close</button>
+          </div>
+        </div>
+
+        <div style={{ padding:"14px 20px", borderBottom: failedJobs.length ? "1px solid #f1f5f9" : "none" }}>
+          <div style={{ height:8, background:"#f1f5f9", borderRadius:99, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${pct}%`, background:"#2D368E", transition:"width 0.3s" }} />
+          </div>
+          <div style={{ display:"flex", gap:12, marginTop:10, flexWrap:"wrap" }}>
+            <span style={{ fontSize:12, fontWeight:700, color:"#16a34a" }}>{posted} posted</span>
+            {running > 0 && <span style={{ fontSize:12, fontWeight:700, color:"#2D368E" }}>{running} pending</span>}
+            {failed > 0 && <span style={{ fontSize:12, fontWeight:700, color:"#dc2626" }}>{failed} failed</span>}
+          </div>
+        </div>
+
+        {failedJobs.length > 0 && (
+          <div style={{ overflowY:"auto", flex:1, padding:"6px 20px 14px" }}>
+            {failedJobs.map((j) => (
+              <div key={j.id} style={{ padding:"8px 0", borderBottom:"1px solid #f8fafc" }}>
+                <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#000", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.propertyTitle || "Property"}</p>
+                <p style={{ margin:"2px 0 0", fontSize:11, color:"#dc2626" }}>{j.error || "Failed to post"}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+      </div>
+    </div>
+  );
+}
+
 const TABS = ["All", "Draft", "Active", "Sold", "Rejected", "Inactive"];
 
 // Server-side filter enums (values match the API; labels are display-only).
@@ -614,9 +685,14 @@ export default function PropertiesPage() {
     return p;
   }, [currentPage, activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
-  // Any filter change resets to the first page (page itself is excluded from deps).
+  // Any filter change resets to the first page (page itself is excluded from deps)
+  // and clears the selection (it's scoped to the current result set) — but not on
+  // the initial mount, so a selection rehydrated from sessionStorage survives.
+  const filterMountRef = useRef(false);
   useEffect(() => {
     setCurrentPage(1);
+    if (filterMountRef.current) clearSelection();
+    else filterMountRef.current = true;
   }, [activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
   const hasActiveFilters =
@@ -655,6 +731,28 @@ export default function PropertiesPage() {
     setImportToast({ type, message });
     setTimeout(() => setImportToast(null), 5000);
   };
+
+  // ── Bulk selection (persisted so checks survive opening a property / refresh) ─
+  const SELECTION_KEY = "admin.properties.selectedIds";
+  const [selectedIds, setSelectedIds] = useState(() => {
+    try { return new Set(JSON.parse(sessionStorage.getItem(SELECTION_KEY) || "[]")); }
+    catch { return new Set(); }
+  });
+  useEffect(() => {
+    sessionStorage.setItem(SELECTION_KEY, JSON.stringify([...selectedIds]));
+  }, [selectedIds]);
+
+  const toggleRow = (id) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const clearSelection = () => setSelectedIds(new Set());
+  const [bulkModal, setBulkModal] = useState(null); // { action } | null
+  const [bulkReason, setBulkReason] = useState("");
+  const [fbPostBatchId, setFbPostBatchId] = useState(null); // FB posting progress dialog
+  const [pendingPage, setPendingPage] = useState(null); // page-change confirm target
 
   const fbImportMutation = useMutation({
     mutationFn: () => fetchFacebookImport(30),
@@ -731,7 +829,11 @@ export default function PropertiesPage() {
   const assignPropertyMutation = useMutation({
     mutationFn: ({ propertyId, agentId }) => assignPropertyAgent(propertyId, agentId || null),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-user-assigned-properties"] }),
+      ]);
       setAssigningProperty(null);
       setSelectedAgentId("");
       setAssignError("");
@@ -746,6 +848,69 @@ export default function PropertiesPage() {
     mutationFn: (propertyId) => markPropertySold(propertyId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["properties"] }),
   });
+
+  // ── Bulk action mutation ───────────────────────────────────────────────────
+  const BULK_PAST = { approve: "approved", reject: "rejected", archive: "archived" };
+  const bulkMutation = useMutation({
+    mutationFn: ({ action, ids, reason }) => bulkUpdateProperties(action, ids, reason),
+    onSuccess: (result, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      // Drop the rows that succeeded from the selection; keep any that failed.
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        (result.succeeded || []).forEach((id) => next.delete(id));
+        return next;
+      });
+      const ok = result.succeeded?.length ?? 0;
+      const failed = result.failed?.length ?? 0;
+      showImportToast(
+        failed ? "error" : "success",
+        `${ok} ${BULK_PAST[action]}${failed ? `, ${failed} skipped` : ""}`,
+      );
+      setBulkModal(null);
+      setBulkReason("");
+      // If approve queued Facebook posts, open the live progress dialog.
+      if (action === "approve" && result.fbBatchId) {
+        setFbPostBatchId(result.fbBatchId);
+      }
+    },
+    onError: (err) => {
+      showImportToast("error", err?.response?.data?.error?.message || err?.response?.data?.message || "Bulk action failed");
+    },
+  });
+
+  const runBulk = () => {
+    const ids = [...selectedIds];
+    if (!ids.length || !bulkModal) return;
+    bulkMutation.mutate({
+      action: bulkModal.action,
+      ids,
+      reason: bulkModal.action === "reject" ? bulkReason.trim() : undefined,
+    });
+  };
+
+  // Current-page selection state for the header checkbox.
+  const pageIds = properties.map((p) => p.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const someOnPageSelected = pageIds.some((id) => selectedIds.has(id));
+  const toggleAllOnPage = () =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+  // Changing pages clears the current-page selection — warn first if anything is selected.
+  const requestPageChange = (target) => {
+    if (selectedIds.size > 0) setPendingPage(target);
+    else setCurrentPage(target);
+  };
+  const confirmPageChange = () => {
+    clearSelection();
+    setCurrentPage(pendingPage);
+    setPendingPage(null);
+  };
 
   const openAssignModal  = (prop) => {
     setAgentsEnabled(true);
@@ -1040,6 +1205,88 @@ export default function PropertiesPage() {
         />
       )}
 
+      {fbPostBatchId && (
+        <BulkFacebookPostDialog
+          batchId={fbPostBatchId}
+          onClose={() => setFbPostBatchId(null)}
+        />
+      )}
+
+      {bulkModal && (
+        <div
+          onClick={bulkMutation.isPending ? undefined : () => { setBulkModal(null); setBulkReason(""); }}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#000" }}>
+              {bulkModal.action === "approve" ? "Approve" : bulkModal.action === "reject" ? "Reject" : "Archive"}{" "}
+              {selectedIds.size} propert{selectedIds.size === 1 ? "y" : "ies"}?
+            </h3>
+            <p style={{ margin: "6px 0 14px", fontSize: 13, color: "#64748b" }}>
+              {bulkModal.action === "archive"
+                ? "Archived properties are marked as rejected and removed from active listings."
+                : bulkModal.action === "approve"
+                  ? "Approved properties become active and published; eligible new listings are auto-posted to Facebook."
+                  : "Rejected properties are returned to the owner with your reason."}
+            </p>
+            {bulkModal.action === "reject" && (
+              <>
+                <textarea
+                  value={bulkReason}
+                  onChange={(e) => setBulkReason(e.target.value)}
+                  placeholder="Reason (min 10 characters)…"
+                  style={{ width: "100%", minHeight: 80, padding: "9px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+                />
+                {bulkReason.trim().length > 0 && bulkReason.trim().length < 10 && (
+                  <span style={{ fontSize: 11, color: "#b91c1c" }}>At least 10 characters.</span>
+                )}
+              </>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <button type="button" disabled={bulkMutation.isPending}
+                onClick={() => { setBulkModal(null); setBulkReason(""); }}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", color: "#000", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button type="button"
+                disabled={bulkMutation.isPending || (bulkModal.action === "reject" && bulkReason.trim().length < 10)}
+                onClick={runBulk}
+                style={{ padding: "9px 20px", borderRadius: 8, border: "none",
+                  background: bulkModal.action === "approve" ? "#16a34a" : bulkModal.action === "reject" ? "#dc2626" : "#475569",
+                  color: "#fff", fontSize: 13, fontWeight: 700, cursor: bulkMutation.isPending ? "not-allowed" : "pointer", opacity: bulkMutation.isPending ? 0.7 : 1 }}>
+                {bulkMutation.isPending ? "Working…" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPage !== null && (
+        <div
+          onClick={() => setPendingPage(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 400, background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#000" }}>Clear selection?</h3>
+            <p style={{ margin: "6px 0 16px", fontSize: 13, color: "#64748b" }}>
+              You have {selectedIds.size} propert{selectedIds.size === 1 ? "y" : "ies"} selected on this page. Moving to another page will clear your selection. Continue?
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" onClick={() => setPendingPage(null)}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", color: "#000", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Stay here
+              </button>
+              <button type="button" onClick={confirmPageChange}
+                style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#2D368E", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Clear & continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {importToast && (
         <div style={{
           position:"fixed", bottom:24, right:24, zIndex:9999,
@@ -1306,9 +1553,45 @@ export default function PropertiesPage() {
           })}
         </div>
 
+        {selectedIds.size > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 12, background: "#eef0fb", border: "1px solid #c7cdf4", borderRadius: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#2D368E" }}>{selectedIds.size} selected</span>
+            <div style={{ flex: 1 }} />
+            <button type="button" disabled={bulkMutation.isPending}
+              onClick={() => setBulkModal({ action: "approve" })}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Approve
+            </button>
+            <button type="button" disabled={bulkMutation.isPending}
+              onClick={() => { setBulkReason(""); setBulkModal({ action: "reject" }); }}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Reject
+            </button>
+            <button type="button" disabled={bulkMutation.isPending}
+              onClick={() => setBulkModal({ action: "archive" })}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #475569", background: "#fff", color: "#475569", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              Archive
+            </button>
+            <button type="button" disabled={bulkMutation.isPending}
+              onClick={clearSelection}
+              style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              Clear
+            </button>
+          </div>
+        )}
+
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <th style={{ padding: "11px 16px", textAlign: "left", width: 36 }}>
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  ref={(el) => { if (el) el.indeterminate = !allOnPageSelected && someOnPageSelected; }}
+                  onChange={toggleAllOnPage}
+                  style={{ cursor: "pointer", width: 15, height: 15 }}
+                />
+              </th>
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => (
                   <th
@@ -1337,7 +1620,7 @@ export default function PropertiesPage() {
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   style={{
                     padding: "48px 0",
                     textAlign: "center",
@@ -1369,6 +1652,17 @@ export default function PropertiesPage() {
                     (event.currentTarget.style.background = "#fff")
                   }
                 >
+                  <td
+                    style={{ padding: "14px 16px", verticalAlign: "middle", width: 36 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.original.id)}
+                      onChange={() => toggleRow(row.original.id)}
+                      style={{ cursor: "pointer", width: 15, height: 15 }}
+                    />
+                  </td>
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
@@ -1410,7 +1704,7 @@ export default function PropertiesPage() {
             page={currentPage}
             totalPages={pagination.totalPages}
             disabled={isFetching}
-            onChange={setCurrentPage}
+            onChange={requestPageChange}
           />
         </div>
       </div>

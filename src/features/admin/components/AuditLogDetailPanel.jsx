@@ -165,7 +165,6 @@ export default function AuditLogDetailPanel({ id, onClose }) {
   const actorName =
     formatName(actorObj) || (log?.actorRole === "system" ? "System" : "Unknown");
   const actorRole = toTitle(log?.actorRole || "");
-  const actorId = actorObj?._id ? String(actorObj._id) : null;
 
   const actionKey = log?.action || "";
   const actionLabel = toTitle(actionKey);

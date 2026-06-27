@@ -114,6 +114,7 @@ const mapUser = (user = {}) => {
     lastLogin: formatLastLogin(user.lastLoginAt),
     lastLoginRaw: user.lastLoginAt || null,
     createdAt: user.createdAt || null,
+    isVerified: user.isVerified ?? false,
   };
 };
 
@@ -128,6 +129,7 @@ const mapUserDetail = ({ user = {}, profile = null, activityLogs = [] } = {}) =>
   return {
     ...mapUser(user),
     territories,
+    isVerified: profile?.isVerified ?? false,
     assignedProperties: profile?.statistics?.activeListings ?? 0,
     recentActivity: Array.isArray(activityLogs)
       ? activityLogs.map(mapActivityLog)

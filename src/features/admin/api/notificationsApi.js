@@ -20,6 +20,8 @@ const NOTIFICATION_TYPE_LABEL = {
   message_received:   "Message",
   system_alert:       "System",
   export_ready:       "System",
+  facebook_imported:  "Facebook",
+  facebook_posted:    "Facebook",
 };
 
 const RULE_EVENT_LABEL = {

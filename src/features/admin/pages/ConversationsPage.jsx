@@ -160,18 +160,20 @@ export default function ConversationsPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  // ── Auto select first thread ─────────────────────────────────────────────
-  useEffect(() => {
-    if (threads.length > 0 && !selectedThreadId) {
-      setSelectedThreadId(threads[0].id);
-    }
-  }, [threads, selectedThreadId]);
-
-  // Reset thread when conversation changes
-  useEffect(() => {
+  // Reset thread + reply when the conversation changes. Done during render with
+  // a previous-value guard (React's "adjust state when a prop/state changes"
+  // pattern) instead of an effect, which avoids set-state-in-effect.
+  const [prevConvId, setPrevConvId] = useState(selectedConvId);
+  if (selectedConvId !== prevConvId) {
+    setPrevConvId(selectedConvId);
     setSelectedThreadId(null);
     setReplyText("");
-  }, [selectedConvId]);
+  }
+
+  // Auto-select the first thread once threads load and none is chosen.
+  if (threads.length > 0 && !selectedThreadId) {
+    setSelectedThreadId(threads[0].id);
+  }
 
   // ── Derived ──────────────────────────────────────────────────────────────
   // Search + status are filtered server-side; we only re-order here so archived

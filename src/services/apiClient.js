@@ -22,6 +22,12 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Surface the backend's friendly message (shape: { error: { message } }) so any
+    // caller that falls back to err.message shows it instead of "Request failed with…".
+    const data = error.response?.data;
+    const friendly = data?.error?.message || data?.message;
+    if (friendly) error.message = friendly;
+
     const originalRequest = error?.config;
 
     if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {

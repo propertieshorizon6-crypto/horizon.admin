@@ -76,17 +76,17 @@ const mapStats = (kpis={}, alerts={}, trends={}) => {
     { label:"New Leads Today",   value:ld.current, pct:ld.pct, up:ld.up, icon:"L" },
     { label:"Inquiries Today",   value:ed.current, pct:ed.pct, up:ed.up, icon:"I" },
     { label:"Tour Requests",     value:toNumber(kpis?.tours?.pendingCount??alerts?.counts?.pendingTourConfirmations), pct:td.pct, up:td.up, icon:"T" },
-    { label:"Pending Approvals", value:toNumber(alerts?.counts?.pendingApprovals), pct:"0%", up:true, icon:"P" },
+    { label:"Pending Approvals", value:toNumber(kpis?.properties?.pendingApproval ?? alerts?.counts?.pendingApprovals), pct:"0%", up:true, icon:"P" },
     { label:"Unread Alerts",     value:toNumber(alerts?.unreadNotifications), pct:"0%", up:true, icon:"N" },
   ];
 };
 
 const mapLeadsSource = (trends={}) => {
-  const lm=buildTrendMap(toArray(trends.leads));
+  // Leads originate from website enquiries and app tours — the only two real sources.
   const em=buildTrendMap(toArray(trends.enquiries));
   const tm=buildTrendMap(toArray(trends.tours));
-  const dates = Array.from(new Set([...lm.keys(),...em.keys(),...tm.keys()])).sort();
-  return takeLast(dates,7).map(d=>({ day:dayLabel(d), App:lm.get(d)||0, Website:em.get(d)||0, Call:tm.get(d)||0, Whatsapp:0 }));
+  const dates = Array.from(new Set([...em.keys(),...tm.keys()])).sort();
+  return takeLast(dates,7).map(d=>({ day:dayLabel(d), Website:em.get(d)||0, App:tm.get(d)||0 }));
 };
 
 const mapLeadsStatus = (kpis={}) => {
@@ -193,16 +193,12 @@ const mapDashboardResponse = (overview={}, trends={}, agentPerformance={}) => {
 };
 
 export const fetchDashboardData = async () => {
-  try {
-    const [ovRes,trRes,apRes] = await Promise.all([
-      apiClient.get("/admin/dashboard"),
-      apiClient.get("/admin/dashboard/trends",{ params:{ days:7 } }),
-      apiClient.get("/admin/dashboard/agent-performance",{ params:{ page:1,limit:8 } }),
-    ]);
-    return mapDashboardResponse(toApiData(ovRes),toApiData(trRes),toApiData(apRes));
-  } catch(err) {
-    throw err;
-  }
+  const [ovRes,trRes,apRes] = await Promise.all([
+    apiClient.get("/admin/dashboard"),
+    apiClient.get("/admin/dashboard/trends",{ params:{ days:7 } }),
+    apiClient.get("/admin/dashboard/agent-performance",{ params:{ page:1,limit:8 } }),
+  ]);
+  return mapDashboardResponse(toApiData(ovRes),toApiData(trRes),toApiData(apRes));
 };
 
 export default fetchDashboardData;

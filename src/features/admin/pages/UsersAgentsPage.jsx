@@ -487,7 +487,7 @@ export default function UsersAgentsPage() {
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         {[
           ["Total Users", stats.total],
-          ["Active", stats.active],
+          ["Active Users", stats.active],
           ["Agents", stats.agents],
           ["Admins / Managers", stats.admins],
         ].map(([label, value]) => (

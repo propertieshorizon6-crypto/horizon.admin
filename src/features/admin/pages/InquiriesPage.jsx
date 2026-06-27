@@ -445,8 +445,22 @@ export default function InquiriesPage() {
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Search inquiries..."
-            className="w-full pl-9 pr-4 py-2.5 border border-slate-200 bg-white rounded-xl text-sm text-slate-700 focus:outline-none focus:border-orange-400 transition-colors"
+            className="w-full pl-9 pr-9 py-2.5 border border-slate-200 bg-white rounded-xl text-sm text-slate-700 focus:outline-none focus:border-orange-400 transition-colors"
           />
+          <div className="group absolute right-3 top-1/2 -translate-y-1/2">
+            <Info size={15} className="text-slate-400 hover:text-slate-600 cursor-help" />
+            <div className="invisible group-hover:visible absolute right-0 top-6 z-20 w-64 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
+              <p className="mb-1 font-semibold text-slate-800">You can search by:</p>
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>Inquiry ID (e.g. INQ-AB12CD)</li>
+                <li>Property name</li>
+                <li>Customer name</li>
+                <li>Agent name or email</li>
+                <li>Customer email</li>
+                <li>Phone number</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <button
