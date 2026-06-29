@@ -365,7 +365,7 @@ function FacebookImportDialog({ batchId, onClose }) {
                       {snippet}
                     </p>
                   )}
-                  {item.error && (
+                  {item.error && item.status !== "completed" && (
                     <p style={{ margin:"2px 0 0", fontSize:11, color:"#dc2626" }}>
                       {typeof item.error === "string" ? item.error : item.error?.message ?? "An error occurred"}
                     </p>
