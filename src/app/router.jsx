@@ -17,6 +17,7 @@ import PropertiesPage    from "../features/admin/pages/PropertiesPage";
 import UsersAgentsPage   from "../features/admin/pages/UsersAgentsPage";
 import NotificationsPage from "../features/admin/pages/NotificationsPage";
 import AuditLogsPage     from "../features/admin/pages/AuditLogsPage";
+import OurWorldPage      from "../features/admin/pages/OurWorldPage";
 import SettingsPage      from "../features/settings/pages/SettingsPage"; // ← new
 
 export const router = createBrowserRouter([
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "agents",        element: <UsersAgentsPage />   },
       { path: "notifications", element: <NotificationsPage /> },
       { path: "audit-logs",    element: <AuditLogsPage />     },
+      { path: "our-world",     element: <OurWorldPage />      },
       { path: "settings",      element: <SettingsPage />      }, // ← new
       { path: "*",             element: <Navigate to="/admin/dashboard" replace /> },
     ],

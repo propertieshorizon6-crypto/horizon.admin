@@ -4,7 +4,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Target, Mail, CalendarDays,
-  MessageSquare, Building2, Users, Bell, ClipboardList, LogOut, X,
+  MessageSquare, Building2, Users, Bell, ClipboardList, LogOut, X, Globe,
 } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
 import useLogout from "../../features/auth/hooks/useLogout";
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { label: "Properties",     icon: Building2,       path: "/admin/listings",       end: false },
   { label: "Users & Agents", icon: Users,           path: "/admin/agents",         end: false },
   { label: "Notifications",  icon: Bell,            path: "/admin/notifications",  end: false },
+  { label: "Our World",      icon: Globe,           path: "/admin/our-world",      end: false },
   { label: "Audit Logs",     icon: ClipboardList,   path: "/admin/audit-logs",     end: false },
 ];
 

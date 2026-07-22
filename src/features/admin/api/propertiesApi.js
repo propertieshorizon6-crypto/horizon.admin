@@ -296,6 +296,18 @@ export const bulkUpdateProperties = async (action, ids, reason) => {
   return data?.data ?? { succeeded: [], failed: [] };
 };
 
+// POST /api/v1/admin/properties/auto-assign-agents
+// Backfill: assign the least-loaded agent to every property that has no agent.
+// Uses a longer timeout than the 15s default since this can touch many rows.
+export const autoAssignAgents = async () => {
+  const { data } = await apiClient.post(
+    "/admin/properties/auto-assign-agents",
+    {},
+    { timeout: 120_000 },
+  );
+  return data?.data ?? { assigned: 0, skipped: 0, noAgentsAvailable: false };
+};
+
 // GET /api/v1/admin/properties/fb-post-status?batchId=&page=&limit=
 // Polls the progress of the background Facebook-posting batch from a bulk approve.
 export const fetchBulkPostStatus = async (batchId, params = {}) => {

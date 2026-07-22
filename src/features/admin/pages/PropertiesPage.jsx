@@ -7,11 +7,11 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, ChevronDown, Plus, Download, X } from "lucide-react";
+import { Search, ChevronDown, Plus, Download, X, Users } from "lucide-react";
 import useProperties from "../hooks/useProperties";
 import PropertyActionsMenu from "../components/PropertyActionsMenu";
 import PropertyDetailPage from "../components/PropertyDetailPage";
-import { assignPropertyAgent, markPropertySold, bulkUpdateProperties, fetchBulkPostStatus } from "../api/propertiesApi";
+import { assignPropertyAgent, markPropertySold, bulkUpdateProperties, fetchBulkPostStatus, autoAssignAgents } from "../api/propertiesApi";
 import { fetchFacebookImport, fetchImportStatus, cancelImportBatch } from "../api/facebookApi";
 import { fetchUsers, MOCK_MODE as USERS_MOCK_MODE, MOCK_USERS } from "../api/usersApi";
 import AddPropertyPage from "./AddPropertyPage";
@@ -850,6 +850,29 @@ export default function PropertiesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["properties"] }),
   });
 
+  // ── Auto-assign agents (backfill) mutation ─────────────────────────────────
+  // Assigns the least-loaded agent to every property that currently has none.
+  const autoAssignMutation = useMutation({
+    mutationFn: () => autoAssignAgents(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      if (result?.noAgentsAvailable) {
+        showImportToast("error", "No eligible agents available to assign.");
+        return;
+      }
+      const count = result?.assigned ?? 0;
+      showImportToast(
+        "success",
+        count > 0
+          ? `Auto-assigned ${count} propert${count === 1 ? "y" : "ies"}`
+          : "All properties already have an agent",
+      );
+    },
+    onError: (err) => {
+      showImportToast("error", err?.response?.data?.message || "Auto-assign failed");
+    },
+  });
+
   // ── Bulk action mutation ───────────────────────────────────────────────────
   const BULK_PAST = { approve: "approved", reject: "rejected", archive: "archived" };
   const bulkMutation = useMutation({
@@ -1395,6 +1418,24 @@ export default function PropertiesPage() {
               {fbCancelMutation.isPending ? "Cancelling..." : "Cancel Import"}
             </button>
           )}
+          <button
+            onClick={() => autoAssignMutation.mutate()}
+            disabled={autoAssignMutation.isPending}
+            className="flex-1 md:flex-none"
+            title="Assign the least-loaded agent to every property that has no agent"
+            style={{
+              display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+              padding:"9px 16px", borderRadius:9,
+              border:"1px solid #2D368E",
+              background: autoAssignMutation.isPending ? "#eef0fb" : "#fff",
+              color:"#2D368E", fontSize:13, fontWeight:700,
+              cursor: autoAssignMutation.isPending ? "not-allowed" : "pointer",
+              opacity: autoAssignMutation.isPending ? 0.7 : 1,
+            }}
+          >
+            <Users size={15} />
+            {autoAssignMutation.isPending ? "Assigning..." : "Auto-assign Agents"}
+          </button>
           <button
             onClick={() => setShowAddPage(true)}
             className="flex-1 md:flex-none"
