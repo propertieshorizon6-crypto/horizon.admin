@@ -297,7 +297,7 @@ export const bulkUpdateProperties = async (action, ids, reason) => {
 };
 
 // POST /api/v1/admin/properties/auto-assign-agents
-// Backfill: assign the least-loaded agent to every property that has no agent.
+// Backfill: match every agent-less property to an agent by phone number.
 // Uses a longer timeout than the 15s default since this can touch many rows.
 export const autoAssignAgents = async () => {
   const { data } = await apiClient.post(
@@ -305,7 +305,7 @@ export const autoAssignAgents = async () => {
     {},
     { timeout: 120_000 },
   );
-  return data?.data ?? { assigned: 0, skipped: 0, noAgentsAvailable: false };
+  return data?.data ?? { matched: 0, unmatched: 0, noAgentsAvailable: false };
 };
 
 // GET /api/v1/admin/properties/fb-post-status?batchId=&page=&limit=

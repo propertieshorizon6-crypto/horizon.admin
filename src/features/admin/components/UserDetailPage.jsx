@@ -1,6 +1,7 @@
 // 📁 src/features/admin/components/UserDetailPage.jsx
 
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Phone, MapPin, Calendar, Clock, User } from "lucide-react";
 import { MOCK_MODE as USERS_MOCK_MODE, fetchUserDetail } from "../api/usersApi";
@@ -180,7 +181,10 @@ function OverviewTab({ user, onViewAssignedProperties }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8">
               <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
             </svg>
-            {user.assignedProperties ?? 0} active listings
+            {(user.propertyCount ?? user.assignedProperties ?? 0)} propert{(user.propertyCount ?? user.assignedProperties ?? 0) === 1 ? "y" : "ies"} assigned
+            {user.activeListings != null && (
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>· {user.activeListings} active</span>
+            )}
           </span>
           <button
             type="button"
@@ -237,9 +241,12 @@ function AssignedPropertiesModal({
   open,
   userName,
   properties,
+  totalCount = 0,
   isLoading,
   isError,
   onClose,
+  onOpenProperty,
+  onViewAll,
 }) {
   if (!open) return null;
 
@@ -282,7 +289,10 @@ function AssignedPropertiesModal({
               Assigned Properties
             </p>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
-              {userName || "User"} - {properties.length} item(s)
+              {userName || "User"} ·{" "}
+              {totalCount > properties.length
+                ? `showing ${properties.length} of ${totalCount}`
+                : `${properties.length} item(s)`}
             </p>
           </div>
           <button
@@ -328,6 +338,8 @@ function AssignedPropertiesModal({
               {properties.map((property) => (
                 <div
                   key={property.id}
+                  onClick={() => onOpenProperty?.(property.id)}
+                  title="Open this property"
                   style={{
                     border: "1px solid #e2e8f0",
                     borderRadius: 10,
@@ -336,7 +348,11 @@ function AssignedPropertiesModal({
                     justifyContent: "space-between",
                     alignItems: "center",
                     gap: 10,
+                    cursor: "pointer",
+                    transition: "background 0.1s, border-color 0.1s",
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#c7cdf4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
                 >
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#000000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -356,6 +372,7 @@ function AssignedPropertiesModal({
                       borderRadius: 99,
                       padding: "3px 10px",
                       whiteSpace: "nowrap",
+                      flexShrink: 0,
                     }}
                   >
                     {property.status}
@@ -365,6 +382,23 @@ function AssignedPropertiesModal({
             </div>
           )}
         </div>
+
+        {onViewAll && (
+          <div style={{ borderTop: "1px solid #f1f5f9", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>
+              {totalCount > properties.length
+                ? `Showing ${properties.length} of ${totalCount} — open the full list to see all`
+                : `${properties.length} propert${properties.length === 1 ? "y" : "ies"}`}
+            </span>
+            <button
+              type="button"
+              onClick={onViewAll}
+              style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #2D368E", background: "#2D368E", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              View all in Listings →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -440,6 +474,7 @@ function EmptyView({ onBack }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function UserDetailPage({ user: selectedUser, onBack }) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Overview");
   const [assignedPropertiesUserId, setAssignedPropertiesUserId] = useState(null);
 
@@ -681,9 +716,20 @@ export default function UserDetailPage({ user: selectedUser, onBack }) {
         open={showAssignedProperties}
         userName={user.name}
         properties={assignedProperties}
+        totalCount={user.propertyCount ?? assignedProperties.length}
         isLoading={isAssignedPropertiesLoading}
         isError={isAssignedPropertiesError}
         onClose={() => setAssignedPropertiesUserId(null)}
+        onOpenProperty={(propertyId) => {
+          setAssignedPropertiesUserId(null);
+          navigate(`/admin/listings?propertyId=${propertyId}`);
+        }}
+        onViewAll={() => {
+          setAssignedPropertiesUserId(null);
+          navigate(
+            `/admin/listings?agentId=${user.id}&agentName=${encodeURIComponent(user.name || "")}`,
+          );
+        }}
       />
     </div>
   );

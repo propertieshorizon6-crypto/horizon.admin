@@ -115,6 +115,10 @@ const mapUser = (user = {}) => {
     lastLoginRaw: user.lastLoginAt || null,
     createdAt: user.createdAt || null,
     isVerified: user.isVerified ?? false,
+    // Live count of properties assigned to this agent (agents only; the backend
+    // omits it for admins/managers, so it stays null for them).
+    propertyCount:
+      typeof user.propertyCount === "number" ? user.propertyCount : null,
   };
 };
 
@@ -130,6 +134,10 @@ const mapUserDetail = ({ user = {}, profile = null, activityLogs = [] } = {}) =>
     ...mapUser(user),
     territories,
     isVerified: profile?.isVerified ?? false,
+    // Total assigned properties (matches the list's Properties column); active
+    // is the active/approved subset shown alongside it.
+    propertyCount: profile?.statistics?.totalListings ?? 0,
+    activeListings: profile?.statistics?.activeListings ?? 0,
     assignedProperties: profile?.statistics?.activeListings ?? 0,
     recentActivity: Array.isArray(activityLogs)
       ? activityLogs.map(mapActivityLog)

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -636,6 +637,36 @@ const columnHelper = createColumnHelper();
 export default function PropertiesPage() {
   const queryClient = useQueryClient();
 
+  // Deep-link support: open a specific property (?propertyId=) or filter the
+  // list to one agent (?agentId=&agentName=) — used from the agent detail page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const agentFilterId = searchParams.get("agentId") || "";
+  const agentFilterName = searchParams.get("agentName") || "";
+  const unassignedFilter = searchParams.get("unassigned") === "true";
+
+  const clearAgentFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("agentId");
+    next.delete("agentName");
+    next.delete("unassigned");
+    setSearchParams(next, { replace: true });
+  };
+
+  // Drives the Agent filter dropdown: "" = all, "unassigned" = no agent, else an agentId.
+  const setAgentFilter = (value, name = "") => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("agentId");
+    next.delete("agentName");
+    next.delete("unassigned");
+    if (value === "unassigned") {
+      next.set("unassigned", "true");
+    } else if (value) {
+      next.set("agentId", value);
+      if (name) next.set("agentName", name);
+    }
+    setSearchParams(next, { replace: true });
+  };
+
   const [activeTab, setActiveTab] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -672,6 +703,8 @@ export default function PropertiesPage() {
   const queryParams = useMemo(() => {
     const p = { page: currentPage, limit: 20, sort: sortBy };
     if (activeTab !== "All") p.status = activeTab.toLowerCase();
+    if (agentFilterId)       p.agentId = agentFilterId;
+    if (unassignedFilter)    p.assignmentStatus = "unmatched";
     if (approvalFilter)      p.approvalStatus = approvalFilter;
     if (typeFilter)          p.type = typeFilter;
     if (purposeFilter)       p.purpose = purposeFilter;
@@ -683,7 +716,7 @@ export default function PropertiesPage() {
     if (debouncedText.minPrice !== "") p.minPrice = debouncedText.minPrice;
     if (debouncedText.maxPrice !== "") p.maxPrice = debouncedText.maxPrice;
     return p;
-  }, [currentPage, activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
+  }, [currentPage, activeTab, agentFilterId, unassignedFilter, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
   // Any filter change resets to the first page (page itself is excluded from deps)
   // and clears the selection (it's scoped to the current result set) — but not on
@@ -693,7 +726,7 @@ export default function PropertiesPage() {
     setCurrentPage(1);
     if (filterMountRef.current) clearSelection();
     else filterMountRef.current = true;
-  }, [activeTab, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
+  }, [activeTab, agentFilterId, unassignedFilter, approvalFilter, typeFilter, purposeFilter, featuredFilter, compFilter, sortBy, debouncedText]);
 
   const hasActiveFilters =
     !!(typeFilter || purposeFilter || approvalFilter || featuredFilter || compFilter ||
@@ -716,13 +749,16 @@ export default function PropertiesPage() {
   const properties  = propertiesData?.properties ?? [];
   const metaCounts  = propertiesData?.meta ?? {};
   const pagination  = propertiesData?.pagination ?? { total: 0, page: 1, limit: 20, totalPages: 1 };
-  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [selectedProperty, setSelectedProperty] = useState(() => {
+    const pid = searchParams.get("propertyId");
+    return pid ? { id: pid } : null;
+  });
   const [showAddPage, setShowAddPage] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
   const [assigningProperty, setAssigningProperty] = useState(null);
   const [selectedAgentId,   setSelectedAgentId]   = useState("");
   const [assignError,       setAssignError]        = useState("");
-  const [agentsEnabled,     setAgentsEnabled]      = useState(false);
+  const [agentsEnabled,     setAgentsEnabled]      = useState(true);
   const [importDialog,      setImportDialog]       = useState(false);
   const [importBatchId,     setImportBatchId]      = useState(null);
   const [importToast,       setImportToast]        = useState(null);
@@ -851,21 +887,25 @@ export default function PropertiesPage() {
   });
 
   // ── Auto-assign agents (backfill) mutation ─────────────────────────────────
-  // Assigns the least-loaded agent to every property that currently has none.
+  // Matches every agent-less property to an agent by phone number; anything with
+  // no matching agent is flagged unmatched for the alert queue.
   const autoAssignMutation = useMutation({
     mutationFn: () => autoAssignAgents(),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       if (result?.noAgentsAvailable) {
-        showImportToast("error", "No eligible agents available to assign.");
+        showImportToast("error", "No agents with usable phone numbers to match against.");
         return;
       }
-      const count = result?.assigned ?? 0;
+      const matched = result?.matched ?? 0;
+      const unmatched = result?.unmatched ?? 0;
       showImportToast(
-        "success",
-        count > 0
-          ? `Auto-assigned ${count} propert${count === 1 ? "y" : "ies"}`
-          : "All properties already have an agent",
+        matched > 0 ? "success" : "error",
+        matched > 0
+          ? `Matched ${matched} propert${matched === 1 ? "y" : "ies"} by phone${unmatched ? `; ${unmatched} still unassigned` : ""}`
+          : unmatched > 0
+            ? `No phone matches — ${unmatched} propert${unmatched === 1 ? "y" : "ies"} still need an agent`
+            : "No agent-less properties to match",
       );
     },
     onError: (err) => {
@@ -1131,7 +1171,14 @@ export default function PropertiesPage() {
         <PropertyDetailPage
           propertyId={selectedProperty.id}
           property={selectedProperty}
-          onBack={() => setSelectedProperty(null)}
+          onBack={() => {
+            setSelectedProperty(null);
+            if (searchParams.get("propertyId")) {
+              const next = new URLSearchParams(searchParams);
+              next.delete("propertyId");
+              setSearchParams(next, { replace: true });
+            }
+          }}
           onEditProperty={setEditingProperty}
           onAssignAgent={openAssignModal}
         />
@@ -1422,7 +1469,7 @@ export default function PropertiesPage() {
             onClick={() => autoAssignMutation.mutate()}
             disabled={autoAssignMutation.isPending}
             className="flex-1 md:flex-none"
-            title="Assign the least-loaded agent to every property that has no agent"
+            title="Match agent-less properties to agents by phone number"
             style={{
               display:"flex", alignItems:"center", justifyContent:"center", gap:7,
               padding:"9px 16px", borderRadius:9,
@@ -1450,6 +1497,27 @@ export default function PropertiesPage() {
           </button>
         </div>
       </div>
+
+      {(agentFilterId || unassignedFilter) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 14, background: "#eef0fb", border: "1px solid #c7cdf4", borderRadius: 12 }}>
+          <Users size={15} color="#2D368E" />
+          <span style={{ fontSize: 13, color: "#334155" }}>
+            {unassignedFilter ? (
+              <>Showing <strong style={{ color: "#2D368E" }}>unassigned</strong> properties (no agent matched)</>
+            ) : (
+              <>Showing properties assigned to <strong style={{ color: "#2D368E" }}>{agentFilterName || "this agent"}</strong></>
+            )}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={clearAgentFilter}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid #c7cdf4", background: "#fff", color: "#2D368E", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+          >
+            <X size={13} /> Clear
+          </button>
+        </div>
+      )}
 
       <div
         style={{
@@ -1490,6 +1558,19 @@ export default function PropertiesPage() {
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+          <FilterSelect
+            value={unassignedFilter ? "unassigned" : agentFilterId}
+            onChange={(e) => {
+              const val = e.target.value;
+              const name = agents.find((a) => a.id === val)?.name || "";
+              setAgentFilter(val, name);
+            }}
+            options={[
+              { value: "", label: "Agent: All" },
+              { value: "unassigned", label: "Unassigned" },
+              ...agents.map((a) => ({ value: a.id, label: a.name })),
+            ]}
+          />
           <FilterSelect
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}

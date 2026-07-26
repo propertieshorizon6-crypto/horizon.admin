@@ -397,6 +397,15 @@ export default function UsersAgentsPage() {
     }),
     columnHelper.accessor("role", { header: "Role", cell: (info) => <RoleBadge role={info.getValue()} /> }),
     columnHelper.accessor("status", { header: "Status", cell: (info) => <StatusBadge status={info.getValue()} /> }),
+    columnHelper.accessor("propertyCount", {
+      header: "Properties",
+      cell: (info) =>
+        info.row.original.roleKey === "agent" ? (
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{info.getValue() ?? 0}</span>
+        ) : (
+          <span style={{ fontSize: 12, color: "#cbd5e1" }}>—</span>
+        ),
+    }),
     columnHelper.accessor("lastLogin", {
       header: "Last Login",
       cell: (info) => <span style={{ fontSize: 12, color: "#64748b" }}>{info.getValue() ?? "-"}</span>,
@@ -539,7 +548,7 @@ export default function UsersAgentsPage() {
           </thead>
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: 28, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No users found</td></tr>
+              <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No users found</td></tr>
             ) : (
               table.getRowModel().rows.map((row, index) => (
                 <tr key={row.id} onClick={() => setSelectedUser(row.original)} style={{ borderBottom: index < table.getRowModel().rows.length - 1 ? "1px solid #f8fafc" : "none", cursor: "pointer" }}>
